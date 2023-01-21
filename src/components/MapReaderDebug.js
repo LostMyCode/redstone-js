@@ -40,8 +40,20 @@ class MapReaderDebug extends React.Component {
             let codes = Buffer.from([0, 0]);
             codes.writeUInt16LE(tileCode, 0);
             codes = new Uint8Array(codes);
-            const tileImage = tileImages[codes[0]];
-            ctx.drawImage(tileImage, 0, 0, 64, 32, j * (64 * scale), i * (32 * scale), (64 * scale), (32 * scale));
+            // if (codes[1] !== 64) console.log("check image tile", codes[0], codes[1]);
+            if (codes[1] === 64 || codes[1] === 128 || codes[1] === 192) {
+              const tileImage = tileImages[codes[0]];
+              ctx.drawImage(tileImage, 0, 0, 64, 32, j * (64 * scale), i * (32 * scale), (64 * scale), (32 * scale));
+            } else {
+              // console.log("unk tiles", tileCode, codes[0], codes[1]);
+              let base = 64;
+              if (codes[1] > 128) base = 128;
+              if (codes[1] > 192) base = 192;
+              const code = codes[0] + (codes[1] - base) * 256;
+              const tileImage = tileImages[code];
+              if (!tileImage) console.log("unk tiles", tileCode, codes[0], codes[1]);
+              tileImage && ctx.drawImage(tileImage, 0, 0, 64, 32, j * (64 * scale), i * (32 * scale), (64 * scale), (32 * scale));
+            }
           }
         }
       }
