@@ -1,4 +1,3 @@
-import React from "react";
 import BufferReader from "../utils/BufferReader";
 import RedStoneMap, { MapType, ObjectType } from "../utils/Map";
 
