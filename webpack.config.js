@@ -13,10 +13,13 @@ module.exports = (env, options) => {
     const isProd = mode == "production";
     const config = {
         mode,
-        entry: APP_PATH,
+        entry: {
+            index: APP_PATH + "/index.js",
+            debug: APP_PATH + "/debug.js"
+        },
 
         output: {
-            filename: 'bundle.js?[hash]',
+            filename: '[name].bundle.js?[hash]',
             path: path.resolve(__dirname, 'dist'),
         },
 

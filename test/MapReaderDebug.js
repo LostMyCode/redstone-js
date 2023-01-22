@@ -1,17 +1,10 @@
 import React from "react";
-import BufferReader from "../../utils/BufferReader";
-import RedStoneMap, { ObjectType } from "../../utils/Map";
+import BufferReader from "../utils/BufferReader";
+import RedStoneMap, { ObjectType } from "../utils/Map";
 
-class MapReaderDebug extends React.Component {
-  constructor(props) {
-    super(props);
-  }
+class MapReaderDebug {
 
-  componentDidMount() {
-    this.fetchMapData();
-  }
-
-  async fetchMapData() {
+  async execute() {
     const f = await fetch("static/[000]T01.rmd");
     const rmd = await f.arrayBuffer();
     this.rmd = Buffer.from(rmd);
@@ -51,7 +44,7 @@ class MapReaderDebug extends React.Component {
 
         ctx.strokeStyle = "#a22";
         ctx.lineWidth = 3;
-        
+
         ctx.beginPath();
         ctx.rect(x, y, w, h);
         ctx.stroke();
@@ -94,15 +87,6 @@ class MapReaderDebug extends React.Component {
       tileImages[imageNum] = img;
       offsetX++;
     });
-  }
-
-  render() {
-
-    return (
-      <>
-
-      </>
-    )
   }
 }
 
