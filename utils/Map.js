@@ -72,7 +72,7 @@ class Map {
         const tileReader = new BufferReader(Buffer.from(tileInfo));
         const tileData1 = tileReader.readStructUInt16LE(headerSize.width * headerSize.height);
         const tileData2 = tileReader.readStructUInt16LE(headerSize.width * headerSize.height);
-        const tileData3 = tileReader.readStructUInt16LE(headerSize.width * headerSize.height);
+        const tileData3 = (new Array(headerSize.width * headerSize.height)).fill(null).map(() => [tileReader.readUInt8(), tileReader.readUInt8()]);
         console.log("tileData1", tileData1);
         console.log("tileData2", tileData2);
         console.log("tileData3", tileData3);

@@ -60,12 +60,14 @@ class MapReaderDebug {
   async execute() {
     // this.ctx.scale(0.5, 0.5);
     await this.loadCommonResources();
-    this.brunenstigRmd = await this.fetchBinaryFile("static/[000]T01.rmd");
+    // this.brunenstigRmd = await this.fetchBinaryFile("static/[000]T01.rmd");
+    this.brunenstigRmd = await this.fetchBinaryFile("static/[060]T01_A01.rmd");
     this.brunenstigRmd = Buffer.from(this.brunenstigRmd);
 
     const br = new BufferReader(this.brunenstigRmd);
     const map = new RedStoneMap(br);
-    const tileImages = await this.loadZippedImages("static/Brunenstig_tiles.zip");
+    const tileImages = await this.loadZippedImages("static/Room_tiles.zip");
+    // const tileImages = await this.loadZippedImages("static/Brunenstig_tiles.zip");
 
     const drawTiles = () => {
       const ctx = this.ctx;
@@ -179,10 +181,61 @@ class MapReaderDebug {
       })
     }
 
+    const loadImageSync = async (src) => {
+      return await new Promise((resolve) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.src = src;
+      });
+    }
+
+    const drawObjects_Test = async () => {
+      const obj4 = await loadImageSync("static/Room/Objects/sn__object_0004.png");
+      const obj5 = await loadImageSync("static/Room/Objects/sn__object_0005.png");
+      const obj50 = await loadImageSync("static/Room/Objects/sn__object_0050.png");
+      const objectMatrix = map.tileData3;
+      const objectFileInfoStartIndex = 17709;
+      for (let i = 0; i < map.headerSize.height; i++) {
+        for (let j = 0; j < map.headerSize.width; j++) {
+          const bytes = objectMatrix[i * map.headerSize.width + j];
+          if (bytes[0] === 0 && bytes[1] === 0) continue;
+          if (bytes[0] === 1 && bytes[1] === 8) continue;
+          if (bytes[0] === 2 && bytes[1] === 8) continue;
+          // if (bytes[0] !== 2) continue;
+          const index = bytes[0];
+          const fileInfoIndex = objectFileInfoStartIndex + 64 * index;
+          const imageFileId = this.brunenstigRmd.readUInt16LE(fileInfoIndex);
+          if (imageFileId === 50) {
+            console.log("check image file id", imageFileId);
+            console.log(bytes);
+            console.log(Buffer.from(bytes).readUint16LE(0));
+          }
+          const offsetX = 40;
+          const offsetY = -40;
+          if (imageFileId === 4) {
+            const x = j * 64 - obj4.width / 2 + offsetX;
+            const y = i * 32 - obj4.height / 2 + offsetY;
+            this.ctx.drawImage(obj4, x, y);
+          }
+          else if (imageFileId === 5) {
+            const x = j * 64 - obj5.width / 2 + offsetX;
+            const y = i * 32 - obj5.height / 2 + offsetY;
+            this.ctx.drawImage(obj5, x, y);
+          }
+          else if (imageFileId === 50) {
+            const x = j * 64 - obj50.width / 2 + offsetX;
+            const y = i * 32 - obj50.height / 2 + offsetY;
+            this.ctx.drawImage(obj50, x, y);
+          }
+        }
+      }
+    }
+
     drawTiles();
     drawAreaInfoRect();
     drawNpcRect();
     drawPortals();
+    drawObjects_Test();
   }
 }
 
