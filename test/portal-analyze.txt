@@ -1,0 +1,52 @@
+TextureFile: Data/Interface/game/gateAnm.sad
+
+west [010]G13.rmd
+
+  index: 2,
+  leftUpPos: { x: 67, y: 2189 },
+  rightDownPos: { x: 165, y: 2295 },
+  objectInfo: 3,
+  subObjectInfo: 13,
+  unknown_0: 1540,
+  unknown_1: 39,
+
+  candidate tex frames 1: 48 - 53,
+  candidate tex frames 2: 96 - 101
+
+east [016]G16.rmd
+
+  index: 4,
+  leftUpPos: { x: 12484, y: 3292 },
+  rightDownPos: { x: 12715, y: 3462 },
+  objectInfo: 3,
+  subObjectInfo: 13,
+  unknown_0: 769,
+  unknown_1: 66,
+
+  candidate tex frames 1: 24 - 29,
+  candidate tex frames 2: 72 - 77
+
+south [024]G19.rmd
+
+  index: 3,
+  leftUpPos: { x: 4250, y: 6206 },
+  rightDownPos: { x: 4486, y: 6327 },
+  objectInfo: 3,
+  subObjectInfo: 13,
+  unknown_0: 1031,
+  unknown_1: 42,
+
+  candidate tex frames 1: 36 - 41,
+  candidate tex frames 2: 84 - 89
+
+east(G013) 
+  index: 39,
+  leftUpPos: { x: 12174, y: 2871 },
+  rightDownPos: { x: 12306, y: 2949 },
+  objectInfo: 3,
+  subObjectInfo: 13,
+  unknown_0: 512,
+  unknown_1: 2,
+
+  candidate tex frames 1: 24 - 29,
+  candidate tex frames 2: 72 - 77
