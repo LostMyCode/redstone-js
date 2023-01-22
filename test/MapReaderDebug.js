@@ -1,29 +1,74 @@
 import React from "react";
 import BufferReader from "../utils/BufferReader";
-import RedStoneMap, { ObjectType } from "../utils/Map";
+import RedStoneMap, { MapType, ObjectType } from "../utils/Map";
+
+const portalTextureInfo = {
+  door: {},
+  doorGrow: {},
+  topGate: {},
+  topRightGate: {},
+  rightGate: {},
+  bottomRightGate: {},
+  bottomGate: {},
+  bottomLeftGate: {},
+  leftGate: {},
+  topLeftGate: {},
+}
 
 class MapReaderDebug {
+  /**
+   * @type {CanvasRenderingContext2D}
+   */
+  ctx = document.getElementById("canvas").getContext('2d');
+
+  async fetchBinaryFile(path) {
+    const f = await fetch(path);
+    const ab = await f.arrayBuffer();
+    return Buffer.from(ab);
+  }
+
+  async loadZippedImages(path) {
+    const buf = await this.fetchBinaryFile(path);
+    const unzip = new Zlib.Unzip(buf);
+    const fileNames = unzip.getFilenames();
+    const images = {};
+    let loadedCount = 0;
+
+    return await new Promise((resolve) => {
+      fileNames.forEach(fileName => {
+        const data = unzip.decompress(fileName);
+        const blob = new Blob([data], { type: 'image/png' });
+        const url = URL.createObjectURL(blob);
+        const img = new Image;
+        img.onload = function () {
+          loadedCount++;
+          if (loadedCount === fileNames.length) {
+            resolve(images);
+          }
+        }
+        img.src = url;
+        const imageNum = parseInt(fileName.match(/_(\d+)/)[1]);
+        images[imageNum] = img;
+      });
+    });
+  }
+
+  async loadCommonResources() {
+    this.portalImages = await this.loadZippedImages("static/gateAnm.zip");
+    console.log("[MapReaderDebug] common resources loaded");
+  }
 
   async execute() {
-    const f = await fetch("static/[000]T01.rmd");
-    const rmd = await f.arrayBuffer();
-    this.rmd = Buffer.from(rmd);
-    const br = new BufferReader(this.rmd);
+    await this.loadCommonResources();
+    this.brunenstigRmd = await this.fetchBinaryFile("static/[000]T01.rmd");
+    this.brunenstigRmd = Buffer.from(this.brunenstigRmd);
+
+    const br = new BufferReader(this.brunenstigRmd);
     const map = new RedStoneMap(br);
-
-    const f2 = await fetch("static/Brunenstig_tiles.zip");
-    const tilesZip = await f2.arrayBuffer();
-    const unzip = new Zlib.Unzip(Buffer.from(tilesZip));
-    const fileNames = unzip.getFilenames();
-    console.log(fileNames);
-
-    const tileImages = {};
-    /**
-     * @type {CanvasRenderingContext2D}
-     */
-    let ctx = document.getElementById("canvas").getContext('2d');
+    const tileImages = await this.loadZippedImages("static/Brunenstig_tiles.zip");
 
     const drawTiles = () => {
+      const ctx = this.ctx;
       const scale = 1;
       for (let i = 0; i < map.headerSize.height; i++) {
         for (let j = 0; j < map.headerSize.width; j++) {
@@ -35,6 +80,7 @@ class MapReaderDebug {
     }
 
     const drawAreaInfoRect = () => {
+      const ctx = this.ctx;
       const areaInfos = map.areaInfos;
       areaInfos.forEach(area => {
         const x = area.leftUpPos.x;
@@ -58,35 +104,64 @@ class MapReaderDebug {
       });
     }
 
-    let offsetX = 0;
-    let offsetY = 0;
-    let loadedCount = 0;
-    fileNames.forEach(fileName => {
-      if (offsetX === 10) {
-        offsetX = 0;
-        offsetY++;
-      }
-      const ox = offsetX;
-      const oy = offsetY;
-      const data = unzip.decompress(fileName);
-      const blob = new Blob([data], { type: 'image/png' });
-      const url = URL.createObjectURL(blob);
-      const img = new Image;
-      img.onload = function () {
-        // ctx.drawImage(this, ox * 64, oy * 32);
-        // URL.revokeObjectURL(url);
-        loadedCount++;
-        if (loadedCount === fileNames.length) {
-          // ctx.scale(0.2, 0.2);
-          drawTiles();
-          drawAreaInfoRect();
+    const drawPortals = () => {
+      const ctx = this.ctx;
+      const portalImages = this.portalImages;
+      map.areaInfos.forEach(area => {
+        if (!area.moveToFileName) return;
+        if (area.objectInfo === ObjectType.WarpPortal) {
+          const centerPos = area.centerPos;
+          let image = portalImages[12];
+          // it is better way to load all rmd and check MapType of map beyond the gate
+          // check the filename instead as its easier
+          const isGateOrDungeon = area.moveToFileName.match(/G\d+|_D\d+/);
+          if (
+            // mapBeyondTheGate.typeAndFlags !== MapType.Shop
+            // area.subObjectInfo === 13 || area.subObjectInfo === 21
+            isGateOrDungeon
+          ) {
+            const isNearLeftBorder = centerPos.x < 500;
+            const isNearTopBorder = centerPos.y < 500;
+            const isNearRightBorder = 64 * map.headerSize.width - centerPos.x < 500;
+            const isNearBottomBorder = 32 * map.headerSize.height - centerPos.y < 500;
+
+            let portalLocationStr = "";
+            if (isNearTopBorder) {
+              portalLocationStr += "top";
+            }
+            else if (isNearBottomBorder) {
+              portalLocationStr += "bottom";
+            }
+            if (isNearLeftBorder) {
+              portalLocationStr += portalLocationStr.length ? "Left" : "left";
+            }
+            else if (isNearRightBorder) {
+              portalLocationStr += portalLocationStr.length ? "Right" : "right";
+            }
+            else {
+              // idk how to relate portal to its texture...
+              portalLocationStr = "top";
+            }
+            const key = portalLocationStr + "Gate";
+            const index = Object.values(portalTextureInfo).indexOf(portalTextureInfo[key]);
+            const offset = index * 6;
+            image = portalImages[offset];
+          }
+          else {
+            const index = Object.values(portalTextureInfo).indexOf(portalTextureInfo.door);
+            const offset = index * 6;
+            image = portalImages[offset];
+          }
+          const x = centerPos.x - image.width / 2;
+          const y = centerPos.y - image.height / 2;
+          ctx.drawImage(image, x, y);
         }
-      }
-      img.src = url;
-      const imageNum = parseInt(fileName.match(/tile_(\d+)/)[1]);
-      tileImages[imageNum] = img;
-      offsetX++;
-    });
+      })
+    }
+
+    drawTiles();
+    drawAreaInfoRect();
+    drawPortals();
   }
 }
 

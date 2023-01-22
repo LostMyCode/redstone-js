@@ -13,6 +13,12 @@ const LoadingTarget = {
     ShopInfo: 5,
 }
 
+export const MapType = {
+    Dungeon: 1,
+    Village: 2,
+    Shop: 3
+}
+
 class Map {
     constructor(br) {
         this.br = br;
@@ -37,7 +43,7 @@ class Map {
         this.headerSize = headerSize;
         const name = br.readString(0x40, "sjis");
         br.readUInt32LE();
-        const typeAndFlags = br.readUInt8();
+        this.typeAndFlags = br.readUInt8();
         br.readUInt8();
         br.readUInt32LE();
         br.readUInt32LE();
@@ -47,7 +53,6 @@ class Map {
         console.log("check rest of mapHeader ", mapHeader);
         console.log("check all 255", all255);
         console.log("version:", version, headerSize, name);
-
 
         if (version <= 6.0 && version > 5.7) {
             br.setDataEncodeTable(-1);
@@ -151,6 +156,9 @@ class Map {
                     encryptedBytes.writeInt32LE(nextOffset, 0);
                     const decrypted = decodeScenarioBuffer(encryptedBytes, br.decodeKey);
                     const areaInfoCount = decrypted.readUInt32LE(0);
+                    /**
+                     * @type {AreaInfo[]}
+                     */
                     this.areaInfos = new Array(areaInfoCount);
                     console.log("area info count", areaInfoCount);
                     for (let i = 0; i < this.areaInfos.length; i++) {
@@ -416,6 +424,13 @@ class AreaInfo {
         this.readData(br);
     }
 
+    get centerPos() {
+        return {
+            x: (this.rightDownPos.x + this.leftUpPos.x) / 2,
+            y: (this.rightDownPos.y + this.leftUpPos.y) / 2
+        }
+    }
+
     /**
      * @param {BufferReader} br 
      */
@@ -459,7 +474,7 @@ class AreaInfo {
             let readCount = br.readInt32LE() + 1;
             if (readCount + br.offset > br.buffer.byteLength - 1) readCount = br.buffer.byteLength - br.offset;
             this.moveToFileName = br.readString(readCount);
-            console.log("movetoFileName", this.moveToFileName);
+            console.log("movetoFileName", this.moveToFileName, this.subObjectInfo);
             br.offset = returnPosition;
         }
     }
