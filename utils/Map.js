@@ -384,6 +384,30 @@ class Selection {
     }
 }
 
+export const ObjectType = {
+    System: 0, //システム
+    Unk1: 1, //
+    Door: 2, //扉
+    WarpPortal: 3, //ワープポータル
+    SystemArea: 4, //システム領域
+    SystemMovePosition: 5, //システム転送位置
+    Area: 6, //エリア
+    PvPMovePosition: 7, //PvP転送位置
+    OXArea_O: 8, //○×クイズ領域(○)
+    OXArea_X: 9, //○×クイズ領域(×)
+    Unk2: 10, // 
+    TrapFloor: 11, // トラップ床
+    EventObject: 12, // イベントオブジェクト
+    Chest: 13, // 宝箱
+    Unk3: 14, // 
+    Unk4: 15, // 
+    Unk5: 16, // 
+    HuntingArea: 17, // 冒険家協会推奨狩場
+    SystemArea2: 18, // システムエリア
+    Unk6: 19, // 
+    Unk7: 20, //
+}
+
 class AreaInfo {
     constructor(br, portalAreaOffset, scenarioVersion) {
         this.br = br;

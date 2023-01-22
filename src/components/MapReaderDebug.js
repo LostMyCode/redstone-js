@@ -1,6 +1,6 @@
 import React from "react";
 import BufferReader from "../../utils/BufferReader";
-import RedStoneMap from "../../utils/Map";
+import RedStoneMap, { ObjectType } from "../../utils/Map";
 
 class MapReaderDebug extends React.Component {
   constructor(props) {
@@ -25,6 +25,9 @@ class MapReaderDebug extends React.Component {
     console.log(fileNames);
 
     const tileImages = {};
+    /**
+     * @type {CanvasRenderingContext2D}
+     */
     let ctx = document.getElementById("canvas").getContext('2d');
 
     const drawTiles = () => {
@@ -36,6 +39,30 @@ class MapReaderDebug extends React.Component {
           ctx.drawImage(tileImage, 0, 0, 64, 32, j * (64 * scale), i * (32 * scale), (64 * scale), (32 * scale));
         }
       }
+    }
+
+    const drawAreaInfoRect = () => {
+      const areaInfos = map.areaInfos;
+      areaInfos.forEach(area => {
+        const x = area.leftUpPos.x;
+        const y = area.leftUpPos.y;
+        const w = area.rightDownPos.x - x;
+        const h = area.rightDownPos.y - y;
+
+        ctx.strokeStyle = "#a22";
+        ctx.lineWidth = 3;
+        
+        ctx.beginPath();
+        ctx.rect(x, y, w, h);
+        ctx.stroke();
+        ctx.closePath();
+
+        const objType = Object.keys(ObjectType).find(key => {
+          return ObjectType[key] === area.objectInfo
+        });
+        ctx.font = "20px Arial";
+        ctx.fillText(objType + ` ${area.moveToFileName || ""}`, x, y);
+      });
     }
 
     let offsetX = 0;
@@ -57,7 +84,9 @@ class MapReaderDebug extends React.Component {
         // URL.revokeObjectURL(url);
         loadedCount++;
         if (loadedCount === fileNames.length) {
+          // ctx.scale(0.2, 0.2);
           drawTiles();
+          drawAreaInfoRect();
         }
       }
       img.src = url;
