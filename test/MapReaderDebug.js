@@ -58,6 +58,7 @@ class MapReaderDebug {
   }
 
   async execute() {
+    // this.ctx.scale(0.5, 0.5);
     await this.loadCommonResources();
     this.brunenstigRmd = await this.fetchBinaryFile("static/[000]T01.rmd");
     this.brunenstigRmd = Buffer.from(this.brunenstigRmd);
@@ -100,6 +101,26 @@ class MapReaderDebug {
         });
         ctx.font = "20px Arial";
         ctx.fillText(objType + ` ${area.moveToFileName || ""}`, x, y);
+      });
+    }
+
+    const drawNpcRect = () => {
+      const ctx = this.ctx;
+      const npcs = map.npcSingles
+      npcs.forEach(npc => {
+        const { x, y } = npc.point;
+
+        ctx.strokeStyle = "#11b";
+        ctx.lineWidth = 2;
+
+        ctx.beginPath();
+        ctx.rect(x - 10, y - 10, 20, 20);
+        ctx.stroke();
+        ctx.closePath();
+
+        ctx.fillStyle = "#fff";
+        ctx.font = "14px Arial";
+        ctx.fillText(npc.name, x, y);
       });
     }
 
@@ -160,6 +181,7 @@ class MapReaderDebug {
 
     drawTiles();
     drawAreaInfoRect();
+    drawNpcRect();
     drawPortals();
   }
 }

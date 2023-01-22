@@ -132,9 +132,13 @@ class Map {
                 case LoadingTarget.NpcGroupInfo:
                     console.log("npcgroupinfo");
                     const npcGroupInfoLength = version > 5.4 ? br.readInt32LE() : 0x2C;
-
+                    /**
+                     * @type {MapActorGroup[]}
+                     */
+                    this.npcGroups = [];
                     for (let i = 0; i < charIndexes.length; i++) {
                         const npcGroupInfo = new MapActorGroup(br, npcGroupInfoLength, charIndexes[i]);
+                        this.npcGroups.push(npcGroupInfo);
                         // console.log(npcGroupInfo, "idx", i);
                     }
                     break;
@@ -142,6 +146,9 @@ class Map {
                 case LoadingTarget.NpcSingleInfo:
                     console.log("npcsingleinfo");
                     const npcSingleInfoLen = decodeScenarioBuffer(br.readStructUInt8(4), br.decodeKey).readUInt32LE(0);
+                    /**
+                     * @type {MapActorSingle[]}
+                     */
                     this.npcSingles = new Array(npcSingleInfoLen);
                     // console.log("npc single info len", npcSingleInfoLen);
 
@@ -319,7 +326,6 @@ class MapActorSingle {
         this.unknown_1 = baseReader.readStructUInt8(0x78);
         this.point = { x: baseReader.readUInt32LE(), y: baseReader.readUInt32LE() };
         this.name = baseReader.readString(0x10, "sjis");
-        // console.log("actor single name", this.name);
         this.unknown_2 = baseReader.readStructUInt8(0x10);
 
         this.events = new Array(br.readInt16LE()) // Event array
