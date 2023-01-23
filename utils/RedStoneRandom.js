@@ -67,3 +67,21 @@ export const sjisByteToString = (sjisByteArray) => {
     var str = Encoding.codeToString(unicodeArray); // 文字コード値の配列から文字列に変換
     return str;
 }
+
+export const getRGBA15bit = (colorData1, colorData2, isUseOpacity) => {
+    var r = (colorData1 & 0x7c) << 1;
+    var g = ((colorData1 << 8 | colorData2) & 0x03e0) >> 2;
+    var b = (colorData2 & 0x1f) << 3;
+    return [r, g, b, isUseOpacity ? getOpacity(r, g, b) : 0xff];
+}
+
+export const getRGBA16bit = (colorData1, colorData2, isUseOpacity) => {
+    var r = colorData1 & 0xf8;
+    var g = ((colorData1 << 8 | colorData2) & 0x07e0) >> 3;
+    var b = (colorData2 & 0x1f) << 3;
+    return [r, g, b, isUseOpacity ? getOpacity(r, g, b) : 0xff];
+}
+
+export const getOpacity = (r, g, b) => {
+    return (r + g + b) / 3;
+}

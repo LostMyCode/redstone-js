@@ -1,5 +1,6 @@
 import BufferReader from "../utils/BufferReader";
 import RedStoneMap, { MapType, ObjectType } from "../utils/Map";
+import Texture, { ZippedTextures } from "../utils/Texture";
 
 const portalTextureInfo = {
   door: {},
@@ -52,9 +53,22 @@ class MapReaderDebug {
     });
   }
 
+  async loadZippedTextures(path) {
+    const buf = await this.fetchBinaryFile(path);
+    const zippedTextures = new ZippedTextures(buf);
+    return zippedTextures;
+  }
+
   async loadCommonResources() {
     this.portalImages = await this.loadZippedImages("static/gateAnm.zip");
     console.log("[MapReaderDebug] common resources loaded");
+  }
+
+  async loadTexture(path) {
+    const fileBuf = await this.fetchBinaryFile(path);
+    const extension = path.substring(path.lastIndexOf(".") + 1);
+    const texture = new Texture(fileBuf, extension);
+    return texture.getCanvas(0);
   }
 
   async execute() {
@@ -190,17 +204,20 @@ class MapReaderDebug {
     }
 
     const drawObjects_Test = async () => {
-      const obj4 = await loadImageSync("static/Room/Objects/sn__object_0004.png");
-      const obj5 = await loadImageSync("static/Room/Objects/sn__object_0005.png");
-      const obj50 = await loadImageSync("static/Room/Objects/sn__object_0050.png");
+      const zippedTextures = await this.loadZippedTextures("static/Room/Objects/Room_Objects.zip");
+      const getFileName = (imageFileId) => {
+        const idStrLen = String(imageFileId).length;
+        const numZero = 4 - idStrLen;
+        return `sn__object_${(new Array(numZero)).fill(0).join("")}${imageFileId}.rso`;
+      }
       const objectMatrix = map.tileData3;
       const objectFileInfoStartIndex = 17709;
       for (let i = 0; i < map.headerSize.height; i++) {
         for (let j = 0; j < map.headerSize.width; j++) {
           const bytes = objectMatrix[i * map.headerSize.width + j];
           if (bytes[0] === 0 && bytes[1] === 0) continue;
-          if (bytes[0] === 1 && bytes[1] === 8) continue;
-          if (bytes[0] === 2 && bytes[1] === 8) continue;
+          if (bytes[0] === 1 && bytes[1] === 8) continue; // 2049
+          if (bytes[0] === 2 && bytes[1] === 8) continue; // 2050
           // if (bytes[0] !== 2) continue;
           const index = bytes[0];
           const fileInfoIndex = objectFileInfoStartIndex + 64 * index;
@@ -210,23 +227,28 @@ class MapReaderDebug {
             console.log(bytes);
             console.log(Buffer.from(bytes).readUint16LE(0));
           }
-          const offsetX = 40;
-          const offsetY = -40;
-          if (imageFileId === 4) {
-            const x = j * 64 - obj4.width / 2 + offsetX;
-            const y = i * 32 - obj4.height / 2 + offsetY;
-            this.ctx.drawImage(obj4, x, y);
-          }
-          else if (imageFileId === 5) {
-            const x = j * 64 - obj5.width / 2 + offsetX;
-            const y = i * 32 - obj5.height / 2 + offsetY;
-            this.ctx.drawImage(obj5, x, y);
-          }
-          else if (imageFileId === 50) {
-            const x = j * 64 - obj50.width / 2 + offsetX;
-            const y = i * 32 - obj50.height / 2 + offsetY;
-            this.ctx.drawImage(obj50, x, y);
-          }
+          const offsetX = 0;
+          const offsetY = -0;
+          const fileName = getFileName(imageFileId);
+          const texture = zippedTextures.getTexture(fileName);
+          const textureCanvas = texture.getCanvas(0);
+
+          // const x = j * 64 - textureCanvas.width / 2 + offsetX;
+          // const y = i * 32 - textureCanvas.height / 2 + offsetY;
+          const x = (j + 1) * 64 - 64 / 2 - textureCanvas.width / 2;
+          const y = (i + 1) * 32 - 32 / 2 - textureCanvas.height / 2;
+          this.ctx.drawImage(textureCanvas, x, y);
+          setTimeout(() => {
+            const rectWidth = 64;
+            const rectHeight = 32;
+            const x = (j + 1) * 64 - 64 / 2 - rectWidth / 2;
+            const y = (i + 1) * 32 - 32 / 2 - rectHeight / 2
+            this.ctx.beginPath();
+            this.ctx.rect(x, y, rectWidth, rectHeight);
+            this.ctx.stroke();
+            this.ctx.closePath();
+            this.ctx.fillText(imageFileId, x, y);
+          }, 100);
         }
       }
     }
