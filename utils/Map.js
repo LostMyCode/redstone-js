@@ -50,8 +50,8 @@ class Map {
         const all255 = br.readStructUInt8(0x3A);
         const mapHeader = br.readStructUInt8(4 + MagicStructSize + MagicStructSize + 0x1C);
         const version = Number(scenarioInfo.substring(24, 24 + 4));
-        console.log("check rest of mapHeader ", mapHeader);
-        console.log("check all 255", all255);
+        // console.log("check rest of mapHeader ", mapHeader);
+        // console.log("check all 255", all255);
         console.log("version:", version, headerSize, name);
 
         if (version <= 6.0 && version > 5.7) {
@@ -96,19 +96,14 @@ class Map {
             for (let j = 0; j < headerSize.width; j++) {
                 row.push(blocks[headerSize.width * i + j]);
             }
-            // console.log(JSON.stringify(row));
         }
-        // saveTileData("blocks", blocks);
 
         let charIndexes;
         Object.values(LoadingTarget).forEach(target => {
             let nextOffset = br.readInt32LE();
             console.log("nextoffset", nextOffset);
-            // br.offset -= 4;
-            // let nextOffsetUint8 = br.readStructUInt8(4);
             switch (target) {
                 case LoadingTarget.Unknown:
-                    console.log("unknown");
                     br.offset = nextOffset;
                     break;
 
@@ -125,8 +120,6 @@ class Map {
                     charIndexes = de.readStructUInt16LE(readCount);
 
                     console.log("check char indexes", charIndexes.length, charIndexes);
-                    // br.readStructUInt8(2);
-                    // br.offset = nextOffset;
                     break;
 
                 case LoadingTarget.NpcGroupInfo:
