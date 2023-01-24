@@ -15,6 +15,8 @@ const portalTextureInfo = {
   topLeftGate: {},
 }
 
+const DATA_DIR = "data/";
+
 class MapReaderDebug {
   /**
    * @type {CanvasRenderingContext2D}
@@ -60,7 +62,7 @@ class MapReaderDebug {
   }
 
   async loadCommonResources() {
-    this.portalImages = await this.loadZippedImages("static/gateAnm.zip");
+    this.portalImages = await this.loadZippedImages(DATA_DIR + "gateAnm.zip");
     console.log("[MapReaderDebug] common resources loaded");
   }
 
@@ -74,14 +76,14 @@ class MapReaderDebug {
   async execute() {
     // this.ctx.scale(0.5, 0.5);
     await this.loadCommonResources();
-    // this.brunenstigRmd = await this.fetchBinaryFile("static/[000]T01.rmd");
-    this.brunenstigRmd = await this.fetchBinaryFile("static/[060]T01_A01.rmd");
+    // this.brunenstigRmd = await this.fetchBinaryFile(DATA_DIR + "[000]T01.rmd");
+    this.brunenstigRmd = await this.fetchBinaryFile(DATA_DIR + "[060]T01_A01.rmd");
     this.brunenstigRmd = Buffer.from(this.brunenstigRmd);
 
     const br = new BufferReader(this.brunenstigRmd);
     const map = new RedStoneMap(br);
-    const tileImages = await this.loadZippedImages("static/Room_tiles.zip");
-    // const tileImages = await this.loadZippedImages("static/Brunenstig_tiles.zip");
+    const tileImages = await this.loadZippedImages(DATA_DIR + "Room_tiles.zip");
+    // const tileImages = await this.loadZippedImages(DATA_DIR + "Brunenstig_tiles.zip");
 
     const drawTiles = () => {
       const ctx = this.ctx;
@@ -204,7 +206,7 @@ class MapReaderDebug {
     }
 
     const drawObjects_Test = async () => {
-      const zippedTextures = await this.loadZippedTextures("static/Room/Objects/Room_Objects.zip");
+      const zippedTextures = await this.loadZippedTextures(DATA_DIR + "Objects/Room_Objects.zip");
       const getFileName = (imageFileId) => {
         const idStrLen = String(imageFileId).length;
         const numZero = 4 - idStrLen;

@@ -64,10 +64,15 @@ module.exports = (env, options) => {
             new CopyWebpackPlugin({
                 patterns: [
                     {
-                        context: path.resolve(__dirname, "src/static/"),
-                        from: path.resolve(__dirname, "src/static/"),
+                        context: path.resolve(__dirname, "static/"),
+                        from: path.resolve(__dirname, "static/"),
                         to: path.resolve(__dirname, "dist/static/"),
-                    }
+                    },
+                    {
+                        context: path.resolve(__dirname, "data/"),
+                        from: path.resolve(__dirname, "data/"),
+                        to: path.resolve(__dirname, "dist/data/"),
+                    },
                 ],
             })
         ],
