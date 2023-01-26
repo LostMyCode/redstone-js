@@ -22,7 +22,21 @@ export const MapType = {
 class Map {
     constructor(br) {
         this.br = br;
+
+        this.size = {
+            width: 0,
+            height: 0
+        }
+        this.name = "";
+        this.boundingBox = {
+            top: 0,
+            left: 0,
+            bottom: 0,
+            right: 0
+        };
+
         this.readData(br);
+        this.createBoundingBox();
     }
 
     /**
@@ -39,25 +53,26 @@ class Map {
 
         const fieldAreaOffset = br.readInt32LE();
         // const mapHeader = br.readStructUInt8(4 + 0x40 + 4 + 1 + 1 + 4 + 4 + 0x3A + 4 + MagicStructSize + MagicStructSize + 0x1C);
-        const headerSize = { width: br.readUInt32LE(), height: br.readUInt32LE() };
-        this.headerSize = headerSize;
-        const name = br.readString(0x40, "sjis");
-        br.readUInt32LE();
+        this.size.width = br.readUInt32LE();
+        this.size.height = br.readUInt32LE();
+
+        this.name = br.readString(0x40, "sjis");;
+        this.textureDirectoryId = br.readUInt32LE();
         this.typeAndFlags = br.readUInt8();
         br.readUInt8();
         br.readUInt32LE();
         br.readUInt32LE();
         const all255 = br.readStructUInt8(0x3A);
         const mapHeader = br.readStructUInt8(4 + MagicStructSize + MagicStructSize + 0x1C);
-        const version = Number(scenarioInfo.substring(24, 24 + 4));
+        this.scenarioVersion = Number(scenarioInfo.substring(24, 24 + 4));
         // console.log("check rest of mapHeader ", mapHeader);
         // console.log("check all 255", all255);
-        console.log("version:", version, headerSize, name);
+        console.log("version:", this.scenarioVersion, this.size, this.name);
 
-        if (version <= 6.0 && version > 5.7) {
+        if (this.scenarioVersion <= 6.0 && this.scenarioVersion > 5.7) {
             br.setDataEncodeTable(-1);
         }
-        else if (version > 6.0) {
+        else if (this.scenarioVersion > 6.0) {
             const rawKey = br.readInt32LE();
             br.setDataEncodeTable(rawKey);
             console.log("RawKey:", rawKey);
@@ -67,15 +82,11 @@ class Map {
         const realobjdata = br.readUInt32LE();
         console.log("realobjdata:", realobjdata);
 
-        // const tileInfo = br.readStructFloatLE(headerSize.width * headerSize.height);
-        const tileInfo = br.readStructUInt8(headerSize.width * headerSize.height * 6);
+        const tileInfo = br.readStructUInt8(this.size.width * this.size.height * 6);
         const tileReader = new BufferReader(Buffer.from(tileInfo));
-        const tileData1 = tileReader.readStructUInt16LE(headerSize.width * headerSize.height);
-        const tileData2 = tileReader.readStructUInt16LE(headerSize.width * headerSize.height);
-        const tileData3 = (new Array(headerSize.width * headerSize.height)).fill(null).map(() => [tileReader.readUInt8(), tileReader.readUInt8()]);
-        console.log("tileData1", tileData1);
-        console.log("tileData2", tileData2);
-        console.log("tileData3", tileData3);
+        const tileData1 = tileReader.readStructUInt16LE(this.size.width * this.size.height);
+        const tileData2 = tileReader.readStructUInt16LE(this.size.width * this.size.height);
+        const tileData3 = (new Array(this.size.width * this.size.height)).fill(null).map(() => [tileReader.readUInt8(), tileReader.readUInt8()]);
         this.tileData1 = tileData1;
         this.tileData2 = tileData2;
         this.tileData3 = tileData3;
@@ -90,11 +101,11 @@ class Map {
         }
         console.log("check dorrlist", doorList);
 
-        const blocks = br.readStructUInt8(headerSize.width * headerSize.height);
-        for (let i = 0; i < headerSize.height; i++) {
+        const blocks = br.readStructUInt8(this.size.width * this.size.height);
+        for (let i = 0; i < this.size.height; i++) {
             let row = [];
-            for (let j = 0; j < headerSize.width; j++) {
-                row.push(blocks[headerSize.width * i + j]);
+            for (let j = 0; j < this.size.width; j++) {
+                row.push(blocks[this.size.width * i + j]);
             }
         }
 
@@ -104,6 +115,7 @@ class Map {
             console.log("nextoffset", nextOffset);
             switch (target) {
                 case LoadingTarget.Unknown:
+                    console.log("unknown start", br.offset);
                     br.offset = nextOffset;
                     break;
 
@@ -124,7 +136,7 @@ class Map {
 
                 case LoadingTarget.NpcGroupInfo:
                     console.log("npcgroupinfo");
-                    const npcGroupInfoLength = version > 5.4 ? br.readInt32LE() : 0x2C;
+                    const npcGroupInfoLength = this.scenarioVersion > 5.4 ? br.readInt32LE() : 0x2C;
                     /**
                      * @type {MapActorGroup[]}
                      */
@@ -162,16 +174,67 @@ class Map {
                     this.areaInfos = new Array(areaInfoCount);
                     console.log("area info count", areaInfoCount);
                     for (let i = 0; i < this.areaInfos.length; i++) {
-                        this.areaInfos[i] = new AreaInfo(br, portalAreaOffset, version);
+                        this.areaInfos[i] = new AreaInfo(br, portalAreaOffset, this.scenarioVersion);
                     }
                     break;
                 }
 
                 case LoadingTarget.ShopInfo:
                     console.log("shopinfo");
+                    br.offset = nextOffset;
                     break;
             }
         });
+
+        const positionSpecifiedObjectCount = br.readInt32LE();
+        console.log("unknown object length (x y specified obj count?)", positionSpecifiedObjectCount);
+
+        for (let i = 0; i < positionSpecifiedObjectCount; i++) {
+            br.readStructUInt8(400);
+        }
+
+        this.positionSpecifiedObjects = new Array(positionSpecifiedObjectCount);
+        for (let i = 0; i < positionSpecifiedObjectCount; i++) {
+            const x = br.readUInt32LE();
+            const y = br.readUInt32LE();
+            const textureId = br.readUInt16LE();
+            const unk_0 = br.readUInt16LE();
+            this.positionSpecifiedObjects[i] = {
+                point: { x, y },
+                textureId
+            };
+        }
+
+        const objectInfoCount = br.readUInt32LE();
+        const unk_1 = br.readStructUInt8(12);
+        console.log("object info count", objectInfoCount);
+
+        this.objectInfos = new Array(objectInfoCount);
+        for (let i = 0; i < objectInfoCount; i++) {
+            this.objectInfos[i] = new ObjectInfo(br);
+        }
+    }
+
+    createBoundingBox() {
+        const objectInfoBlocks = this.tileData3;
+        const boundingBox = {
+            top: Infinity, left: Infinity, right: -Infinity, bototm: -Infinity
+        }
+        for (let i = 0; i < this.size.height; i++) {
+            for (let j = 0; j < this.size.width; j++) {
+                const bytes = objectInfoBlocks[i * this.size.width + j];
+                if (this.scenarioVersion === 5.3 && bytes[0] === 0x02 && bytes[1] === 0x08) {
+                    const x = j * 64 - 64 / 2;
+                    const y = i * 32 - 32 / 2;
+                    boundingBox.left = Math.min(boundingBox.left, x);
+                    boundingBox.right = Math.max(boundingBox.right, x);
+                    boundingBox.top = Math.min(boundingBox.top, y);
+                    boundingBox.bototm = Math.max(boundingBox.bototm, y);
+                }
+            }
+        }
+        this.boundingBox = boundingBox;
+        console.log("Map bounding box created", boundingBox);
     }
 }
 
@@ -476,6 +539,37 @@ class AreaInfo {
             console.log("movetoFileName", this.moveToFileName, this.subObjectInfo);
             br.offset = returnPosition;
         }
+    }
+}
+
+class ObjectInfo {
+    constructor(br) {
+        this.br = br;
+        this.readData(br);
+    }
+
+    /**
+     * @param {BufferReader} br 
+     */
+    readData(br) {
+        this.textureId = br.readUInt16LE();
+        const subObjects = br.readStructUInt8(48);
+        // sub object 
+        /* 
+            uint16: texture id
+            uint8: offset x
+            uint8: 0x00(offset x from block center?), 0xff(offset x from map bounding box left?)
+            uint8: offset y
+            uint8: 0x00(offset y from block center?), 0xff(offset y from map bounding box top?)
+         */
+
+        // rest 14
+        const unk0 = br.readUInt16LE();
+        const unk1 = br.readUInt16LE();
+        const unk2 = br.readUInt8();
+        const unk3 = br.readUInt8();
+        const unk4 = br.readUInt32LE();
+        const unk5 = br.readUInt32LE();
     }
 }
 

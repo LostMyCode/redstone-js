@@ -23,7 +23,7 @@ const ViewerConfig = {
     canvas_default_width: 150,
     canvas_default_height: 150,
     animation_delay: 1000 / 16,
-    shadow_pixel_data: [7, 7, 7, 0x40],
+    shadow_pixel_data: [7, 7, 7, 0x80],
     outline_pixel_data: [1, 1, 1, 0xff],
     gifjs_quality: 5,
     gifjs_worker_count: 3,
@@ -34,15 +34,20 @@ const _App = {
     canvasManager: new CanvasManager(),
     uiManager: {
         isViewUseOpacity: false,
-        isViewUseMargin: false,
+        isViewUseMargin: true,
         isViewUseBackground: false,
         isViewShowBody: true,
+        isViewShowShadow: true,
     }
 }
 window._App = _App;
 
 class Texture {
-    constructor(textureFileBuffer, fileExtension) {
+    constructor(fileName, textureFileBuffer) {
+        /**
+         * @type {String}
+         */
+        this.fileName = fileName;
         /**
          * @type {Buffer}
          */
@@ -50,7 +55,7 @@ class Texture {
         /**
          * @type {String}
          */
-        this.fileExtension = fileExtension;
+        this.fileExtension = fileName.substring(fileName.lastIndexOf(".") + 1);
 
         this.paletteData = [];
 
@@ -108,7 +113,7 @@ class Texture {
         }
         this.evaluateMaxSize();
 
-        this.createTextureCanvases();
+        // this.createTextureCanvases();
         this.isAnalyzed = true;
     }
 
@@ -389,7 +394,7 @@ class Texture {
     }
 
     checkShadowExist() {
-        if (this.fileExtension !== "sad" && this.fileExtension !== "sd") {
+        if (this.fileExtension !== "sad" && this.fileExtension !== "sd" && this.fileExtension !== "rso") {
             this.isExistShadow = false;
             return false;
         }
@@ -712,6 +717,10 @@ class Texture {
         );
     }
 
+    getIsUseMargin() {
+        return true;
+    }
+
     createTextureCanvases() {
         const canvas = _App.canvasManager.canvas;
         const textureCanvases = [];
@@ -732,6 +741,7 @@ class Texture {
 
     getCanvas(rowIndex) {
         if (!this.isAnalyzed) this.analyze();
+        if (!this.textureCanvases) this.createTextureCanvases();
         return this.textureCanvases[rowIndex];
     }
 
@@ -743,7 +753,7 @@ class Texture {
         _App.canvasManager.clear();
 
         this.drawBody();
-        this.drawShadow();
+        if (this.useShadow) this.drawShadow();
         this.drawOutline();
 
         // update
@@ -755,7 +765,10 @@ class Texture {
     }
 
     resizeCanvas() {
-        if (_App.uiManager.isViewUseMargin) {
+        if (_App.uiManager.isViewUseMargin || this.useShadow) {
+            if (this.fileName.includes("0004") || this.fileName.includes("0005")) {
+                console.log(this.fileName, "max size info", this.maxSizeInfo , "|", "shadow", this.useShadow);
+            }
             _App.canvasManager.resize(this.maxSizeInfo.outerWidth, this.maxSizeInfo.outerHeight);
         } else {
             _App.canvasManager.resize(this.shape.body.width[this.drawFrame], this.shape.body.height[this.drawFrame])
@@ -827,7 +840,7 @@ class Texture {
         const reader = this.reader;
 
         var isUseOpacity = _App.uiManager.isViewUseOpacity;
-        var isUseMargin = _App.uiManager.isViewUseMargin;
+        var isUseMargin = this.getIsUseMargin();
         var isUseBackground = _App.uiManager.isViewUseBackground;
 
         var startOffset = this.shape.body.startOffset[this.drawFrame];
@@ -874,7 +887,7 @@ class Texture {
         const reader = this.reader;
 
         var isUseOpacity = _App.uiManager.isViewUseOpacity;
-        var isUseMargin = _App.uiManager.isViewUseMargin;
+        var isUseMargin = this.getIsUseMargin();
         var isUseBackground = _App.uiManager.isViewUseBackground;
         var isUsePalette = _App.uiManager.isViewUsePalette;
 
@@ -931,11 +944,11 @@ class Texture {
     }
 
     drawShadow() {
-        if (!this.isExistShadow || !_App.uiManager.isViewShowShadow) {
+        if (!this.isExistShadow) {
             return;
         }
 
-        if (!_App.uiManager.isViewUseMargin) {
+        if (!this.useShadow) {
             return;
         }
 
@@ -1012,6 +1025,10 @@ class Texture {
             }
         }
     }
+
+    setUseShadow(useShadow) {
+        this.useShadow = useShadow;
+    }
 }
 
 class EffectShape {
@@ -1043,8 +1060,7 @@ export class ZippedTextures {
             return this.extractedTextures[fileName];
         }
         const data = this.unzip.decompress(fileName);
-        const extension = fileName.substring(fileName.lastIndexOf(".") + 1);
-        const texture = new Texture(Buffer.from(data), extension);
+        const texture = new Texture(fileName, Buffer.from(data));
         this.extractedTextures[fileName] = texture;
         return texture;
     }

@@ -29,6 +29,14 @@ class MapReaderDebug {
     return Buffer.from(ab);
   }
 
+  async loadImageSync(src) {
+    return await new Promise((resolve) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.src = src;
+    });
+  }
+
   async loadZippedImages(path) {
     const buf = await this.fetchBinaryFile(path);
     const unzip = new Zlib.Unzip(buf);
@@ -66,13 +74,6 @@ class MapReaderDebug {
     console.log("[MapReaderDebug] common resources loaded");
   }
 
-  async loadTexture(path) {
-    const fileBuf = await this.fetchBinaryFile(path);
-    const extension = path.substring(path.lastIndexOf(".") + 1);
-    const texture = new Texture(fileBuf, extension);
-    return texture.getCanvas(0);
-  }
-
   async execute() {
     // this.ctx.scale(0.5, 0.5);
     await this.loadCommonResources();
@@ -88,11 +89,15 @@ class MapReaderDebug {
     const drawTiles = () => {
       const ctx = this.ctx;
       const scale = 1;
-      for (let i = 0; i < map.headerSize.height; i++) {
-        for (let j = 0; j < map.headerSize.width; j++) {
-          const tileCode = map.tileData1[i * map.headerSize.width + j] % (16 << 10); // 16 << 10 = 256 * 64 no idea...
+      for (let i = 0; i < map.size.height; i++) {
+        for (let j = 0; j < map.size.width; j++) {
+          const tileCode = map.tileData1[i * map.size.width + j] % (16 << 10); // 16 << 10 = 256 * 64 no idea...
           const tileImage = tileImages[tileCode];
-          ctx.drawImage(tileImage, 0, 0, 64, 32, j * (64 * scale), i * (32 * scale), (64 * scale), (32 * scale));
+          const scaledWidth = 64 * scale;
+          const scaledHeight = 32 * scale;
+          ctx.globalAlpha = 0.5;
+          ctx.drawImage(tileImage, 0, 0, 64, 32, j * scaledWidth, i * scaledHeight, scaledWidth, scaledHeight);
+          ctx.globalAlpha = 1;
         }
       }
     }
@@ -160,8 +165,8 @@ class MapReaderDebug {
           ) {
             const isNearLeftBorder = centerPos.x < 500;
             const isNearTopBorder = centerPos.y < 500;
-            const isNearRightBorder = 64 * map.headerSize.width - centerPos.x < 500;
-            const isNearBottomBorder = 32 * map.headerSize.height - centerPos.y < 500;
+            const isNearRightBorder = 64 * map.size.width - centerPos.x < 500;
+            const isNearBottomBorder = 32 * map.size.height - centerPos.y < 500;
 
             let portalLocationStr = "";
             if (isNearTopBorder) {
@@ -197,33 +202,31 @@ class MapReaderDebug {
       })
     }
 
-    const loadImageSync = async (src) => {
-      return await new Promise((resolve) => {
-        const image = new Image();
-        image.onload = () => resolve(image);
-        image.src = src;
-      });
+    const zippedTextures = await this.loadZippedTextures(DATA_DIR + "Objects/Room_Objects.zip");
+
+    const getTextureFileName = (imageFileId, extension = "rso") => {
+      const idStrLen = String(imageFileId).length;
+      const numZero = 4 - idStrLen;
+      return `sn__object_${(new Array(numZero)).fill(0).join("")}${imageFileId}.${extension}`;
     }
 
     const drawObjects_Test = async () => {
-      const zippedTextures = await this.loadZippedTextures(DATA_DIR + "Objects/Room_Objects.zip");
-      const getFileName = (imageFileId) => {
-        const idStrLen = String(imageFileId).length;
-        const numZero = 4 - idStrLen;
-        return `sn__object_${(new Array(numZero)).fill(0).join("")}${imageFileId}.rso`;
-      }
       const objectMatrix = map.tileData3;
       const objectFileInfoStartIndex = 17709;
-      for (let i = 0; i < map.headerSize.height; i++) {
-        for (let j = 0; j < map.headerSize.width; j++) {
-          const bytes = objectMatrix[i * map.headerSize.width + j];
-          if (bytes[0] === 0 && bytes[1] === 0) continue;
-          if (bytes[0] === 1 && bytes[1] === 8) continue; // 2049
-          if (bytes[0] === 2 && bytes[1] === 8) continue; // 2050
-          // if (bytes[0] !== 2) continue;
+      for (let i = 0; i < map.size.height; i++) {
+        for (let j = 0; j < map.size.width; j++) {
+          const bytes = objectMatrix[i * map.size.width + j];
+          if (bytes[1] === 0) continue;
+          if (map.scenarioVersion === 5.3 && (bytes[1] === 0x08)) continue;
+          if (map.scenarioVersion === 6.1 && (bytes[1] === 0x20)) continue;
+          // if (bytes[0] === 47 && bytes[1] === 16) continue; box beside of table
           const index = bytes[0];
           const fileInfoIndex = objectFileInfoStartIndex + 64 * index;
           const imageFileId = this.brunenstigRmd.readUInt16LE(fileInfoIndex);
+          const useShadow = this.brunenstigRmd.readUInt8(fileInfoIndex + 50) === 1 || false;
+
+          if (fileInfoIndex > 20970) console.log("file info index", fileInfoIndex, imageFileId);
+          // console.log("useshadow?", useShadow);
           if (imageFileId === 50) {
             console.log("check image file id", imageFileId);
             console.log(bytes);
@@ -231,28 +234,94 @@ class MapReaderDebug {
           }
           const offsetX = 0;
           const offsetY = -0;
-          const fileName = getFileName(imageFileId);
+          const fileName = getTextureFileName(imageFileId);
           const texture = zippedTextures.getTexture(fileName);
+          texture.setUseShadow(useShadow);
           const textureCanvas = texture.getCanvas(0);
 
-          // const x = j * 64 - textureCanvas.width / 2 + offsetX;
-          // const y = i * 32 - textureCanvas.height / 2 + offsetY;
-          const x = (j + 1) * 64 - 64 / 2 - textureCanvas.width / 2;
-          const y = (i + 1) * 32 - 32 / 2 - textureCanvas.height / 2;
+          // if (imageFileId !== 4 && imageFileId !== 5) continue;
+          // if (imageFileId === 4) continue;
+          const objectBodyTop = texture.maxSizeInfo.top - texture.shape.body.top[0];
+          const objectBodyLeft = texture.maxSizeInfo.left - texture.shape.body.left[0];
+          const objectBodyCenterX = objectBodyLeft + texture.shape.body.width[0] / 2;
+          const objectBodyCenterY = objectBodyTop + texture.shape.body.height[0] / 2;
+
+          const blockCenterX = j * 64 + 32;
+          const blockCenterY = i * 32 + 16;
+
+          const x = j * 64 + 32 - objectBodyLeft - texture.shape.body.width[0] / 2;
+          const y = i * 32 + 16 - objectBodyTop - texture.shape.body.height[0] / 2;
+          // const x = blockCenterX - (objectBodyCenterX);
+          // const y = blockCenterY - (objectBodyCenterY) - texture.shape.body.height[0] / 2;
+          // const x = j * 64 + 32 - textureCanvas.width / 2 + offsetX;
+          // const y = i * 32 + 16 - textureCanvas.height / 2 + offsetY;
+          // const x = j * 64 - (textureCanvas.width - 64) / 2;
+          // const y = i * 32 - textureCanvas.height + 32;
           this.ctx.drawImage(textureCanvas, x, y);
+
+
+          if (bytes[0] === 15 && bytes[1] === 16 || true) {
+            const decorationObject = this.brunenstigRmd.readUInt16LE(fileInfoIndex + 2);
+
+            if (decorationObject !== 65535) {
+              const fileName = getTextureFileName(decorationObject, "rfo");
+              const texture2 = zippedTextures.getTexture(fileName);
+              const textureCanvas2 = texture2.getCanvas(0);
+              const texPosX = this.brunenstigRmd.readUInt8(fileInfoIndex + 4);
+              console.log("anchor info", this.brunenstigRmd.readUInt8(fileInfoIndex + 5), this.brunenstigRmd.readUInt8(fileInfoIndex + 7));
+              const anchorX = this.brunenstigRmd.readUInt8(fileInfoIndex + 5) === 0xff ? map.boundingBox.left : j * 64;
+              const texPosY = this.brunenstigRmd.readUInt8(fileInfoIndex + 6);
+              const anchorY = this.brunenstigRmd.readUInt8(fileInfoIndex + 7) === 0xff ? map.boundingBox.top : i * 32;
+
+              console.log("check tex pos", texPosX, texPosY);
+              // const _x = j * 64 + 32 - texture2.shape.body.width[0] / 2 + texPosX / 10;
+              // const _y = i * 32 + 16 - texture2.shape.body.height[0] / 2;
+              const _x = anchorX + texPosX;
+              const _y = anchorY + texPosY;
+              // const _x = x;
+              // const _y = y;
+
+              setTimeout(() => {
+                this.ctx.drawImage(textureCanvas2, _x, _y);
+              }, 50);
+            }
+          }
+
           setTimeout(() => {
             const rectWidth = 64;
             const rectHeight = 32;
-            const x = (j + 1) * 64 - 64 / 2 - rectWidth / 2;
-            const y = (i + 1) * 32 - 32 / 2 - rectHeight / 2
+            const blockX = j * 64;
+            const blockY = i * 32;
+            this.ctx.strokeStyle = "#11b";
             this.ctx.beginPath();
-            this.ctx.rect(x, y, rectWidth, rectHeight);
+            this.ctx.rect(blockX, blockY, rectWidth, rectHeight);
             this.ctx.stroke();
             this.ctx.closePath();
-            this.ctx.fillText(imageFileId, x, y);
+            this.ctx.fillText(imageFileId, blockX, blockY);
+
+            // object rect
+            // this.ctx.lineWidth = 1;
+            // this.ctx.strokeStyle = "#fcba03";
+            // this.ctx.beginPath();
+            // this.ctx.rect(x, y, textureCanvas.width, textureCanvas.height);
+            // this.ctx.stroke();
+            // this.ctx.closePath();
           }, 100);
         }
       }
+    }
+
+    const drawPositionSpecifiedObjects = () => {
+      const objects = map.positionSpecifiedObjects;
+      objects.forEach(obj => {
+        const fileName = getTextureFileName(obj.textureId, "rfo");
+        const texture = zippedTextures.getTexture(fileName);
+        const textureCanvas = texture.getCanvas(0);
+        const x = obj.point.x;
+        const y = obj.point.y;
+        this.ctx.drawImage(textureCanvas, x, y);
+        console.log("pos specified obj", fileName, x, y, obj.unk_0);
+      });
     }
 
     drawTiles();
@@ -260,6 +329,7 @@ class MapReaderDebug {
     drawNpcRect();
     drawPortals();
     drawObjects_Test();
+    drawPositionSpecifiedObjects();
   }
 }
 
