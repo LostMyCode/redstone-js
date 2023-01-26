@@ -35,8 +35,13 @@ class Map {
             right: 0
         };
 
+        /**
+         * @type {ObjectInfo[]}
+         */
+        this.objectInfos = [];
+
         this.readData(br);
-        this.createBoundingBox();
+        // this.createBoundingBox();
     }
 
     /**
@@ -44,12 +49,11 @@ class Map {
      * @param {BufferReader} br 
      */
     readData(br) {
-        const size = br.readUInt32LE();
-        console.log("size:", size);
+        this.fileSize = br.readUInt32LE();
 
         const portalAreaOffset = br.readInt32LE();
-        const scenarioInfo = br.readString(0x38);
-        console.log("scenarioInfo:", scenarioInfo);
+        const scenarioInfo = br.readString(0x38, "sjis");
+        console.log("File:", scenarioInfo);
 
         const fieldAreaOffset = br.readInt32LE();
         // const mapHeader = br.readStructUInt8(4 + 0x40 + 4 + 1 + 1 + 4 + 4 + 0x3A + 4 + MagicStructSize + MagicStructSize + 0x1C);
@@ -67,7 +71,8 @@ class Map {
         this.scenarioVersion = Number(scenarioInfo.substring(24, 24 + 4));
         // console.log("check rest of mapHeader ", mapHeader);
         // console.log("check all 255", all255);
-        console.log("version:", this.scenarioVersion, this.size, this.name);
+        console.log("Map Name:", this.name);
+        console.log("Map Size:", this.size);
 
         if (this.scenarioVersion <= 6.0 && this.scenarioVersion > 5.7) {
             br.setDataEncodeTable(-1);
@@ -80,7 +85,7 @@ class Map {
         }
 
         const realobjdata = br.readUInt32LE();
-        console.log("realobjdata:", realobjdata);
+        // console.log("realobjdata:", realobjdata);
 
         const tileInfo = br.readStructUInt8(this.size.width * this.size.height * 6);
         const tileReader = new BufferReader(Buffer.from(tileInfo));
@@ -112,15 +117,15 @@ class Map {
         let charIndexes;
         Object.values(LoadingTarget).forEach(target => {
             let nextOffset = br.readInt32LE();
-            console.log("nextoffset", nextOffset);
+            // console.log("nextoffset", nextOffset);
             switch (target) {
                 case LoadingTarget.Unknown:
-                    console.log("unknown start", br.offset);
+                    // console.log("unknown start", br.offset);
                     br.offset = nextOffset;
                     break;
 
                 case LoadingTarget.NpcLength:
-                    console.log("npclength");
+                    // console.log("npclength");
                     const encryptedBytes = Buffer.from([0, 0, 0, 0]);
                     encryptedBytes.writeInt32LE(nextOffset, 0);
                     const decrypted = decodeScenarioBuffer(encryptedBytes, br.decodeKey);
@@ -135,7 +140,7 @@ class Map {
                     break;
 
                 case LoadingTarget.NpcGroupInfo:
-                    console.log("npcgroupinfo");
+                    // console.log("npcgroupinfo");
                     const npcGroupInfoLength = this.scenarioVersion > 5.4 ? br.readInt32LE() : 0x2C;
                     /**
                      * @type {MapActorGroup[]}
@@ -149,7 +154,7 @@ class Map {
                     break;
 
                 case LoadingTarget.NpcSingleInfo:
-                    console.log("npcsingleinfo");
+                    // console.log("npcsingleinfo");
                     const npcSingleInfoLen = decodeScenarioBuffer(br.readStructUInt8(4), br.decodeKey).readUInt32LE(0);
                     /**
                      * @type {MapActorSingle[]}
@@ -163,7 +168,7 @@ class Map {
                     break;
 
                 case LoadingTarget.AreaInfo: {
-                    console.log("areainfo");
+                    // console.log("areainfo");
                     const encryptedBytes = Buffer.from([0, 0, 0, 0]);
                     encryptedBytes.writeInt32LE(nextOffset, 0);
                     const decrypted = decodeScenarioBuffer(encryptedBytes, br.decodeKey);
@@ -180,7 +185,7 @@ class Map {
                 }
 
                 case LoadingTarget.ShopInfo:
-                    console.log("shopinfo");
+                    // console.log("shopinfo");
                     br.offset = nextOffset;
                     break;
             }
@@ -545,6 +550,8 @@ class AreaInfo {
 class ObjectInfo {
     constructor(br) {
         this.br = br;
+        this.subObjectInfos = [];
+
         this.readData(br);
     }
 
@@ -553,7 +560,26 @@ class ObjectInfo {
      */
     readData(br) {
         this.textureId = br.readUInt16LE();
-        const subObjects = br.readStructUInt8(48);
+        this.readSubObjects();
+
+        // rest 14
+        this.enableShadow = br.readUInt16LE() === 1;
+        this.index = br.readUInt16LE();
+        const unk2 = br.readUInt8();
+        const unk3 = br.readUInt8();
+        const unk4 = br.readUInt32LE();
+        const unk5 = br.readUInt32LE();
+
+        if (this.textureId === 4) {
+            // console.log("check unknown values of countertable", this.enableShadow, this.index, unk2, unk3, unk4, unk5);
+        }
+    }
+
+    readSubObjects() {
+        const subObjectBytes = this.br.readStructUInt8(48);
+        const subObjectReader = new BufferReader(Buffer.from(subObjectBytes));
+
+        // const subObjects = br.readStructUInt8(48);
         // sub object 
         /* 
             uint16: texture id
@@ -563,13 +589,23 @@ class ObjectInfo {
             uint8: 0x00(offset y from block center?), 0xff(offset y from map bounding box top?)
          */
 
-        // rest 14
-        const unk0 = br.readUInt16LE();
-        const unk1 = br.readUInt16LE();
-        const unk2 = br.readUInt8();
-        const unk3 = br.readUInt8();
-        const unk4 = br.readUInt32LE();
-        const unk5 = br.readUInt32LE();
+        for (let i = 0; i < 8; i++) {
+            const textureId = subObjectReader.readUInt16LE();
+
+            if (textureId === 0xffff) break;
+
+            this.subObjectInfos.push({
+                textureId,
+                offsetX: subObjectReader.readUInt8(),
+                xAnchorFlag: subObjectReader.readUInt8(),
+                offsetY: subObjectReader.readUInt8(),
+                yAnchorFlag: subObjectReader.readUInt8()
+            });
+        }
+
+        if (this.textureId === 88) {
+            // console.log("check sub objects of countertable", this.subObjectInfos);
+        }
     }
 }
 
