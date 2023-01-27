@@ -261,9 +261,28 @@ class MapReaderDebug {
       })
     }
 
+    const addPortalClickEvent = () => {
+      const canvas = this.ctx.canvas;
+      canvas.addEventListener("click", e => {
+        map.areaInfos.forEach(area => {
+          if (!area.moveToFileName) return;
+          if (area.objectInfo !== ObjectType.WarpPortal) return;
+          const x = e.pageX;
+          const y = e.pageY - 30;
+          if (x > area.leftUpPos.x && y > area.leftUpPos.y && x < area.rightDownPos.x && y < area.rightDownPos.y) {
+            console.log("portal clicked", area.moveToFileName);
+            location.href = "/Map/" + area.moveToFileName.split(".")[0];
+          }
+        });
+      });
+    }
+    setTimeout(() => {
+      addPortalClickEvent();
+    }, 1000);
+
     const zippedObjectTextures = await this.loadZippedTextures(MAPSET_DIR + `${mapset}/${mapset}_Objects.zip`);
     const zippedBuildingTextures = Object.keys(map.buildingInfos).length ?
-      await this.loadZippedTextures(MAPSET_DIR + `${mapset}_Buildings.zip`)
+      await this.loadZippedTextures(MAPSET_DIR + `${mapset}/${mapset}_Buildings.zip`)
       : null;
 
     const getTextureFileName = (textureId, extension = "rso") => {
@@ -301,7 +320,7 @@ class MapReaderDebug {
           }
           const objectInfo = isBuilding ? map.buildingInfos[index + 1] : map.objectInfos[index + 1];
           if (!objectInfo) {
-            console.log("invalid object index", index, bytes);
+            // console.log("invalid object index", index, bytes);
             continue;
           }
           if (i * map.size.width + j === 5194) {
@@ -406,12 +425,17 @@ class MapReaderDebug {
       });
     }
 
+    console.log("drawing tiles")
     drawTiles();
     drawAreaInfoRect();
+    console.log("drawing pos specified objects");
     drawPositionSpecifiedObjects();
+    console.log("drawing portals");
     drawPortals();
     drawNpc();
+    console.log("drawing objects");
     drawObjects_Test();
+    console.log("drawing draw npc rects");
     drawNpcRect();
   }
 }
