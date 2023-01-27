@@ -20,6 +20,7 @@ export const MapType = {
 }
 
 export const Mapset = {
+    Grassland: 0,
     Brunenstig: 10,
     Room: 19,
 }
