@@ -193,7 +193,7 @@ class Map {
         });
 
         const positionSpecifiedObjectCount = br.readInt32LE();
-        console.log("unknown object length (x y specified obj count?)", positionSpecifiedObjectCount);
+        console.log("Num of objects with absolute position specified:", positionSpecifiedObjectCount);
 
         for (let i = 0; i < positionSpecifiedObjectCount; i++) {
             br.readStructUInt8(400);
