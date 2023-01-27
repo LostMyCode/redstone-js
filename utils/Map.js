@@ -19,6 +19,11 @@ export const MapType = {
     Shop: 3
 }
 
+export const Mapset = {
+    Brunenstig: 10,
+    Room: 19,
+}
+
 class Map {
     constructor(br) {
         this.br = br;
@@ -91,7 +96,8 @@ class Map {
         const tileReader = new BufferReader(Buffer.from(tileInfo));
         const tileData1 = tileReader.readStructUInt16LE(this.size.width * this.size.height);
         const tileData2 = tileReader.readStructUInt16LE(this.size.width * this.size.height);
-        const tileData3 = (new Array(this.size.width * this.size.height)).fill(null).map(() => [tileReader.readUInt8(), tileReader.readUInt8()]);
+        const tileData3 = tileReader.readStructUInt16LE(this.size.width * this.size.height);
+        // const tileData3 = (new Array(this.size.width * this.size.height)).fill(null).map(() => [tileReader.readUInt8(), tileReader.readUInt8()]);
         this.tileData1 = tileData1;
         this.tileData2 = tileData2;
         this.tileData3 = tileData3;
@@ -195,9 +201,7 @@ class Map {
         const positionSpecifiedObjectCount = br.readInt32LE();
         console.log("Num of objects with absolute position specified:", positionSpecifiedObjectCount);
 
-        for (let i = 0; i < positionSpecifiedObjectCount; i++) {
-            br.readStructUInt8(400);
-        }
+        br.readStructUInt8(2400); // ???
 
         this.positionSpecifiedObjects = new Array(positionSpecifiedObjectCount);
         for (let i = 0; i < positionSpecifiedObjectCount; i++) {
@@ -215,9 +219,24 @@ class Map {
         const unk_1 = br.readStructUInt8(12);
         console.log("object info count", objectInfoCount);
 
-        this.objectInfos = new Array(objectInfoCount);
+        this.objectInfos = {};
         for (let i = 0; i < objectInfoCount; i++) {
-            this.objectInfos[i] = new ObjectInfo(br);
+            const objectInfo = new ObjectInfo(br);
+            if (this.objectInfos[objectInfo.index]) {
+                console.log("An object with the same id already exists", objectInfo, this.objectInfos[objectInfo.index]);
+                // throw new Error("[Error] An object with the same id already exists");
+            }
+            this.objectInfos[objectInfo.index] = objectInfo;
+        }
+
+        const aaa = br.readUInt32LE();
+        // const aaa = br.readStructUInt8(4);
+        console.log("some count?", aaa);
+
+        this.buildingInfos = {};
+        for (let i = 0; i < (aaa ? 105 : 0); i++) {
+            const buildingInfo = new BuildingInfo(br);
+            this.buildingInfos[buildingInfo.index] = buildingInfo;
         }
     }
 
@@ -272,7 +291,6 @@ class MapActorGroup {
         this.unknown_4 = baseReader.readUInt16LE();
         [this.sizeWidth, this.sizeHeight] = baseReader.readStructUInt16LE(2);
         this.maxLevel = baseReader.readUInt16LE();
-        console.log("image real??", br.offset - this.structLength + baseReader.offset, this.structLength - baseReader.offset);
         this.unknown_3 = baseReader.readStructUInt8(this.structLength - baseReader.offset);
 
         const enemyKarmaInfoLen = br.readInt32LE();
@@ -628,6 +646,23 @@ class ObjectInfo {
         if (this.textureId === 88) {
             // console.log("check sub objects of countertable", this.subObjectInfos);
         }
+    }
+}
+
+class BuildingInfo {
+    constructor(br) {
+        this.br = br;
+        this.readData(br);
+    }
+
+    /**
+     * @param {BufferReader} br 
+     */
+    readData(br) {
+        this.textureId = br.readUInt16LE();
+        this.unk0 = br.readStructUInt8(70);
+        this.index = br.readUInt16LE();
+        this.unk1 = br.readStructUInt8(10);
     }
 }
 
