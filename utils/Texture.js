@@ -1,17 +1,8 @@
 import BufferReader from "./BufferReader";
 import CanvasManager from "./CanvasManager";
-import { getRGBA15bit, getRGBA16bit } from "./RedStoneRandom";
+import { getRGBA15bit, getRGBA16bit, logger } from "./RedStoneRandom";
 
 // Special Thanks: 今日のこぅくん
-
-const logger = {
-    disable: false,
-
-    error(...args) {
-        if (this.disable) return;
-        console.error(...args);
-    }
-}
 
 const ViewerConfig = {
     extension_effect: "sad sd rfo rbd rso smi mpr".split(" "),
@@ -105,9 +96,9 @@ class Texture {
         this.analyzeFrameCount();
         this.analyzePaletteData();
         this.analyzeBody();
-        if (this.checkShadowExist()) {
-            this.analyzeShadow();
-        }
+        // if (this.checkShadowExist()) {
+        //     this.analyzeShadow();
+        // }
         if (this.checkOutlineExist()) {
             this.analyzeOutline();
         }
@@ -718,7 +709,7 @@ class Texture {
     }
 
     getIsUseMargin() {
-        return true;
+        return false;
     }
 
     createTextureCanvases() {
@@ -765,7 +756,7 @@ class Texture {
     }
 
     resizeCanvas() {
-        if (_App.uiManager.isViewUseMargin || this.useShadow) {
+        if (false/* _App.uiManager.isViewUseMargin || this.useShadow */) {
             if (this.fileName.includes("0004") || this.fileName.includes("0005")) {
                 console.log(this.fileName, "max size info", this.maxSizeInfo , "|", "shadow", this.useShadow);
             }

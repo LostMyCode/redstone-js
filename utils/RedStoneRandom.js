@@ -85,3 +85,12 @@ export const getRGBA16bit = (colorData1, colorData2, isUseOpacity) => {
 export const getOpacity = (r, g, b) => {
     return (r + g + b) / 3;
 }
+
+export const logger = {
+    disable: false,
+
+    error(...args) {
+        if (this.disable) return;
+        console.error(...args);
+    }
+}

@@ -239,14 +239,9 @@ class MapReaderDebug {
           const blockCenterX = j * 64 + 32;
           const blockCenterY = i * 32 + 16;
 
-          let x = blockCenterX - objectBodyLeft - texture.shape.body.width[0] / 2;
-          let y = (i + 1) * 32 - objectBodyTop - texture.shape.body.height[0];
-          // const x = blockCenterX - (objectBodyCenterX);
-          // const y = blockCenterY - (objectBodyCenterY) - texture.shape.body.height[0] / 2;
-          // const x = j * 64 + 32 - textureCanvas.width / 2;
-          // const y = i * 32 + 16 - textureCanvas.height / 2;
-          // const x = j * 64 - (textureCanvas.width - 64) / 2;
-          // const y = i * 32 - textureCanvas.height + 32;
+          const x = blockCenterX - texture.shape.body.left[0];
+          const y = blockCenterY - texture.shape.body.top[0];
+
           this.ctx.drawImage(textureCanvas, x, y);
 
           objectInfo.subObjectInfos.forEach(subObjectInfo => {
@@ -254,8 +249,9 @@ class MapReaderDebug {
             const fileName = getTextureFileName(textureId, "rfo");
             const texture = zippedTextures.getTexture(fileName);
             const textureCanvas = texture.getCanvas(0);
-            const posX = xAnchorFlag === 0xff ? blockCenterX - 0xff + offsetX - textureCanvas.width / 2 : blockCenterX + offsetX - textureCanvas.width / 2;
-            const posY = yAnchorFlag === 0xff ? blockCenterY - 0xff + offsetY - textureCanvas.height + 16 : blockCenterY + offsetY - textureCanvas.height + 16;
+            const posX = xAnchorFlag === 0xff ? blockCenterX - 0xff + offsetX - texture.shape.body.left[0] : blockCenterX + offsetX - texture.shape.body.left[0];
+            const posY = yAnchorFlag === 0xff ? blockCenterY - 0xff + offsetY - texture.shape.body.top[0] : blockCenterY + offsetY - texture.shape.body.top[0];
+            this.ctx.drawImage(textureCanvas, posX, posY);
             setTimeout(() => {
               // object rect
               // this.ctx.lineWidth = 1;
@@ -266,7 +262,6 @@ class MapReaderDebug {
               // this.ctx.closePath();
               // this.ctx.lineWidth = 2;
 
-              this.ctx.drawImage(textureCanvas, posX, posY);
               // this.ctx.fillText(`pid: ${objectInfo.index}`, posX, posY);
             }, 50);
           });

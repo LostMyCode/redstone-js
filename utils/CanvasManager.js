@@ -1,3 +1,5 @@
+import { logger } from "./RedStoneRandom";
+
 class CanvasManager {
     constructor() {
         this.canvas = document.createElement("canvas");
@@ -43,6 +45,7 @@ class CanvasManager {
 
     drawPixel(x, y, rgba) {
         if (x < 0 || this.width <= x || y < 0 || this.height <= y) {
+            console.log("eeeee", x, y, this.width, this.height);
             this.isErrorOccurred = true;
             return
         }
