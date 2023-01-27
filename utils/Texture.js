@@ -406,7 +406,7 @@ class Texture {
 
         try {
             // フレームデータの末尾までスキップ
-            for (i = 0; i < this.frameCount; i++) {
+            for (let i = 0; i < this.frameCount; i++) {
                 reader.offset = tmpAddress;
 
                 spriteHeight = reader.readUInt16LE();
@@ -582,7 +582,7 @@ class Texture {
 
         // frameCountが信頼出来ないため
         try {
-            for (i = 0; i < this.frameCount; i++) {
+            for (let i = 0; i < this.frameCount; i++) {
                 reader.offset = tmpAddress;
                 this.shape.outline.startOffset[i] = tmpAddress;
                 this.shape.outline.width[i] = reader.readUInt16LE();
@@ -636,14 +636,14 @@ class Texture {
         }
 
         // Get offsets
-        for (i = 0; i < this.frameCount; i++) {
+        for (let i = 0; i < this.frameCount; i++) {
             reader.offset = offsetsInfoStart + (i * 4);
             this.shape.outline.startOffset[i] = spriteDataStart + reader.readUInt32LE();
             this.shape.outline.endOffset[i] = spriteDataStart + reader.readUInt32LE();
         }
 
         // Get outline info
-        for (i = 0; i < this.frameCount; i++) {
+        for (let i = 0; i < this.frameCount; i++) {
             reader.offset = this.shape.outline.startOffset[i];
             this.shape.outline.width[i] = reader.readUInt16LE();
             this.shape.outline.height[i] = reader.readUInt16LE();
