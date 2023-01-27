@@ -94,3 +94,7 @@ export const logger = {
         console.error(...args);
     }
 }
+
+export const getKeyByValue = (object, value) => {
+    return Object.keys(object).find(key => object[key] === value);
+}
