@@ -1,5 +1,5 @@
 import BufferReader from "../utils/BufferReader";
-import RedStoneMap, { MapType, ObjectType } from "../utils/Map";
+import RedStoneMap, { ActorImage, MapType, ObjectType } from "../utils/Map";
 import Texture, { ZippedTextures } from "../utils/Texture";
 
 const portalTextureInfo = {
@@ -74,6 +74,22 @@ class MapReaderDebug {
     console.log("[MapReaderDebug] common resources loaded");
   }
 
+  /**
+   * @param {RedStoneMap} map 
+   */
+  async loadNpcTextures(map) {
+    this.npcTextures = {};
+
+    for (let i = 0; i < map.npcGroups.length; i++) {
+      const npcGroup = map.npcGroups[i];
+      const textureFileName = ActorImage[npcGroup.job] + ".sad";
+      if (this.npcTextures[textureFileName]) continue;
+      // console.log(textureFileName);
+      const textureBuffer = await this.fetchBinaryFile(DATA_DIR + "NPC/" + textureFileName);
+      this.npcTextures[textureFileName] = new Texture(textureFileName, textureBuffer);
+    }
+  }
+
   async execute() {
     // this.ctx.scale(0.5, 0.5);
     await this.loadCommonResources();
@@ -85,6 +101,8 @@ class MapReaderDebug {
     const map = new RedStoneMap(br);
     const tileImages = await this.loadZippedImages(DATA_DIR + "Room_tiles.zip");
     // const tileImages = await this.loadZippedImages(DATA_DIR + "Brunenstig_tiles.zip");
+
+    await this.loadNpcTextures(map);
 
     const drawTiles = () => {
       const ctx = this.ctx;
@@ -124,6 +142,26 @@ class MapReaderDebug {
         });
         ctx.font = "20px Arial";
         ctx.fillText(objType + ` ${area.moveToFileName || ""}`, x, y);
+      });
+    }
+
+    console.log(map.npcSingles, map.npcGroups);
+
+    const drawNpc = () => {
+      const framesPerAnimation = 8;
+      map.npcSingles.forEach(async npcSingle => {
+        const npcGroup = map.npcGroups.find(g => g.internalID === npcSingle.internalID);
+        const textureFileName = ActorImage[npcGroup.job] + ".sad";
+        // console.log(textureFileName);
+        const texture = this.npcTextures[textureFileName];
+        console.log("check npc texture", texture);
+        const targetFrame = npcSingle.direct * framesPerAnimation;
+        const textureCanvas = texture.getCanvas(targetFrame);
+
+        const x = npcSingle.point.x - textureCanvas.width / 2;
+        const y = npcSingle.point.y - textureCanvas.height + 16;
+
+        this.ctx.drawImage(textureCanvas, x, y);
       });
     }
 
@@ -270,6 +308,8 @@ class MapReaderDebug {
           // }
 
           setTimeout(() => {
+            return;
+
             const rectWidth = 64;
             const rectHeight = 32;
             const blockX = j * 64;
@@ -315,10 +355,11 @@ class MapReaderDebug {
 
     drawTiles();
     drawAreaInfoRect();
-    drawNpcRect();
     drawPortals();
     drawPositionSpecifiedObjects();
+    drawNpc();
     drawObjects_Test();
+    drawNpcRect();
   }
 }
 

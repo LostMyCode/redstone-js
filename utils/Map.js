@@ -125,7 +125,7 @@ class Map {
                     break;
 
                 case LoadingTarget.NpcLength:
-                    // console.log("npclength");
+                    console.log("npclength", br.offset);
                     const encryptedBytes = Buffer.from([0, 0, 0, 0]);
                     encryptedBytes.writeInt32LE(nextOffset, 0);
                     const decrypted = decodeScenarioBuffer(encryptedBytes, br.decodeKey);
@@ -134,6 +134,7 @@ class Map {
                     const encryptedBytes2 = Buffer.from(br.readStructUInt8(readCount * 2)); // 2 = ushort size
                     const decryptedBuf = decodeScenarioBuffer(encryptedBytes2, br.decodeKey);
                     const de = new BufferReader(decryptedBuf);
+                    console.log("char start off", br.offset)
                     charIndexes = de.readStructUInt16LE(readCount);
 
                     console.log("check char indexes", charIndexes.length, charIndexes);
@@ -141,13 +142,13 @@ class Map {
 
                 case LoadingTarget.NpcGroupInfo:
                     // console.log("npcgroupinfo");
-                    const npcGroupInfoLength = this.scenarioVersion > 5.4 ? br.readInt32LE() : 0x2C;
+                    const npcGroupInfoStructSize = this.scenarioVersion > 5.4 ? br.readInt32LE() : 0x2C;
                     /**
                      * @type {MapActorGroup[]}
                      */
                     this.npcGroups = [];
                     for (let i = 0; i < charIndexes.length; i++) {
-                        const npcGroupInfo = new MapActorGroup(br, npcGroupInfoLength, charIndexes[i]);
+                        const npcGroupInfo = new MapActorGroup(br, npcGroupInfoStructSize, charIndexes[i]);
                         this.npcGroups.push(npcGroupInfo);
                         // console.log(npcGroupInfo, "idx", i);
                     }
@@ -243,11 +244,15 @@ class Map {
     }
 }
 
+export const ActorImage = {
+    305: "PITCHMAN_F",
+}
+
 class MapActorGroup {
     constructor(br, structLength, job2Index) {
         this.br = br;
         this.structLength = structLength;
-        this.Job = job2Index;
+        this.job = job2Index;
         this.readData(br);
     }
 
@@ -260,14 +265,15 @@ class MapActorGroup {
 
         const baseReader = new BufferReader(decryptedBuf);
         this.internalID = baseReader.readUInt16LE();
-        this.unknown_1 = baseReader.readUInt16LE();
+        this.unknown_1 = baseReader.readUInt16LE(); // is same value as job2Index?
         this.minLevel = baseReader.readUInt16LE();
         this.name = baseReader.readString(0x14, "sjis");
         this.imageSumCandidate = baseReader.readStructUInt16LE(0x03);
         this.unknown_4 = baseReader.readUInt16LE();
         [this.sizeWidth, this.sizeHeight] = baseReader.readStructUInt16LE(2);
         this.maxLevel = baseReader.readUInt16LE();
-        // this.unknown_3 = baseReader
+        console.log("image real??", br.offset - this.structLength + baseReader.offset, this.structLength - baseReader.offset);
+        this.unknown_3 = baseReader.readStructUInt8(this.structLength - baseReader.offset);
 
         const enemyKarmaInfoLen = br.readInt32LE();
         this.enemyKarmaInfos = [];
@@ -365,6 +371,22 @@ class KarmaItem {
     }
 }
 
+export const ActorDirect = {
+    Up: 0,
+    UpRight: 1,
+    Right: 2,
+    DownRight: 3,
+    Down: 4,
+    DownLeft: 5,
+    Left: 6,
+    UpLeft: 7,
+
+    /**
+     * リスポーンフラグ
+     */
+    Spawn: 8,
+}
+
 class MapActorSingle {
     constructor(br) {
         this.br = br;
@@ -380,7 +402,7 @@ class MapActorSingle {
 
         this.index = baseReader.readUInt32LE();
         this.internalID = baseReader.readUInt16LE();
-        this.charType = baseReader.readUInt16LE(); // charactor type
+        this.charType = baseReader.readUInt16LE(); // character type
         this.direct = baseReader.readInt16LE(); // ActorDirect
         this.unknown_0 = baseReader.readUInt16LE();
         this.popSpeed = baseReader.readUInt32LE();
@@ -607,6 +629,208 @@ class ObjectInfo {
             // console.log("check sub objects of countertable", this.subObjectInfos);
         }
     }
+}
+
+export const CType = {
+    /**
+     * プレイヤー
+     */
+    Player: 0,
+
+    /**
+     * NPC
+     */
+    NPC: 1,
+
+    /**
+     * モンスター
+     */
+    Monster: 2,
+
+    /**
+     * 武具商人
+     */
+    Equipment_merchant: 3,
+
+    /**
+     * 防具商人
+     */
+    ArmorMerchant: 4,
+
+    /**
+     * 雑貨商人
+     */
+    MiscellaneousGoodsMerchant: 5,
+
+    /**
+     * 道具商人
+     */
+    ToolMerchant: 6,
+
+    /**
+     * 取引仲介人
+     */
+    BrokerageHuman: 7,
+
+    /**
+     * 銀行員
+     */
+    Banker: 8,
+
+    /**
+     * スキルマスター
+     */
+    SkillMaster: 9,
+
+    /**
+     * 一般クエスト
+     */
+    GeneralQuest: 10,
+
+    /**
+     * 称号クエスト
+     */
+    TitleQuest: 11,
+
+    /**
+     * ギルドクエスト
+     */
+    GuildQuest: 12,
+
+    /**
+     * メインクエスト
+     */
+    MainQuest: 13,
+
+    /**
+     * サポーター1
+     */
+    Supporters1: 14,
+
+    /**
+     * テレポーター
+     */
+    Teleporters: 15,
+
+    /**
+     * 治療師
+     */
+    Healers: 16,
+
+    /**
+     * クエスト案内人
+     */
+    QuestGuidPeople: 17,
+
+    /**
+     * 鍛冶屋
+     */
+    Blacksmith: 18,
+
+    /**
+     * サポーター2
+     */
+    Supporters2: 19,
+
+    /**
+     * クエスト依頼人
+     */
+    QuestAskedPeople: 20,
+
+    /**
+     * クエスト関連人
+     */
+    QuestRelatedPerson: 21,
+
+    /**
+     * クエストモンスター
+     */
+    QuestMonster: 22,
+
+    /**
+     * 武器商人<br/>(剣士/戦士)
+     */
+    ArmsDealerSwordsmanOrWarrior: 23,
+
+    /**
+     * 武器商人<br/>(ウィザード/ウルフマン)
+     */
+    ArmsDealerWizardOrWolfman: 24,
+
+    /**
+     * 武器商人<br/>(ビショップ/追放天使)
+     */
+    ArmsDealerBishopOrexiled_angel: 25,
+
+    /**
+     * 武器商人<br/>(シーフ/武道家)
+     */
+    ArmsDealerThiefOrmartial_artist: 26,
+
+    /**
+     * 武器商人<br/>(アーチャー/ランサー)
+     */
+    ArmsDealerArcherOrLancer: 27,
+
+    /**
+     * 武器商人<br/>(ビーストテイマー/サマナー)
+     */
+    ArmsDealerBisutoteimaOrSummoner: 28,
+
+    /**
+     * 武器商人<br/>(プリンセス/リトルウィッチ)
+     */
+    ArmsDealerPrincessOrLittlewitch: 29,
+
+    /**
+     * 武器商人<br/>(ネクロマンサー/悪魔)
+     */
+    ArmsDealerNecromancerOrDevil: 30,
+
+    /**
+     * 決戦報酬商人
+     */
+    BattleRewardMerchant: 31,
+
+    /**
+     * 武器商人<br/>(霊術師/闘士)
+     */
+    WeaponNumerologyTeacherMerchantOrWarrior: 32,
+
+    /**
+     * ギルドホールテレポーター
+     */
+    GuildHallTeleporters: 33,
+
+    /**
+     * イベント案内人
+     */
+    EventGuidepeople: 34,
+
+    /**
+     * 冒険家協会
+     */
+    AdventurerAssociation: 35,
+
+    /**
+     * 武器商人<br/>(光奏師/獣人)
+     */
+    ArmsDealerLightResponseRateNursesOrBeastPeople: 36,
+
+    /**
+     * 1Dayクエスト
+     */
+    OneDayQuest: 37,
+
+    /**
+     * 錬成案内人
+     */
+    DrillingGuidePeople: 38,
+
+    /**
+     * 武器商人<br/>(メイド/黒魔術師)
+     */
+    ArmsDealerMaidOrBlackMagician: 39
 }
 
 export default Map;
