@@ -21,6 +21,7 @@ module.exports = (env, options) => {
         output: {
             filename: '[name].bundle.js?[hash]',
             path: path.resolve(__dirname, 'dist'),
+            publicPath: '/'
         },
 
         resolve: {
@@ -90,8 +91,9 @@ module.exports = (env, options) => {
         },
 
         devServer: {
-            open: true
-        }
+            open: true,
+            historyApiFallback: true,
+        },
     };
 
     return config;
