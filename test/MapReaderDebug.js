@@ -1,6 +1,6 @@
 import BufferReader from "../utils/BufferReader";
 import RedStoneMap, { ActorImage, Mapset, MapType, ObjectType } from "../utils/Map";
-import { getKeyByValue } from "../utils/RedStoneRandom";
+import { getKeyByValue, logger } from "../utils/RedStoneRandom";
 import Texture, { ZippedTextures } from "../utils/Texture";
 
 const portalTextureInfo = {
@@ -16,7 +16,11 @@ const portalTextureInfo = {
   topLeftGate: {},
 }
 
-const DATA_DIR = "/data/";
+// const DATA_DIR = "/data/";
+const DATA_DIR = "https://sigr.io/redstone/";
+const MAPSET_DIR = "https://sigr.io/redstone/Mapset/";
+const INTERFACE_DIR = "https://sigr.io/redstone/Interface/";
+const RMD_DIR = "https://sigr.io/redstone/Scenario/";
 
 class MapReaderDebug {
   /**
@@ -25,8 +29,10 @@ class MapReaderDebug {
   ctx = document.getElementById("canvas").getContext('2d');
 
   async fetchBinaryFile(path) {
+    console.log(`[Binary Fetch] Fetching: ${path}`);
     const f = await fetch(path);
     const ab = await f.arrayBuffer();
+    console.log(`[Binary Fetch] Fetched: ${path}`);
     return Buffer.from(ab);
   }
 
@@ -64,14 +70,26 @@ class MapReaderDebug {
     });
   }
 
+  async loadTexture(path) {
+    const buf = await this.fetchBinaryFile(path);
+    console.log("[Texture] Loading texture...", path);
+    const texture = new Texture(path.split("/").pop(), buf);
+    console.log("[Texture] Ready!!", path);
+    return texture;
+  }
+
   async loadZippedTextures(path) {
     const buf = await this.fetchBinaryFile(path);
+    console.log("[Texture] Loading zipped textures...", path);
     const zippedTextures = new ZippedTextures(buf);
+    console.log("[Texture] Ready!!", path);
     return zippedTextures;
   }
 
   async loadCommonResources() {
-    this.portalImages = await this.loadZippedImages(DATA_DIR + "gateAnm.zip");
+    console.log("[MapReaderDebug] Loading common resources...");
+    // this.portalImages = await this.loadZippedImages(DATA_DIR + "gateAnm.zip");
+    this.portalImages = await this.loadTexture(`${INTERFACE_DIR}gateAnm.sad`);
     console.log("[MapReaderDebug] common resources loaded");
   }
 
@@ -94,16 +112,16 @@ class MapReaderDebug {
   async execute() {
     // this.ctx.scale(0.5, 0.5);
     await this.loadCommonResources();
-    // this.rmdFileBuffer = await this.fetchBinaryFile(DATA_DIR + "[000]T01.rmd");
     const fileName = (location.pathname.split("Map/").pop() || "[060]T01_A01") + ".rmd";
-    this.rmdFileBuffer = await this.fetchBinaryFile(DATA_DIR + fileName);
-    this.rmdFileBuffer = Buffer.from(this.rmdFileBuffer);
+    this.rmdFileBuffer = await this.fetchBinaryFile(RMD_DIR + fileName);
 
     const br = new BufferReader(this.rmdFileBuffer);
     const map = new RedStoneMap(br);
     window.currentMap = map; // for debug
     const mapset = getKeyByValue(Mapset, map.textureDirectoryId);
-    const tileImages = await this.loadZippedImages(DATA_DIR + `${mapset}_tiles.zip`);
+    this.tileTextures = await this.fetchBinaryFile(MAPSET_DIR + `${mapset}/tile.mpr`);
+    this.tileTextures = new Texture("tile.mpr", Buffer.from(this.tileTextures));
+
     await this.loadNpcTextures(map);
 
     const drawTiles = () => {
@@ -112,7 +130,7 @@ class MapReaderDebug {
       for (let i = 0; i < map.size.height; i++) {
         for (let j = 0; j < map.size.width; j++) {
           const tileCode = map.tileData1[i * map.size.width + j] % (16 << 10); // 16 << 10 = 256 * 64 no idea...
-          const tileImage = tileImages[tileCode];
+          const tileImage = this.tileTextures.getCanvas(tileCode);
           const scaledWidth = 64 * scale;
           const scaledHeight = 32 * scale;
           // ctx.globalAlpha = 0.5;
@@ -195,7 +213,7 @@ class MapReaderDebug {
         if (!area.moveToFileName) return;
         if (area.objectInfo === ObjectType.WarpPortal) {
           const centerPos = area.centerPos;
-          let image = portalImages[12];
+          let image = portalImages.getCanvas(12);
           // it is better way to load all rmd and check MapType of map beyond the gate
           // check the filename instead as its easier
           const isGateOrDungeon = area.moveToFileName.match(/G\d+|_D\d+/);
@@ -229,12 +247,12 @@ class MapReaderDebug {
             const key = portalLocationStr + "Gate";
             const index = Object.values(portalTextureInfo).indexOf(portalTextureInfo[key]);
             const offset = index * 6;
-            image = portalImages[offset];
+            image = portalImages.getCanvas(offset);
           }
           else {
             const index = Object.values(portalTextureInfo).indexOf(portalTextureInfo.door);
             const offset = index * 6;
-            image = portalImages[offset];
+            image = portalImages.getCanvas(offset);
           }
           const x = centerPos.x - image.width / 2;
           const y = centerPos.y - image.height / 2;
@@ -243,9 +261,9 @@ class MapReaderDebug {
       })
     }
 
-    const zippedObjectTextures = await this.loadZippedTextures(DATA_DIR + `Objects/${mapset}_Objects.zip`);
+    const zippedObjectTextures = await this.loadZippedTextures(MAPSET_DIR + `${mapset}/${mapset}_Objects.zip`);
     const zippedBuildingTextures = Object.keys(map.buildingInfos).length ?
-      await this.loadZippedTextures(DATA_DIR + `Objects/${mapset}_Buildings.zip`)
+      await this.loadZippedTextures(MAPSET_DIR + `${mapset}_Buildings.zip`)
       : null;
 
     const getTextureFileName = (textureId, extension = "rso") => {
@@ -342,9 +360,6 @@ class MapReaderDebug {
               // this.ctx.fillText(`pid: ${objectInfo.index}`, posX, posY);
             }, 50);
           });
-
-          // if (bytes[0] === 15 && bytes[1] === 16 || true) {
-          // }
 
           setTimeout(() => {
             // return;
