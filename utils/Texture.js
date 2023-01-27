@@ -821,7 +821,7 @@ class Texture {
                     _App.canvasManager,
                     left + w,
                     top + h,
-                    getRGBA16bit(colorData1, colorData2, isUseOpacity)
+                    getRGBA15bit(colorData1, colorData2, isUseOpacity)
                 )
             }
         }
