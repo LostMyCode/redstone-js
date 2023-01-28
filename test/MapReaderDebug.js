@@ -29,10 +29,8 @@ class MapReaderDebug {
   ctx = document.getElementById("canvas").getContext('2d');
 
   async fetchBinaryFile(path) {
-    console.log(`[Binary Fetch] Fetching: ${path}`);
     const f = await fetch(path);
     const ab = await f.arrayBuffer();
-    console.log(`[Binary Fetch] Fetched: ${path}`);
     return Buffer.from(ab);
   }
 
