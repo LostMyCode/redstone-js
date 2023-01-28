@@ -24,7 +24,14 @@ const MAPSET_DIR = "https://sigr.io/redstone/Mapset/";
 const INTERFACE_DIR = "https://sigr.io/redstone/Interface/";
 const RMD_DIR = "https://sigr.io/redstone/Scenario/";
 
+const TILE_WIDTH = 64;
+const TILE_HEIGHT = 32;
+
 class MapReaderDebug {
+  /**
+   * @type {HTMLCanvasElement}
+   */
+  canvas = document.getElementById("canvas");
   /**
    * @type {CanvasRenderingContext2D}
    */
@@ -52,6 +59,20 @@ class MapReaderDebug {
     }
   }
 
+  handleScroll = (e) => {
+    clearTimeout(this._scrollEndCheckTimeout);
+    this._scrollEndCheckTimeout = setTimeout(() => {
+      localStorage.setItem("rs-mapdebug-lastscroll", JSON.stringify({ x: e.target.scrollLeft, y: e.target.scrollTop }));
+    }, 500);
+  }
+
+  setLastScroll() {
+    const lastScroll = JSON.parse(localStorage.getItem("rs-mapdebug-lastscroll"));
+    if (lastScroll) {
+      document.body.scrollTo(lastScroll.x, lastScroll.y);
+    }
+  }
+
   async execute() {
     // this.ctx.scale(0.5, 0.5);
     await this.loadCommonResources();
@@ -61,6 +82,14 @@ class MapReaderDebug {
     const br = new BufferReader(this.rmdFileBuffer);
     const map = new RedStoneMap(br);
     window.currentMap = map; // for debug
+
+    document.body.style.overflow = "scroll";
+    document.body.style.overflowX = "scroll";
+    this.canvas.width = TILE_WIDTH * map.size.width;
+    this.canvas.height = TILE_HEIGHT * map.size.height;
+    this.setLastScroll();
+    document.body.addEventListener("scroll", this.handleScroll);
+
     const mapset = getKeyByValue(Mapset, map.textureDirectoryId);
     this.tileTextures = await fetchBinaryFile(MAPSET_DIR + `${mapset}/tile.mpr`);
     this.tileTextures = new Texture("tile.mpr", Buffer.from(this.tileTextures));
