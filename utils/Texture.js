@@ -4,34 +4,10 @@ import { getRGBA15bit, getRGBA16bit, logger } from "./RedStoneRandom";
 
 // Special Thanks: 今日のこぅくん
 
-const ViewerConfig = {
-    extension_effect: "sad sd rfo rbd rso smi mpr".split(" "),
-    extension_palette: ["plt"],
-    cookie_key_localize: "locale",
-    cookie_expires: 365,
-    default_language: "ja",
-    background_default: "f0e3c2",
-    canvas_default_width: 150,
-    canvas_default_height: 150,
-    animation_delay: 1000 / 16,
-    shadow_pixel_data: [7, 7, 7, 0x80],
-    outline_pixel_data: [1, 1, 1, 0xff],
-    gifjs_quality: 5,
-    gifjs_worker_count: 3,
-    gifjs_worker_path: "../common-content/lib/gifjs/0.1.6/gif.worker.js"
-};
+const SHADOW_PIXEL_DATA = [7, 7, 7, 0x80];
+const OUTLINE_PIXEL_DATA = [1, 1, 1, 0xff];
 
-const _App = {
-    canvasManager: new CanvasManager(),
-    uiManager: {
-        isViewUseOpacity: false,
-        isViewUseMargin: true,
-        isViewUseBackground: false,
-        isViewShowBody: true,
-        isViewShowShadow: true,
-    }
-}
-window._App = _App;
+const canvasManager = new CanvasManager();
 
 class Texture {
     constructor(fileName, textureFileBuffer) {
@@ -49,6 +25,7 @@ class Texture {
         this.fileExtension = fileName.substring(fileName.lastIndexOf(".") + 1);
 
         this.paletteData = [];
+        this.selectedPaletteNumber = null;
 
         /**
          * @type {BufferReader}
@@ -708,12 +685,8 @@ class Texture {
         );
     }
 
-    getIsUseMargin() {
-        return false;
-    }
-
     createTextureCanvases() {
-        const canvas = _App.canvasManager.canvas;
+        const canvas = canvasManager.canvas;
         const textureCanvases = [];
 
         for (let i = 0; i < this.frameCount; i++) {
@@ -741,14 +714,14 @@ class Texture {
         this.resizeCanvas();
 
         // clear
-        _App.canvasManager.clear();
+        canvasManager.clear();
 
         this.drawBody();
         if (this.useShadow) this.drawShadow();
         this.drawOutline();
 
         // update
-        _App.canvasManager.update();
+        canvasManager.update();
     }
 
     redraw() {
@@ -756,18 +729,18 @@ class Texture {
     }
 
     resizeCanvas() {
-        if (false/* _App.uiManager.isViewUseMargin || this.useShadow */) {
+        if (false/* this.getIsUseMargin() || this.useShadow */) {
             if (this.fileName.includes("0004") || this.fileName.includes("0005")) {
-                console.log(this.fileName, "max size info", this.maxSizeInfo , "|", "shadow", this.useShadow);
+                console.log(this.fileName, "max size info", this.maxSizeInfo, "|", "shadow", this.useShadow);
             }
-            _App.canvasManager.resize(this.maxSizeInfo.outerWidth, this.maxSizeInfo.outerHeight);
+            canvasManager.resize(this.maxSizeInfo.outerWidth, this.maxSizeInfo.outerHeight);
         } else {
-            _App.canvasManager.resize(this.shape.body.width[this.drawFrame], this.shape.body.height[this.drawFrame])
+            canvasManager.resize(this.shape.body.width[this.drawFrame], this.shape.body.height[this.drawFrame])
         }
     }
 
     drawBody() {
-        if (!_App.uiManager.isViewShowBody) {
+        if (!this.getIsShowBody()) {
             return;
         }
 
@@ -788,9 +761,9 @@ class Texture {
     drawBodySmi() {
         const reader = this.reader;
 
-        var isUseOpacity = _App.uiManager.isViewUseOpacity;
-        var isUseMargin = _App.uiManager.isViewUseMargin;
-        var isUseBackground = _App.uiManager.isViewUseBackground;
+        var isUseOpacity = this.getIsUseOpacity();
+        var isUseMargin = this.getIsUseMargin();
+        var isUseBackground = this.getIsUseBackground();
 
         var startOffset = this.shape.body.startOffset[this.drawFrame];
         var width = this.shape.body.width[this.drawFrame];
@@ -801,9 +774,9 @@ class Texture {
         var w, h, colorData1, colorData2, _drawPixel;
 
         if (isUseBackground && isUseOpacity) {
-            _drawPixel = _App.canvasManager.drawBlendPixel;
+            _drawPixel = canvasManager.drawBlendPixel;
         } else {
-            _drawPixel = _App.canvasManager.drawPixel;
+            _drawPixel = canvasManager.drawPixel;
         }
 
         reader.offset = startOffset;
@@ -818,7 +791,7 @@ class Texture {
                 colorData1 = reader.readUInt8();
 
                 _drawPixel.call(
-                    _App.canvasManager,
+                    canvasManager,
                     left + w,
                     top + h,
                     getRGBA15bit(colorData1, colorData2, isUseOpacity)
@@ -830,9 +803,9 @@ class Texture {
     drawBodyHighColor() {
         const reader = this.reader;
 
-        var isUseOpacity = _App.uiManager.isViewUseOpacity;
+        var isUseOpacity = this.getIsUseOpacity();
         var isUseMargin = this.getIsUseMargin();
-        var isUseBackground = _App.uiManager.isViewUseBackground;
+        var isUseBackground = this.getIsUseBackground();
 
         var startOffset = this.shape.body.startOffset[this.drawFrame];
         var width = this.shape.body.width[this.drawFrame];
@@ -843,9 +816,9 @@ class Texture {
         var _drawPixel, w, h, unityCount, unityWidth, colorData1, colorData2;
 
         if (isUseBackground && isUseOpacity) {
-            _drawPixel = _App.canvasManager.drawBlendPixel;
+            _drawPixel = canvasManager.drawBlendPixel;
         } else {
-            _drawPixel = _App.canvasManager.drawPixel;
+            _drawPixel = canvasManager.drawPixel;
         }
 
         reader.offset = startOffset + 8; // Skip shape info data
@@ -863,7 +836,7 @@ class Texture {
                     colorData1 = reader.readUInt8();
 
                     _drawPixel.call(
-                        _App.canvasManager,
+                        canvasManager,
                         left + w,
                         top + h,
                         getRGBA15bit(colorData1, colorData2, isUseOpacity)
@@ -877,10 +850,10 @@ class Texture {
     drawBodyLowColor() {
         const reader = this.reader;
 
-        var isUseOpacity = _App.uiManager.isViewUseOpacity;
+        var isUseOpacity = this.getIsUseOpacity();
         var isUseMargin = this.getIsUseMargin();
-        var isUseBackground = _App.uiManager.isViewUseBackground;
-        var isUsePalette = _App.uiManager.isViewUsePalette;
+        var isUseBackground = this.getIsUseBackground();
+        var isUsePalette = this.getIsUsePalette();
 
         var startOffset = this.shape.body.startOffset[this.drawFrame];
         var width = this.shape.body.width[this.drawFrame];
@@ -890,15 +863,15 @@ class Texture {
 
         // var paletteFile = _App.fileManager.paletteFile;
         var paletteFile = null;
-        var paletteNumber = _App.uiManager.selectedPaletteNumber;
+        var paletteNumber = this.selectedPaletteNumber;
         var paletteData = (isUsePalette && paletteFile) ? paletteFile.paletteData[paletteNumber] : this.paletteData;
 
         var _drawPixel, _getRGB, w, h, unityCount, unityWidth, colorReference, colorData1, colorData2;
 
         if (isUseBackground && isUseOpacity) {
-            _drawPixel = _App.canvasManager.drawBlendPixel;
+            _drawPixel = canvasManager.drawBlendPixel;
         } else {
-            _drawPixel = _App.canvasManager.drawPixel;
+            _drawPixel = canvasManager.drawPixel;
         }
 
         if (isUsePalette && paletteFile && paletteFile.is16bitColor) {
@@ -923,7 +896,7 @@ class Texture {
                     colorData2 = paletteData[colorReference * 2];
 
                     _drawPixel.call(
-                        _App.canvasManager,
+                        canvasManager,
                         left + w,
                         top + h,
                         _getRGB.call(this, colorData1, colorData2, isUseOpacity)
@@ -964,10 +937,10 @@ class Texture {
                 unityWidth = reader.readUInt8();
 
                 while (unityWidth--) {
-                    _App.canvasManager.drawBlendPixel(
+                    canvasManager.drawBlendPixel(
                         left + w,
                         top + h,
-                        ViewerConfig.shadow_pixel_data
+                        SHADOW_PIXEL_DATA
                     );
                     w++;
                 }
@@ -976,11 +949,11 @@ class Texture {
     }
 
     drawOutline() {
-        if (!this.isExistOutline || !_App.uiManager.isViewShowOutline) {
+        if (!this.isExistOutline || !this.getIsShowOutline()) {
             return;
         }
 
-        if (!_App.uiManager.isViewUseMargin) {
+        if (!this.getIsUseMargin()) {
             return;
         }
 
@@ -1006,10 +979,10 @@ class Texture {
                 unityWidth = reader.readUInt8();
 
                 while (unityWidth--) {
-                    _App.canvasManager.drawBlendPixel(
+                    canvasManager.drawBlendPixel(
                         left + w,
                         top + h,
-                        ViewerConfig.outline_pixel_data
+                        OUTLINE_PIXEL_DATA
                     );
                     w++;
                 }
@@ -1019,6 +992,30 @@ class Texture {
 
     setUseShadow(useShadow) {
         this.useShadow = useShadow;
+    }
+
+    getIsShowBody() {
+        return true;
+    }
+
+    getIsUseOpacity() {
+        return false;
+    }
+
+    getIsUseMargin() {
+        return false;
+    }
+
+    getIsUseBackground() {
+        return false;
+    }
+
+    getIsUsePalette() {
+        return false;
+    }
+
+    getIsShowOutline() {
+        return false;
     }
 }
 

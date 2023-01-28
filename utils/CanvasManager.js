@@ -1,5 +1,8 @@
 import { logger } from "./RedStoneRandom";
 
+const CANVAS_DEFAULT_WIDTH = 150;
+const CANVAS_DEFAULT_HEIGHT = 150;
+
 class CanvasManager {
     constructor() {
         this.canvas = document.createElement("canvas");
@@ -13,7 +16,7 @@ class CanvasManager {
     }
 
     initialize() {
-        this.resize(ViewerConfig.canvas_default_width, ViewerConfig.canvas_default_height);
+        this.resize(CANVAS_DEFAULT_WIDTH, CANVAS_DEFAULT_HEIGHT);
     }
 
     getDataURL() {
@@ -37,15 +40,10 @@ class CanvasManager {
         this.canvas.width = width;
         this.canvas.height = height;
         this.imageData = this.context.createImageData(this.width, this.height);
-
-        // if (_App.uiManager.isViewUseBackground) {
-        //     this.clear();
-        // }
     }
 
     drawPixel(x, y, rgba) {
         if (x < 0 || this.width <= x || y < 0 || this.height <= y) {
-            console.log("eeeee", x, y, this.width, this.height);
             this.isErrorOccurred = true;
             return
         }
@@ -93,14 +91,8 @@ class CanvasManager {
         var pixelData = this.imageData.data;
         var i = pixelData.length;
 
-        if (_App.uiManager.isViewUseBackground) {
-            while (i--) {
-                pixelData[i] = this.backgroundColor[i % 4];
-            }
-        } else {
-            while (i--) {
-                pixelData[i] = 0;
-            }
+        while (i--) {
+            pixelData[i] = 0;
         }
     }
 }
