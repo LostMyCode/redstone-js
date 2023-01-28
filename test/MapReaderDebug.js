@@ -1,7 +1,8 @@
 import BufferReader from "../utils/BufferReader";
-import RedStoneMap, { ActorImage, Mapset, MapType, ObjectType } from "../utils/Map";
+import RedStoneMap, { Mapset, MapType, ObjectType } from "../game/models/Map";
 import { getKeyByValue, logger } from "../utils/RedStoneRandom";
-import Texture, { ZippedTextures } from "../utils/Texture";
+import Texture, { ZippedTextures } from "../game/models/Texture";
+import { ActorImage } from "../game/models/Actor";
 
 const portalTextureInfo = {
   door: {},

@@ -1,6 +1,6 @@
-import BufferReader from "./BufferReader";
-import CanvasManager from "./CanvasManager";
-import { getRGBA15bit, getRGBA16bit, logger } from "./RedStoneRandom";
+import BufferReader from "../../utils/BufferReader";
+import CanvasManager from "../../utils/CanvasManager";
+import { getRGBA15bit, getRGBA16bit, logger } from "../../utils/RedStoneRandom";
 
 // Special Thanks: 今日のこぅくん
 
