@@ -277,18 +277,18 @@ class MapReaderDebug {
       const objectMatrix = map.tileData3;
       for (let i = 0; i < map.size.height; i++) {
         for (let j = 0; j < map.size.width; j++) {
-          const bytes = objectMatrix[i * map.size.width + j];
+          const code = objectMatrix[i * map.size.width + j];
           let index;
           let isBuilding = false;
-          if (bytes === 0) continue;
-          if (map.scenarioVersion === 5.3 && bytes < 16 << 8) continue;
-          if (map.scenarioVersion === 6.1 && bytes < 16 << 10) continue;
+          if (code === 0) continue;
+          if (map.scenarioVersion === 5.3 && code < 16 << 8) continue;
+          if (map.scenarioVersion === 6.1 && code < 16 << 10) continue;
           if (map.scenarioVersion === 5.3) {
-            index = bytes % (16 << 8);
+            index = code % (16 << 8);
           }
           else if (map.scenarioVersion === 6.1) {
-            isBuilding = bytes >= 16 << 11;
-            index = isBuilding ? bytes % (16 << 11) : bytes % (16 << 10);
+            isBuilding = code >= 16 << 11;
+            index = isBuilding ? code % (16 << 11) : code % (16 << 10);
           }
           const objectInfo = isBuilding ? map.buildingInfos[index + 1] : map.objectInfos[index + 1];
           if (!objectInfo) {
@@ -296,7 +296,7 @@ class MapReaderDebug {
             continue;
           }
           if (i * map.size.width + j === 5194) {
-            console.log(objectInfo, index, bytes);
+            console.log(objectInfo, index, code);
           }
 
           const fileName = getTextureFileName(objectInfo.textureId, isBuilding ? "rbd" : undefined);
