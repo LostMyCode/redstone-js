@@ -1,6 +1,6 @@
 import BufferReader from "../../utils/BufferReader";
 import { decodeScenarioBuffer, sjisByteToString } from "../../utils/RedStoneRandom";
-import Karma from "./Karma";
+import Karma, { KarmaItem } from "./Karma";
 
 /**
  * Karmas/Event.cs
