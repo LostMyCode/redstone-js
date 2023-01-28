@@ -1,8 +1,9 @@
 import BufferReader from "../utils/BufferReader";
 import RedStoneMap, { Mapset, MapType, ObjectType } from "../game/models/Map";
 import { getKeyByValue, logger } from "../utils/RedStoneRandom";
-import Texture, { ZippedTextures } from "../game/models/Texture";
+import Texture from "../game/models/Texture";
 import { ActorImage } from "../game/models/Actor";
+import { fetchBinaryFile, loadTexture, loadZippedTextures } from "../utils";
 
 const portalTextureInfo = {
   door: {},
@@ -29,66 +30,9 @@ class MapReaderDebug {
    */
   ctx = document.getElementById("canvas").getContext('2d');
 
-  async fetchBinaryFile(path) {
-    const f = await fetch(path);
-    const ab = await f.arrayBuffer();
-    return Buffer.from(ab);
-  }
-
-  async loadImageSync(src) {
-    return await new Promise((resolve) => {
-      const image = new Image();
-      image.onload = () => resolve(image);
-      image.src = src;
-    });
-  }
-
-  async loadZippedImages(path) {
-    const buf = await this.fetchBinaryFile(path);
-    const unzip = new Zlib.Unzip(buf);
-    const fileNames = unzip.getFilenames();
-    const images = {};
-    let loadedCount = 0;
-
-    return await new Promise((resolve) => {
-      fileNames.forEach(fileName => {
-        const data = unzip.decompress(fileName);
-        const blob = new Blob([data], { type: 'image/png' });
-        const url = URL.createObjectURL(blob);
-        const img = new Image;
-        img.onload = function () {
-          loadedCount++;
-          if (loadedCount === fileNames.length) {
-            resolve(images);
-          }
-        }
-        img.src = url;
-        const imageNum = parseInt(fileName.match(/_(\d+)/)[1]);
-        images[imageNum] = img;
-      });
-    });
-  }
-
-  async loadTexture(path) {
-    const buf = await this.fetchBinaryFile(path);
-    console.log("[Texture] Loading texture...", path);
-    const texture = new Texture(path.split("/").pop(), buf);
-    console.log("[Texture] Ready!!", path);
-    return texture;
-  }
-
-  async loadZippedTextures(path) {
-    const buf = await this.fetchBinaryFile(path);
-    console.log("[Texture] Loading zipped textures...", path);
-    const zippedTextures = new ZippedTextures(buf);
-    console.log("[Texture] Ready!!", path);
-    return zippedTextures;
-  }
-
   async loadCommonResources() {
     console.log("[MapReaderDebug] Loading common resources...");
-    // this.portalImages = await this.loadZippedImages(DATA_DIR + "gateAnm.zip");
-    this.portalImages = await this.loadTexture(`${INTERFACE_DIR}gateAnm.sad`);
+    this.portalImages = await loadTexture(`${INTERFACE_DIR}gateAnm.sad`);
     console.log("[MapReaderDebug] common resources loaded");
   }
 
@@ -103,7 +47,7 @@ class MapReaderDebug {
       if (!ActorImage[npcGroup.job]) return;
       const textureFileName = ActorImage[npcGroup.job] + ".sad";
       if (this.npcTextures[textureFileName]) continue;
-      const textureBuffer = await this.fetchBinaryFile(DATA_DIR + "NPC/" + textureFileName);
+      const textureBuffer = await fetchBinaryFile(DATA_DIR + "NPC/" + textureFileName);
       this.npcTextures[textureFileName] = new Texture(textureFileName, textureBuffer);
     }
   }
@@ -111,14 +55,14 @@ class MapReaderDebug {
   async execute() {
     // this.ctx.scale(0.5, 0.5);
     await this.loadCommonResources();
-    const fileName = (location.pathname.split("Map/").pop() || "[060]T01_A01") + ".rmd";
-    this.rmdFileBuffer = await this.fetchBinaryFile(RMD_DIR + fileName);
+    const fileName = (location.pathname.split("/").pop() || "[060]T01_A01") + ".rmd";
+    this.rmdFileBuffer = await fetchBinaryFile(RMD_DIR + fileName);
 
     const br = new BufferReader(this.rmdFileBuffer);
     const map = new RedStoneMap(br);
     window.currentMap = map; // for debug
     const mapset = getKeyByValue(Mapset, map.textureDirectoryId);
-    this.tileTextures = await this.fetchBinaryFile(MAPSET_DIR + `${mapset}/tile.mpr`);
+    this.tileTextures = await fetchBinaryFile(MAPSET_DIR + `${mapset}/tile.mpr`);
     this.tileTextures = new Texture("tile.mpr", Buffer.from(this.tileTextures));
 
     await this.loadNpcTextures(map);
@@ -279,9 +223,9 @@ class MapReaderDebug {
       addPortalClickEvent();
     }, 1000);
 
-    const zippedObjectTextures = await this.loadZippedTextures(MAPSET_DIR + `${mapset}/${mapset}_Objects.zip`);
+    const zippedObjectTextures = await loadZippedTextures(MAPSET_DIR + `${mapset}/${mapset}_Objects.zip`);
     const zippedBuildingTextures = Object.keys(map.buildingInfos).length ?
-      await this.loadZippedTextures(MAPSET_DIR + `${mapset}/${mapset}_Buildings.zip`)
+      await loadZippedTextures(MAPSET_DIR + `${mapset}/${mapset}_Buildings.zip`)
       : null;
 
     const getTextureFileName = (textureId, extension = "rso") => {
