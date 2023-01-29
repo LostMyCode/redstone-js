@@ -1,22 +1,9 @@
 import BufferReader from "../utils/BufferReader";
-import RedStoneMap, { Mapset, MapType, ObjectType } from "../game/models/Map";
+import RedStoneMap, { Mapset, MapType, ObjectType, portalTextureInfo } from "../game/models/Map";
 import { getKeyByValue, logger } from "../utils/RedStoneRandom";
 import Texture from "../game/models/Texture";
 import { ActorImage } from "../game/models/Actor";
 import { fetchBinaryFile, loadTexture, loadZippedTextures } from "../utils";
-
-const portalTextureInfo = {
-  door: {},
-  doorGrow: {},
-  topGate: {},
-  topRightGate: {},
-  rightGate: {},
-  bottomRightGate: {},
-  bottomGate: {},
-  bottomLeftGate: {},
-  leftGate: {},
-  topLeftGate: {},
-}
 
 // const DATA_DIR = "/data/";
 const DATA_DIR = "https://sigr.io/redstone/";
@@ -295,7 +282,7 @@ class MapReaderDebug {
             // console.log("invalid object index", index, bytes);
             continue;
           }
-          if (i * map.size.width + j === 5194) {
+          if (i * map.size.width + j === 15073) {
             console.log(objectInfo, index, code);
           }
 
@@ -326,7 +313,27 @@ class MapReaderDebug {
               const x = blockCenterX - texture.shape.body.left[id];
               const y = blockCenterY - texture.shape.body.top[id];
               this.ctx.drawImage(textureCanvas, x, y);
+
+              setTimeout(() => {
+                return;
+
+                // object rect
+                this.ctx.lineWidth = 1;
+                this.ctx.strokeStyle = "#fcba03";
+                this.ctx.beginPath();
+                this.ctx.rect(x, y, textureCanvas.width, textureCanvas.height);
+                this.ctx.stroke();
+                this.ctx.closePath();
+                this.ctx.lineWidth = 2;
+
+                // info text
+                this.ctx.fillText(`tex: ${id}, ${i * map.size.width + j}, ${fileName}`, x, y);
+              }, 100);
             }
+
+            // if (i * map.size.width + j === 32611) {
+            //   console.log(objectInfo.unk0);
+            // }
           }
 
           !isBuilding && objectInfo.subObjectInfos.forEach(subObjectInfo => {
@@ -377,7 +384,7 @@ class MapReaderDebug {
             this.ctx.lineWidth = 2;
 
             // info text
-            this.ctx.fillText(`tex: ${objectInfo.textureId}, ${i * map.size.width + j}`, x, y);
+            this.ctx.fillText(`tex: ${objectInfo.textureId}, ${i * map.size.width + j}, idx: ${objectInfo.index}`, x, y);
           }, 100);
         }
       }
