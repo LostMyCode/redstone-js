@@ -1,3 +1,4 @@
+import * as PIXI from "pixi.js";
 import BufferReader from "../../utils/BufferReader";
 import CanvasManager from "../../utils/CanvasManager";
 import { getRGBA15bit, getRGBA16bit, logger } from "../../utils/RedStoneRandom";
@@ -6,8 +7,6 @@ import { getRGBA15bit, getRGBA16bit, logger } from "../../utils/RedStoneRandom";
 
 const SHADOW_PIXEL_DATA = [7, 7, 7, 0x80];
 const OUTLINE_PIXEL_DATA = [1, 1, 1, 0xff];
-
-const canvasManager = new CanvasManager();
 
 class Texture {
     constructor(fileName, textureFileBuffer) {
@@ -73,9 +72,9 @@ class Texture {
         this.analyzeFrameCount();
         this.analyzePaletteData();
         this.analyzeBody();
-        // if (this.checkShadowExist()) {
-        //     this.analyzeShadow();
-        // }
+        if (this.checkShadowExist()) {
+            this.analyzeShadow();
+        }
         if (this.checkOutlineExist()) {
             this.analyzeOutline();
         }
@@ -362,7 +361,7 @@ class Texture {
     }
 
     checkShadowExist() {
-        if (this.fileExtension !== "sad" && this.fileExtension !== "sd" && this.fileExtension !== "rso") {
+        if (this.fileExtension !== "sad" && this.fileExtension !== "sd" && this.fileExtension !== "rso" && this.fileExtension !== "rbd") {
             this.isExistShadow = false;
             return false;
         }
@@ -685,40 +684,42 @@ class Texture {
         );
     }
 
-    createTextureCanvases() {
-        const canvas = canvasManager.canvas;
-        const textureCanvases = [];
-
+    createTextureCanvases(type = "body") {
         for (let i = 0; i < this.frameCount; i++) {
-            this.draw(i);
-            const c = document.createElement("canvas");
-            c.width = canvas.width;
-            c.height = canvas.height;
-            const ctx = c.getContext("2d");
-            ctx.drawImage(canvas, 0, 0);
-            textureCanvases.push(c);
+            this.draw(i, type);
         }
-
-        this.textureCanvases = textureCanvases;
-        return textureCanvases;
+        return this.shape[type].canvas;
     }
 
-    getCanvas(rowIndex) {
+    createTextureCanvas(frameIndex, type) {
+        this.draw(frameIndex, type);
+        return this.shape[type].canvas[frameIndex];
+    }
+
+    getCanvas(frameIndex, type = "body") {
         if (!this.isAnalyzed) this.analyze();
-        if (!this.textureCanvases) this.createTextureCanvases();
-        return this.textureCanvases[rowIndex];
+        if (!this.shape[type].canvas[frameIndex]) this.createTextureCanvas(frameIndex, type);
+        return this.shape[type].canvas[frameIndex].canvas;
     }
 
-    draw(rowIndex) {
-        this.drawFrame = rowIndex;
+    getPixiTexture(frameIndex, type = "body") {
+        if (!this.isAnalyzed) this.analyze();
+        if (!this.shape[type].canvas[frameIndex]) this.createTextureCanvas(frameIndex, type);
+        const texture = PIXI.Texture.from(this.shape[type].canvas[frameIndex].canvas);
+        return texture;
+    }
+
+    draw(frameIndex, type = "body") {
+        this.drawFrame = frameIndex;
+        this.drawShapeType = type;
+        const canvasManager = this.shape[type].canvas[frameIndex] || new CanvasManager();
+        this.shape[type].canvas[frameIndex] = canvasManager;
+
         this.resizeCanvas();
 
-        // clear
-        canvasManager.clear();
-
-        this.drawBody();
-        if (this.useShadow) this.drawShadow();
-        this.drawOutline();
+        type === "body" && this.drawBody();
+        type === "shadow" && this.drawShadow();
+        type === "outline" && this.drawOutline();
 
         // update
         canvasManager.update();
@@ -729,13 +730,12 @@ class Texture {
     }
 
     resizeCanvas() {
-        if (false/* this.getIsUseMargin() || this.useShadow */) {
-            if (this.fileName.includes("0004") || this.fileName.includes("0005")) {
-                console.log(this.fileName, "max size info", this.maxSizeInfo, "|", "shadow", this.useShadow);
-            }
+        const canvasManager = this.shape[this.drawShapeType].canvas[this.drawFrame];
+
+        if (false/* this.getIsUseMargin() */) {
             canvasManager.resize(this.maxSizeInfo.outerWidth, this.maxSizeInfo.outerHeight);
         } else {
-            canvasManager.resize(this.shape.body.width[this.drawFrame], this.shape.body.height[this.drawFrame])
+            canvasManager.resize(this.shape[this.drawShapeType].width[this.drawFrame], this.shape[this.drawShapeType].height[this.drawFrame])
         }
     }
 
@@ -760,6 +760,7 @@ class Texture {
 
     drawBodySmi() {
         const reader = this.reader;
+        const canvasManager = this.shape.body.canvas[this.drawFrame];
 
         var isUseOpacity = this.getIsUseOpacity();
         var isUseMargin = this.getIsUseMargin();
@@ -802,6 +803,7 @@ class Texture {
 
     drawBodyHighColor() {
         const reader = this.reader;
+        const canvasManager = this.shape.body.canvas[this.drawFrame];
 
         var isUseOpacity = this.getIsUseOpacity();
         var isUseMargin = this.getIsUseMargin();
@@ -849,6 +851,7 @@ class Texture {
 
     drawBodyLowColor() {
         const reader = this.reader;
+        const canvasManager = this.shape.body.canvas[this.drawFrame];
 
         var isUseOpacity = this.getIsUseOpacity();
         var isUseMargin = this.getIsUseMargin();
@@ -912,17 +915,14 @@ class Texture {
             return;
         }
 
-        if (!this.useShadow) {
-            return;
-        }
-
         const reader = this.reader;
+        const canvasManager = this.shape.shadow.canvas[this.drawFrame];
 
         var startOffset = this.shape.shadow.startOffset[this.drawFrame];
         var width = this.shape.shadow.width[this.drawFrame];
         var height = this.shape.shadow.height[this.drawFrame];
-        var left = this.maxSizeInfo.left - this.shape.shadow.left[this.drawFrame];
-        var top = this.maxSizeInfo.top - this.shape.shadow.top[this.drawFrame];
+        var left = 0;
+        var top = 0;
 
         var w, h, unityCount, unityWidth;
 
@@ -958,6 +958,7 @@ class Texture {
         }
 
         const reader = this.reader;
+        const canvasManager = this.shape.outline.canvas[this.drawFrame];
 
         var startOffset = this.shape.outline.startOffset[this.drawFrame];
         var width = this.shape.outline.width[this.drawFrame];
@@ -988,10 +989,6 @@ class Texture {
                 }
             }
         }
-    }
-
-    setUseShadow(useShadow) {
-        this.useShadow = useShadow;
     }
 
     getIsShowBody() {
@@ -1027,6 +1024,7 @@ class EffectShape {
         this.height = [];
         this.left = [];
         this.top = [];
+        this.canvas = [];
     }
 }
 
