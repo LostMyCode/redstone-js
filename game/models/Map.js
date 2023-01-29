@@ -425,7 +425,10 @@ class BuildingInfo {
      */
     readData(br) {
         this.textureId = br.readUInt16LE();
-        this.unk0 = br.readStructUInt8(70);
+        br.readUInt16LE();
+        br.readUInt16LE();
+        br.readUInt16LE();
+        this.unk0 = br.readStructUInt8(64);
         this.index = br.readUInt16LE();
         this.unk1 = br.readStructUInt8(10);
     }
