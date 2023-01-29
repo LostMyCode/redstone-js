@@ -36,12 +36,6 @@ class Map {
             height: 0
         }
         this.name = "";
-        this.boundingBox = {
-            top: 0,
-            left: 0,
-            bottom: 0,
-            right: 0
-        };
 
         /**
          * @type {ObjectInfo[]}
@@ -49,7 +43,6 @@ class Map {
         this.objectInfos = [];
 
         this.readData(br);
-        // this.createBoundingBox();
     }
 
     /**
@@ -242,28 +235,6 @@ class Map {
             this.buildingInfos[buildingInfo.index] = buildingInfo;
         }
     }
-
-    createBoundingBox() {
-        const objectInfoBlocks = this.tileData3;
-        const boundingBox = {
-            top: Infinity, left: Infinity, right: -Infinity, bototm: -Infinity
-        }
-        for (let i = 0; i < this.size.height; i++) {
-            for (let j = 0; j < this.size.width; j++) {
-                const bytes = objectInfoBlocks[i * this.size.width + j];
-                if (this.scenarioVersion === 5.3 && bytes[0] === 0x02 && bytes[1] === 0x08) {
-                    const x = j * 64 - 64 / 2;
-                    const y = i * 32 - 32 / 2;
-                    boundingBox.left = Math.min(boundingBox.left, x);
-                    boundingBox.right = Math.max(boundingBox.right, x);
-                    boundingBox.top = Math.min(boundingBox.top, y);
-                    boundingBox.bototm = Math.max(boundingBox.bototm, y);
-                }
-            }
-        }
-        this.boundingBox = boundingBox;
-        console.log("Map bounding box created", boundingBox);
-    }
 }
 
 export const ObjectType = {
@@ -377,7 +348,7 @@ class ObjectInfo {
         const unk4 = br.readUInt32LE();
         const unk5 = br.readUInt32LE();
 
-        // console.log("check unknown values", this.enableShadow, this.index, unk2, unk3, unk4, unk5);
+        // if (this.index === 7) console.log("check unknown values", this.isDrawShadow, this.index, unk2, unk3, unk4, unk5);
     }
 
     readSubObjects() {
