@@ -361,7 +361,7 @@ class Texture {
     }
 
     checkShadowExist() {
-        if (this.fileExtension !== "sad" && this.fileExtension !== "sd" && this.fileExtension !== "rso" && this.fileExtension !== "rbd") {
+        if (!["sad", "sd", "rso", "rfo", "rbd"].includes(this.fileExtension)) {
             this.isExistShadow = false;
             return false;
         }
@@ -523,7 +523,7 @@ class Texture {
     }
 
     checkOutlineExist() {
-        if (this.fileExtension !== "sad" && this.fileExtension !== "sd") {
+        if (this.fileExtension !== "sad" && this.fileExtension !== "sd" && this.fileExtension !== "rso") {
             this.isExistOutline = false;
             return this.isExistOutline;
         }

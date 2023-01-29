@@ -96,14 +96,26 @@ class GameMap {
             sprite.position.set(x, y);
 
             this.positionSpecifiedObjectContainer.addChild(sprite);
+
+            if (texture.isExistShadow) {
+                const pixiTexture = texture.getPixiTexture(0, "shadow");
+
+                const x = obj.point.x - texture.shape.shadow.left[0];
+                const y = obj.point.y - texture.shape.shadow.top[0];
+
+                const sprite = new PIXI.Sprite(pixiTexture);
+                sprite.position.set(x, y);
+
+                this.shadowContainer.addChild(sprite);
+            }
         });
 
         this.tileContainer.cacheAsBitmap = true;
         this.shadowContainer.cacheAsBitmap = true;
 
         this.mainCanvas.mainContainer.addChild(this.tileContainer);
-        this.mainCanvas.mainContainer.addChild(this.positionSpecifiedObjectContainer);
         this.mainCanvas.mainContainer.addChild(this.shadowContainer);
+        this.mainCanvas.mainContainer.addChild(this.positionSpecifiedObjectContainer);
         this.mainCanvas.mainContainer.addChild(this.objectContainer);
     }
 
