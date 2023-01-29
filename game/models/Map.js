@@ -1,5 +1,5 @@
 import BufferReader from "../../utils/BufferReader";
-import { decodeScenarioBuffer, sjisByteToString } from "../../utils/RedStoneRandom";
+import { decodeScenarioBuffer, getKeyByValue, sjisByteToString } from "../../utils/RedStoneRandom";
 import { MapActorGroup, MapActorSingle } from "./Actor";
 import Event from "./Event";
 
@@ -234,6 +234,10 @@ class Map {
             const buildingInfo = new BuildingInfo(br);
             this.buildingInfos[buildingInfo.index] = buildingInfo;
         }
+    }
+
+    getMapsetName() {
+        return getKeyByValue(Mapset, this.textureDirectoryId);
     }
 }
 
