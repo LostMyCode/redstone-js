@@ -1,5 +1,7 @@
-import BufferReader from "./BufferReader";
-import { decodeScenarioBuffer, sjisByteToString } from "./RedStoneRandom";
+import BufferReader from "../../utils/BufferReader";
+import { decodeScenarioBuffer, getKeyByValue, sjisByteToString } from "../../utils/RedStoneRandom";
+import { MapActorGroup, MapActorSingle } from "./Actor";
+import Event from "./Event";
 
 // from Basic.cs model
 const MagicStructSize = 12; // last is short Dark
@@ -34,12 +36,6 @@ class Map {
             height: 0
         }
         this.name = "";
-        this.boundingBox = {
-            top: 0,
-            left: 0,
-            bottom: 0,
-            right: 0
-        };
 
         /**
          * @type {ObjectInfo[]}
@@ -47,7 +43,6 @@ class Map {
         this.objectInfos = [];
 
         this.readData(br);
-        // this.createBoundingBox();
     }
 
     /**
@@ -241,262 +236,8 @@ class Map {
         }
     }
 
-    createBoundingBox() {
-        const objectInfoBlocks = this.tileData3;
-        const boundingBox = {
-            top: Infinity, left: Infinity, right: -Infinity, bototm: -Infinity
-        }
-        for (let i = 0; i < this.size.height; i++) {
-            for (let j = 0; j < this.size.width; j++) {
-                const bytes = objectInfoBlocks[i * this.size.width + j];
-                if (this.scenarioVersion === 5.3 && bytes[0] === 0x02 && bytes[1] === 0x08) {
-                    const x = j * 64 - 64 / 2;
-                    const y = i * 32 - 32 / 2;
-                    boundingBox.left = Math.min(boundingBox.left, x);
-                    boundingBox.right = Math.max(boundingBox.right, x);
-                    boundingBox.top = Math.min(boundingBox.top, y);
-                    boundingBox.bototm = Math.max(boundingBox.bototm, y);
-                }
-            }
-        }
-        this.boundingBox = boundingBox;
-        console.log("Map bounding box created", boundingBox);
-    }
-}
-
-export const ActorImage = {
-    305: "PITCHMAN_F",
-}
-
-class MapActorGroup {
-    constructor(br, structLength, job2Index) {
-        this.br = br;
-        this.structLength = structLength;
-        this.job = job2Index;
-        this.readData(br);
-    }
-
-    /**
-     * @param {BufferReader} br 
-     */
-    readData(br) {
-        let encryptedBuf = Buffer.from(br.readStructUInt8(this.structLength));
-        let decryptedBuf = decodeScenarioBuffer(encryptedBuf, br.decodeKey);
-
-        const baseReader = new BufferReader(decryptedBuf);
-        this.internalID = baseReader.readUInt16LE();
-        this.unknown_1 = baseReader.readUInt16LE(); // is same value as job2Index?
-        this.minLevel = baseReader.readUInt16LE();
-        this.name = baseReader.readString(0x14, "sjis");
-        this.imageSumCandidate = baseReader.readStructUInt16LE(0x03);
-        this.unknown_4 = baseReader.readUInt16LE();
-        [this.sizeWidth, this.sizeHeight] = baseReader.readStructUInt16LE(2);
-        this.maxLevel = baseReader.readUInt16LE();
-        this.unknown_3 = baseReader.readStructUInt8(this.structLength - baseReader.offset);
-
-        const enemyKarmaInfoLen = br.readInt32LE();
-        this.enemyKarmaInfos = [];
-        for (let i = 0; i < enemyKarmaInfoLen; i++) {
-            const enemyKarmaInfo = {
-                timing: br.readInt32LE(),
-                karmas: new Array(br.readUInt16LE()), // new Karma[len]
-                comment: (() => {
-                    let commentString = "";
-                    const count = br.readInt16LE();
-                    const encryptedBytes = br.readStructUInt8(count); // EUC-KR
-                    return commentString;
-                })()
-            };
-            this.enemyKarmaInfos.push(enemyKarmaInfo);
-            for (let j = 0; j < enemyKarmaInfo.karmas.length; j++) {
-                enemyKarmaInfo.karmas[j] = new Karma(br);
-            }
-        }
-    }
-}
-
-class Karma {
-    constructor(br) {
-        this.br = br;
-        this.readData(br);
-    }
-
-    /**
-     * @param {BufferReader} br 
-     */
-    readData(br) {
-        let encryptedBuf = Buffer.from(br.readStructUInt8(0x10));
-        let decryptedBuf = decodeScenarioBuffer(encryptedBuf, br.decodeKey);
-
-        const baseReader = new BufferReader(decryptedBuf);
-        this.unknown_1 = baseReader.readUInt16LE();
-        this.conditionRelation = baseReader.readUInt16LE();
-        this.commands = new Array(baseReader.readUInt16LE()); // KarmaItemCommand Array
-        this.conditions = new Array(baseReader.readUInt16LE()); // KarmaItemCondition Array;
-
-        const messageLength = baseReader.readUInt16LE();
-
-        this.probabirity = baseReader.readUInt16LE();
-
-        this.unknown_2 = baseReader.readUInt16LE();
-        this.unknown_3 = baseReader.readUInt16LE();
-
-        this.comment = br.readStructUInt8(messageLength); // EUC-KR;
-
-        for (let i = 0; i < this.conditions.length; i++) {
-            // this.conditions[i] = new KarmaItemCondition(br);
-            this.conditions[i] = new KarmaItem(br);
-        }
-
-        for (let i = 0; i < this.commands.length; i++) {
-            // this.commands[i] = new KarmaItemCommand(br);
-            this.commands[i] = new KarmaItem(br);
-        }
-    }
-}
-
-class KarmaItem {
-    constructor(br) {
-        this.br = br;
-        this.readData(br);
-    }
-
-    /**
-     * @param {BufferReader} br 
-     */
-    readData(br) {
-        let encryptedBuf = Buffer.from(br.readStructUInt8(0x20));
-        let decryptedBuf = decodeScenarioBuffer(encryptedBuf, br.decodeKey);
-
-        const baseReader = new BufferReader(decryptedBuf);
-        this._karmaItem = baseReader.readUInt32LE();
-        this.value = baseReader.readStructUInt32LE(4);
-        this.unknown_0 = baseReader.readUInt32LE();
-        this.unknown_1 = baseReader.readUInt32LE();
-
-        let messageFlags = baseReader.readUInt16LE();
-        let messageLength = messageFlags & 0x7FFF;
-
-        this.unknown_2 = ((messageFlags >> 15) & 1) == 1;
-        if (this.unknown_2) {
-            console.log("whats");
-        }
-
-        if (!this.unknown_2 && messageLength > 0) {
-            this.message = decodeScenarioBuffer(br.readStructUInt8(messageLength), br.decodeKey);
-        } else {
-            this.message = null;
-        }
-    }
-}
-
-export const ActorDirect = {
-    Up: 0,
-    UpRight: 1,
-    Right: 2,
-    DownRight: 3,
-    Down: 4,
-    DownLeft: 5,
-    Left: 6,
-    UpLeft: 7,
-
-    /**
-     * リスポーンフラグ
-     */
-    Spawn: 8,
-}
-
-class MapActorSingle {
-    constructor(br) {
-        this.br = br;
-        this.readData(br);
-    }
-
-    /**
-     * @param {BufferReader} br 
-     */
-    readData(br) {
-        const decryptedBuf = decodeScenarioBuffer(br.readStructUInt8(0xB0), br.decodeKey);
-        const baseReader = new BufferReader(decryptedBuf);
-
-        this.index = baseReader.readUInt32LE();
-        this.internalID = baseReader.readUInt16LE();
-        this.charType = baseReader.readUInt16LE(); // character type
-        this.direct = baseReader.readInt16LE(); // ActorDirect
-        this.unknown_0 = baseReader.readUInt16LE();
-        this.popSpeed = baseReader.readUInt32LE();
-        this.unknown_1 = baseReader.readStructUInt8(0x78);
-        this.point = { x: baseReader.readUInt32LE(), y: baseReader.readUInt32LE() };
-        this.name = baseReader.readString(0x10, "sjis");
-        this.unknown_2 = baseReader.readStructUInt8(0x10);
-
-        this.events = new Array(br.readInt16LE()) // Event array
-        if (this.events.length > 0) {
-            const speechType = br.readUInt16LE();
-            const unknown = br.readUInt16LE();
-            for (let i = 0; i < this.events.length; i++) {
-                this.events[i] = new Event(br, speechType);
-            }
-        }
-    }
-}
-
-/**
- * Karmas/Event.cs
- */
-class Event {
-    constructor(br, speechType) {
-        this.br = br;
-        this.speechType = speechType;
-        this.readData(br);
-    }
-
-    /**
-     * @param {BufferReader} br 
-     */
-    readData(br) {
-        const decryptedBuf = decodeScenarioBuffer(br.readStructUInt8(0x0C), br.decodeKey);
-        const baseReader = new BufferReader(decryptedBuf);
-
-        this.unknown_0 = baseReader.readUInt16LE();
-        this.message = decodeScenarioBuffer(br.readStructUInt8(baseReader.readInt16LE()), br.decodeKey);
-        this.selections = new Array(baseReader.readUInt16LE());
-        this.occurrenceCondition = new Array(baseReader.readUInt16LE()); // KarmaItemCondition array
-
-        for (let i = 0; i < this.occurrenceCondition.length; i++) {
-            this.occurrenceCondition[i] = new KarmaItem(br); // new KarmaItemCondition
-        }
-
-        this.occurrenceReletion = baseReader.readUInt16LE(); // Karma.ConditionFlag
-        this.autoStart = !!baseReader.readUInt16LE(); // boolean
-
-        for (let i = 0; i < this.selections.length; i++) {
-            this.selections[i] = new Selection(br);
-        }
-    }
-}
-
-class Selection {
-    constructor(br) {
-        this.br = br;
-        this.readData(br);
-    }
-
-    /**
-     * @param {BufferReader} br 
-     */
-    readData(br) {
-        /**
-         * @type {Karma[]}
-         */
-        this.karmas = new Array(br.readUInt16LE());
-
-        this.message = sjisByteToString(decodeScenarioBuffer(br.readStructUInt8(br.readUInt16LE()), br.decodeKey));
-        // console.log("selection message", this.message);
-
-        for (let i = 0; i < this.karmas.length; i++) {
-            this.karmas[i] = new Karma(br);
-        }
+    getMapsetName() {
+        return getKeyByValue(Mapset, this.textureDirectoryId);
     }
 }
 
@@ -522,6 +263,19 @@ export const ObjectType = {
     SystemArea2: 18, // システムエリア
     Unk6: 19, // 
     Unk7: 20, //
+}
+
+export const portalTextureInfo = {
+    door: {},
+    doorGrow: {},
+    topGate: {},
+    topRightGate: {},
+    rightGate: {},
+    bottomRightGate: {},
+    bottomGate: {},
+    bottomLeftGate: {},
+    leftGate: {},
+    topLeftGate: {},
 }
 
 class AreaInfo {
@@ -604,16 +358,14 @@ class ObjectInfo {
         this.readSubObjects();
 
         // rest 14
-        this.enableShadow = br.readUInt16LE() === 1;
+        this.isDrawShadow = br.readUInt16LE() === 1;
         this.index = br.readUInt16LE();
         const unk2 = br.readUInt8();
         const unk3 = br.readUInt8();
         const unk4 = br.readUInt32LE();
         const unk5 = br.readUInt32LE();
 
-        if (this.textureId === 4) {
-            // console.log("check unknown values of countertable", this.enableShadow, this.index, unk2, unk3, unk4, unk5);
-        }
+        // if (this.index === 7) console.log("check unknown values", this.isDrawShadow, this.index, unk2, unk3, unk4, unk5);
     }
 
     readSubObjects() {
@@ -661,212 +413,13 @@ class BuildingInfo {
      */
     readData(br) {
         this.textureId = br.readUInt16LE();
-        this.unk0 = br.readStructUInt8(70);
+        br.readUInt16LE();
+        br.readUInt16LE();
+        br.readUInt16LE();
+        this.unk0 = br.readStructUInt8(64);
         this.index = br.readUInt16LE();
         this.unk1 = br.readStructUInt8(10);
     }
-}
-
-export const CType = {
-    /**
-     * プレイヤー
-     */
-    Player: 0,
-
-    /**
-     * NPC
-     */
-    NPC: 1,
-
-    /**
-     * モンスター
-     */
-    Monster: 2,
-
-    /**
-     * 武具商人
-     */
-    Equipment_merchant: 3,
-
-    /**
-     * 防具商人
-     */
-    ArmorMerchant: 4,
-
-    /**
-     * 雑貨商人
-     */
-    MiscellaneousGoodsMerchant: 5,
-
-    /**
-     * 道具商人
-     */
-    ToolMerchant: 6,
-
-    /**
-     * 取引仲介人
-     */
-    BrokerageHuman: 7,
-
-    /**
-     * 銀行員
-     */
-    Banker: 8,
-
-    /**
-     * スキルマスター
-     */
-    SkillMaster: 9,
-
-    /**
-     * 一般クエスト
-     */
-    GeneralQuest: 10,
-
-    /**
-     * 称号クエスト
-     */
-    TitleQuest: 11,
-
-    /**
-     * ギルドクエスト
-     */
-    GuildQuest: 12,
-
-    /**
-     * メインクエスト
-     */
-    MainQuest: 13,
-
-    /**
-     * サポーター1
-     */
-    Supporters1: 14,
-
-    /**
-     * テレポーター
-     */
-    Teleporters: 15,
-
-    /**
-     * 治療師
-     */
-    Healers: 16,
-
-    /**
-     * クエスト案内人
-     */
-    QuestGuidPeople: 17,
-
-    /**
-     * 鍛冶屋
-     */
-    Blacksmith: 18,
-
-    /**
-     * サポーター2
-     */
-    Supporters2: 19,
-
-    /**
-     * クエスト依頼人
-     */
-    QuestAskedPeople: 20,
-
-    /**
-     * クエスト関連人
-     */
-    QuestRelatedPerson: 21,
-
-    /**
-     * クエストモンスター
-     */
-    QuestMonster: 22,
-
-    /**
-     * 武器商人<br/>(剣士/戦士)
-     */
-    ArmsDealerSwordsmanOrWarrior: 23,
-
-    /**
-     * 武器商人<br/>(ウィザード/ウルフマン)
-     */
-    ArmsDealerWizardOrWolfman: 24,
-
-    /**
-     * 武器商人<br/>(ビショップ/追放天使)
-     */
-    ArmsDealerBishopOrexiled_angel: 25,
-
-    /**
-     * 武器商人<br/>(シーフ/武道家)
-     */
-    ArmsDealerThiefOrmartial_artist: 26,
-
-    /**
-     * 武器商人<br/>(アーチャー/ランサー)
-     */
-    ArmsDealerArcherOrLancer: 27,
-
-    /**
-     * 武器商人<br/>(ビーストテイマー/サマナー)
-     */
-    ArmsDealerBisutoteimaOrSummoner: 28,
-
-    /**
-     * 武器商人<br/>(プリンセス/リトルウィッチ)
-     */
-    ArmsDealerPrincessOrLittlewitch: 29,
-
-    /**
-     * 武器商人<br/>(ネクロマンサー/悪魔)
-     */
-    ArmsDealerNecromancerOrDevil: 30,
-
-    /**
-     * 決戦報酬商人
-     */
-    BattleRewardMerchant: 31,
-
-    /**
-     * 武器商人<br/>(霊術師/闘士)
-     */
-    WeaponNumerologyTeacherMerchantOrWarrior: 32,
-
-    /**
-     * ギルドホールテレポーター
-     */
-    GuildHallTeleporters: 33,
-
-    /**
-     * イベント案内人
-     */
-    EventGuidepeople: 34,
-
-    /**
-     * 冒険家協会
-     */
-    AdventurerAssociation: 35,
-
-    /**
-     * 武器商人<br/>(光奏師/獣人)
-     */
-    ArmsDealerLightResponseRateNursesOrBeastPeople: 36,
-
-    /**
-     * 1Dayクエスト
-     */
-    OneDayQuest: 37,
-
-    /**
-     * 錬成案内人
-     */
-    DrillingGuidePeople: 38,
-
-    /**
-     * 武器商人<br/>(メイド/黒魔術師)
-     */
-    ArmsDealerMaidOrBlackMagician: 39
 }
 
 export default Map;

@@ -91,7 +91,7 @@ class BufferReader {
         const bytes = this.readStructUInt8(count);
         for (let i = 0; i < count; i++) {
             const byte = bytes[i];
-            if (encoding === "sjis" && byte === 0) break;
+            if (byte === 0) break;
             arr.push(byte);
         }
         if (encoding === "sjis") {

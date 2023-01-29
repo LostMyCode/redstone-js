@@ -1,20 +1,9 @@
 import BufferReader from "../utils/BufferReader";
-import RedStoneMap, { ActorImage, Mapset, MapType, ObjectType } from "../utils/Map";
+import RedStoneMap, { Mapset, MapType, ObjectType, portalTextureInfo } from "../game/models/Map";
 import { getKeyByValue, logger } from "../utils/RedStoneRandom";
-import Texture, { ZippedTextures } from "../utils/Texture";
-
-const portalTextureInfo = {
-  door: {},
-  doorGrow: {},
-  topGate: {},
-  topRightGate: {},
-  rightGate: {},
-  bottomRightGate: {},
-  bottomGate: {},
-  bottomLeftGate: {},
-  leftGate: {},
-  topLeftGate: {},
-}
+import Texture from "../game/models/Texture";
+import { ActorImage } from "../game/models/Actor";
+import { fetchBinaryFile, loadTexture, loadZippedTextures } from "../utils";
 
 // const DATA_DIR = "/data/";
 const DATA_DIR = "https://sigr.io/redstone/";
@@ -22,72 +11,22 @@ const MAPSET_DIR = "https://sigr.io/redstone/Mapset/";
 const INTERFACE_DIR = "https://sigr.io/redstone/Interface/";
 const RMD_DIR = "https://sigr.io/redstone/Scenario/";
 
+const TILE_WIDTH = 64;
+const TILE_HEIGHT = 32;
+
 class MapReaderDebug {
+  /**
+   * @type {HTMLCanvasElement}
+   */
+  canvas = document.getElementById("canvas");
   /**
    * @type {CanvasRenderingContext2D}
    */
   ctx = document.getElementById("canvas").getContext('2d');
 
-  async fetchBinaryFile(path) {
-    const f = await fetch(path);
-    const ab = await f.arrayBuffer();
-    return Buffer.from(ab);
-  }
-
-  async loadImageSync(src) {
-    return await new Promise((resolve) => {
-      const image = new Image();
-      image.onload = () => resolve(image);
-      image.src = src;
-    });
-  }
-
-  async loadZippedImages(path) {
-    const buf = await this.fetchBinaryFile(path);
-    const unzip = new Zlib.Unzip(buf);
-    const fileNames = unzip.getFilenames();
-    const images = {};
-    let loadedCount = 0;
-
-    return await new Promise((resolve) => {
-      fileNames.forEach(fileName => {
-        const data = unzip.decompress(fileName);
-        const blob = new Blob([data], { type: 'image/png' });
-        const url = URL.createObjectURL(blob);
-        const img = new Image;
-        img.onload = function () {
-          loadedCount++;
-          if (loadedCount === fileNames.length) {
-            resolve(images);
-          }
-        }
-        img.src = url;
-        const imageNum = parseInt(fileName.match(/_(\d+)/)[1]);
-        images[imageNum] = img;
-      });
-    });
-  }
-
-  async loadTexture(path) {
-    const buf = await this.fetchBinaryFile(path);
-    console.log("[Texture] Loading texture...", path);
-    const texture = new Texture(path.split("/").pop(), buf);
-    console.log("[Texture] Ready!!", path);
-    return texture;
-  }
-
-  async loadZippedTextures(path) {
-    const buf = await this.fetchBinaryFile(path);
-    console.log("[Texture] Loading zipped textures...", path);
-    const zippedTextures = new ZippedTextures(buf);
-    console.log("[Texture] Ready!!", path);
-    return zippedTextures;
-  }
-
   async loadCommonResources() {
     console.log("[MapReaderDebug] Loading common resources...");
-    // this.portalImages = await this.loadZippedImages(DATA_DIR + "gateAnm.zip");
-    this.portalImages = await this.loadTexture(`${INTERFACE_DIR}gateAnm.sad`);
+    this.portalImages = await loadTexture(`${INTERFACE_DIR}gateAnm.sad`);
     console.log("[MapReaderDebug] common resources loaded");
   }
 
@@ -102,22 +41,44 @@ class MapReaderDebug {
       if (!ActorImage[npcGroup.job]) return;
       const textureFileName = ActorImage[npcGroup.job] + ".sad";
       if (this.npcTextures[textureFileName]) continue;
-      const textureBuffer = await this.fetchBinaryFile(DATA_DIR + "NPC/" + textureFileName);
+      const textureBuffer = await fetchBinaryFile(DATA_DIR + "NPC/" + textureFileName);
       this.npcTextures[textureFileName] = new Texture(textureFileName, textureBuffer);
+    }
+  }
+
+  handleScroll = (e) => {
+    clearTimeout(this._scrollEndCheckTimeout);
+    this._scrollEndCheckTimeout = setTimeout(() => {
+      localStorage.setItem("rs-mapdebug-lastscroll", JSON.stringify({ x: e.target.scrollLeft, y: e.target.scrollTop }));
+    }, 500);
+  }
+
+  setLastScroll() {
+    const lastScroll = JSON.parse(localStorage.getItem("rs-mapdebug-lastscroll"));
+    if (lastScroll) {
+      document.body.scrollTo(lastScroll.x, lastScroll.y);
     }
   }
 
   async execute() {
     // this.ctx.scale(0.5, 0.5);
     await this.loadCommonResources();
-    const fileName = (location.pathname.split("Map/").pop() || "[060]T01_A01") + ".rmd";
-    this.rmdFileBuffer = await this.fetchBinaryFile(RMD_DIR + fileName);
+    const fileName = (location.pathname.split("/").pop() || "[060]T01_A01") + ".rmd";
+    this.rmdFileBuffer = await fetchBinaryFile(RMD_DIR + fileName);
 
     const br = new BufferReader(this.rmdFileBuffer);
     const map = new RedStoneMap(br);
     window.currentMap = map; // for debug
+
+    document.body.style.overflow = "scroll";
+    document.body.style.overflowX = "scroll";
+    this.canvas.width = TILE_WIDTH * map.size.width;
+    this.canvas.height = TILE_HEIGHT * map.size.height;
+    this.setLastScroll();
+    document.body.addEventListener("scroll", this.handleScroll);
+
     const mapset = getKeyByValue(Mapset, map.textureDirectoryId);
-    this.tileTextures = await this.fetchBinaryFile(MAPSET_DIR + `${mapset}/tile.mpr`);
+    this.tileTextures = await fetchBinaryFile(MAPSET_DIR + `${mapset}/tile.mpr`);
     this.tileTextures = new Texture("tile.mpr", Buffer.from(this.tileTextures));
 
     await this.loadNpcTextures(map);
@@ -278,9 +239,9 @@ class MapReaderDebug {
       addPortalClickEvent();
     }, 1000);
 
-    const zippedObjectTextures = await this.loadZippedTextures(MAPSET_DIR + `${mapset}/${mapset}_Objects.zip`);
+    const zippedObjectTextures = await loadZippedTextures(MAPSET_DIR + `${mapset}/${mapset}_Objects.zip`);
     const zippedBuildingTextures = Object.keys(map.buildingInfos).length ?
-      await this.loadZippedTextures(MAPSET_DIR + `${mapset}/${mapset}_Buildings.zip`)
+      await loadZippedTextures(MAPSET_DIR + `${mapset}/${mapset}_Buildings.zip`)
       : null;
 
     const getTextureFileName = (textureId, extension = "rso") => {
@@ -303,31 +264,30 @@ class MapReaderDebug {
       const objectMatrix = map.tileData3;
       for (let i = 0; i < map.size.height; i++) {
         for (let j = 0; j < map.size.width; j++) {
-          const bytes = objectMatrix[i * map.size.width + j];
+          const code = objectMatrix[i * map.size.width + j];
           let index;
           let isBuilding = false;
-          if (bytes === 0) continue;
-          if (map.scenarioVersion === 5.3 && bytes < 16 << 8) continue;
-          if (map.scenarioVersion === 6.1 && bytes < 16 << 10) continue;
+          if (code === 0) continue;
+          if (map.scenarioVersion === 5.3 && code < 16 << 8) continue;
+          if (map.scenarioVersion === 6.1 && code < 16 << 10) continue;
           if (map.scenarioVersion === 5.3) {
-            index = bytes % (16 << 8);
+            index = code % (16 << 8);
           }
           else if (map.scenarioVersion === 6.1) {
-            isBuilding = bytes >= 16 << 11;
-            index = isBuilding ? bytes % (16 << 11) : bytes % (16 << 10);
+            isBuilding = code >= 16 << 11;
+            index = isBuilding ? code % (16 << 11) : code % (16 << 10);
           }
           const objectInfo = isBuilding ? map.buildingInfos[index + 1] : map.objectInfos[index + 1];
           if (!objectInfo) {
             // console.log("invalid object index", index, bytes);
             continue;
           }
-          if (i * map.size.width + j === 5194) {
-            console.log(objectInfo, index, bytes);
+          if (i * map.size.width + j === 15073) {
+            console.log(objectInfo, index, code);
           }
 
           const fileName = getTextureFileName(objectInfo.textureId, isBuilding ? "rbd" : undefined);
           const texture = isBuilding ? zippedBuildingTextures.getTexture(fileName) : zippedObjectTextures.getTexture(fileName);
-          // texture.setUseShadow(objectInfo.enableShadow);
           const textureCanvas = texture.getCanvas(0);
 
           const objectBodyTop = texture.maxSizeInfo.top - texture.shape.body.top[0];
@@ -353,7 +313,27 @@ class MapReaderDebug {
               const x = blockCenterX - texture.shape.body.left[id];
               const y = blockCenterY - texture.shape.body.top[id];
               this.ctx.drawImage(textureCanvas, x, y);
+
+              setTimeout(() => {
+                return;
+
+                // object rect
+                this.ctx.lineWidth = 1;
+                this.ctx.strokeStyle = "#fcba03";
+                this.ctx.beginPath();
+                this.ctx.rect(x, y, textureCanvas.width, textureCanvas.height);
+                this.ctx.stroke();
+                this.ctx.closePath();
+                this.ctx.lineWidth = 2;
+
+                // info text
+                this.ctx.fillText(`tex: ${id}, ${i * map.size.width + j}, ${fileName}`, x, y);
+              }, 100);
             }
+
+            // if (i * map.size.width + j === 32611) {
+            //   console.log(objectInfo.unk0);
+            // }
           }
 
           !isBuilding && objectInfo.subObjectInfos.forEach(subObjectInfo => {
@@ -404,7 +384,7 @@ class MapReaderDebug {
             this.ctx.lineWidth = 2;
 
             // info text
-            this.ctx.fillText(`tex: ${objectInfo.textureId}, ${i * map.size.width + j}`, x, y);
+            this.ctx.fillText(`tex: ${objectInfo.textureId}, ${i * map.size.width + j}, idx: ${objectInfo.index}`, x, y);
           }, 100);
         }
       }
