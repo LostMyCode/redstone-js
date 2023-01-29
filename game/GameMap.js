@@ -1,11 +1,12 @@
 import * as PIXI from "pixi.js";
 
-import RedStoneMap, { Mapset } from "./models/Map";
+import RedStoneMap, { Mapset, ObjectType, portalTextureInfo } from "./models/Map";
 import { fetchBinaryFile, loadTexture, loadZippedTextures } from "../utils";
 import BufferReader from "../utils/BufferReader";
 import { getKeyByValue } from "../utils/RedStoneRandom";
 import MainCanvas from "./MainCanvas";
 import Map from "./models/Map";
+import Camera from "./Camera";
 
 const DATA_DIR = "https://sigr.io/redstone";
 const MAPSET_DIR = "https://sigr.io/redstone/Mapset";
@@ -49,20 +50,43 @@ class GameMap {
          * @type {Map}
          */
         this.map = null;
-        this.mapsetName = null;
 
         this.tileContainer = new PIXI.Container();
         this.objectContainer = new PIXI.Container();
         this.positionSpecifiedObjectContainer = new PIXI.Container();
         this.shadowContainer = new PIXI.Container();
+        this.portalContainer = new PIXI.Container();
     }
 
-    async loadMap() {
+    reset() {
+        this.tileContainer.removeChildren();
+        this.objectContainer.removeChildren();
+        this.positionSpecifiedObjectContainer.removeChildren();
+        this.shadowContainer.removeChildren();
+        this.portalContainer.removeChildren();
+
+        this.tileContainer.destroy()
+        this.shadowContainer.destroy();
+        this.tileContainer = new PIXI.Container();
+        this.shadowContainer = new PIXI.Container();
+
+        this.map = null;
+    }
+
+    async loadCommon() {
+        this.portalTexture = await loadTexture(`${INTERFACE_DIR}/gateAnm.sad`);
+    }
+
+    async loadMap(rmdFileName = "[000]T01.rmd") {
         console.log("[Game]", "Loading scenario file...");
         // const rmd = await fetchBinaryFile(`${RMD_DIR}/[060]T01_A01.rmd`);
-        const rmd = await fetchBinaryFile(`${RMD_DIR}/[000]T01.rmd`);
+        const rmd = await fetchBinaryFile(`${RMD_DIR}/${rmdFileName}`);
         this.map = new RedStoneMap(new BufferReader(rmd));
+        this.currentRmdFileName = rmdFileName;
         console.log("[Game]", "Scenario loaded");
+
+        Camera.setMapSize(this.map.size.width * TILE_WIDTH, this.map.size.width * TILE_HEIGHT);
+        this.initPosition();
 
         const mapsetName = this.map.getMapsetName();
         this.tileTexture = await loadTexture(`${MAPSET_DIR}/${mapsetName}/tile.mpr`);
@@ -110,10 +134,13 @@ class GameMap {
             }
         });
 
+        this.renderPortals();
+
         this.tileContainer.cacheAsBitmap = true;
         this.shadowContainer.cacheAsBitmap = true;
 
         this.mainCanvas.mainContainer.addChild(this.tileContainer);
+        this.mainCanvas.mainContainer.addChild(this.portalContainer);
         this.mainCanvas.mainContainer.addChild(this.shadowContainer);
         this.mainCanvas.mainContainer.addChild(this.positionSpecifiedObjectContainer);
         this.mainCanvas.mainContainer.addChild(this.objectContainer);
@@ -259,6 +286,82 @@ class GameMap {
                     this.shadowContainer.addChild(sprite);
                 }
             }
+        }
+    }
+
+    renderPortals() {
+        const defaultTexture = this.portalTexture.getPixiTexture(12);
+
+        this.map.areaInfos.forEach(area => {
+            if (!area.moveToFileName) return;
+            if (area.objectInfo !== ObjectType.WarpPortal) return;
+
+            const centerPos = area.centerPos;
+            let pixiTexture = defaultTexture;
+            // it is better way to load all rmd and check MapType of map beyond the gate
+            // check the filename instead as its easier
+            const isGateOrDungeon = area.moveToFileName.match(/G\d+|_D\d+|T\d+/);
+            if (
+                // mapBeyondTheGate.typeAndFlags !== MapType.Shop
+                // area.subObjectInfo === 13 || area.subObjectInfo === 21
+                isGateOrDungeon
+            ) {
+                const isNearLeftBorder = centerPos.x < 500;
+                const isNearTopBorder = centerPos.y < 500;
+                const isNearRightBorder = 64 * this.map.size.width - centerPos.x < 500;
+                const isNearBottomBorder = 32 * this.map.size.height - centerPos.y < 500;
+
+                let portalLocationStr = "";
+                if (isNearTopBorder) {
+                    portalLocationStr += "top";
+                }
+                else if (isNearBottomBorder) {
+                    portalLocationStr += "bottom";
+                }
+                if (isNearLeftBorder) {
+                    portalLocationStr += portalLocationStr.length ? "Left" : "left";
+                }
+                else if (isNearRightBorder) {
+                    portalLocationStr += portalLocationStr.length ? "Right" : "right";
+                }
+                else {
+                    // idk how to relate portal to its texture...
+                    portalLocationStr = "top";
+                }
+                const key = portalLocationStr + "Gate";
+                const index = Object.values(portalTextureInfo).indexOf(portalTextureInfo[key]);
+                const offset = index * 6;
+                pixiTexture = this.portalTexture.getPixiTexture(offset);
+            }
+            else {
+                const index = Object.values(portalTextureInfo).indexOf(portalTextureInfo.door);
+                const offset = index * 6;
+                pixiTexture = this.portalTexture.getPixiTexture(offset);
+            }
+            const x = centerPos.x - pixiTexture.width / 2;
+            const y = centerPos.y - pixiTexture.height / 2;
+
+            const sprite = new PIXI.Sprite(pixiTexture);
+            sprite.position.set(x, y);
+            sprite.interactive = true;
+            sprite.on("click", async () => {
+                console.log("portal gate clicked", area.moveToFileName);
+                this.prevRmdName = this.currentRmdFileName;
+                this.reset();
+                await this.loadMap(area.moveToFileName);
+                this.render();
+            });
+
+            this.portalContainer.addChild(sprite);
+        });
+    }
+
+    initPosition() {
+        if (this.prevRmdName) {
+            const portalToPrevMap = this.map.areaInfos.find(area => area.moveToFileName === this.prevRmdName);
+            console.log(this.map.areaInfos.filter(area => area.moveToFileName));
+            if (!portalToPrevMap) console.log("prev map portal not found :(");
+            Camera.setPosition(portalToPrevMap.centerPos.x, portalToPrevMap.centerPos.y);
         }
     }
 }

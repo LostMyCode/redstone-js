@@ -15,6 +15,9 @@ class RedStone {
 
         // check save data
 
+        // load common resources
+        await this.gameMap.loadCommon();
+        
         // load map
         await this.gameMap.loadMap();
 

@@ -1,10 +1,5 @@
 import * as PIXI from "pixi.js";
-
-const camera = {
-    x: 0,
-    y: 0,
-    scale: 0,
-}
+import Camera from "./Camera";
 
 class MainCanvas {
 
@@ -23,8 +18,6 @@ class MainCanvas {
 
         this.rootContainer = new PIXI.Container;
         this.mainContainer = new PIXI.Container;
-        this.tileContainer = new PIXI.Container;
-        this.objectContainer = new PIXI.Container;
 
         this.currentPos = { x: 0, y: 0 };
         this.pressingKeys = new Set();
@@ -62,26 +55,22 @@ class MainCanvas {
             this.pressingKeys.forEach(key => {
                 switch (key) {
                     case "w":
-                        this.currentPos.y += moveAmount;
+                        Camera.y -= moveAmount;
                         break;
 
                     case "d":
-                        this.currentPos.x -= moveAmount;
+                        Camera.x += moveAmount;
                         break;
 
                     case "s":
-                        this.currentPos.y -= moveAmount;
+                        Camera.y += moveAmount;
                         break;
 
                     case "a":
-                        this.currentPos.x += moveAmount;
+                        Camera.x -= moveAmount;
                         break;
                 }
             });
-            this.currentPos.x = Math.min(0, this.currentPos.x);
-            this.currentPos.y = Math.min(0, this.currentPos.y);
-            this.mainContainer.position.set(this.currentPos.x, this.currentPos.y);
-
             // this.render();
             // this.renderer.render(this.rootContainer);
         }, 40);
@@ -99,22 +88,17 @@ class MainCanvas {
             this.mouseY = e.clientY;
         });
 
-        camera.x = canvas.width / 2;
-        camera.y = canvas.height / 2;
-
         const ticker = new PIXI.Ticker();
         ticker.add((delta) => {
-            this.renderer.render(this.rootContainer);
+            this.render();
         });
         ticker.start();
     }
 
     render() {
+        this.mainContainer.position.set(window.innerWidth / 2 - Camera.x, window.innerHeight / 2 - Camera.y);
         this.rootContainer.addChild(this.mainContainer);
-        // this.mainContainer.position.set(-3000, 0);
-        // this.mainContainer.position.set(-500, -160);
-        // this.rootContainer.scale.set(0.2);
-        this.rootContainer.scale.set(1);
+        // this.rootContainer.scale.set(1);
         this.renderer.render(this.rootContainer);
     }
 }

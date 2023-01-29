@@ -265,6 +265,19 @@ export const ObjectType = {
     Unk7: 20, //
 }
 
+export const portalTextureInfo = {
+    door: {},
+    doorGrow: {},
+    topGate: {},
+    topRightGate: {},
+    rightGate: {},
+    bottomRightGate: {},
+    bottomGate: {},
+    bottomLeftGate: {},
+    leftGate: {},
+    topLeftGate: {},
+}
+
 class AreaInfo {
     constructor(br, portalAreaOffset, scenarioVersion) {
         this.br = br;
