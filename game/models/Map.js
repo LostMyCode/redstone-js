@@ -23,6 +23,8 @@ export const MapType = {
 
 export const Mapset = {
     Grassland: 0,
+    Cave: 4,
+    Dungeon: 5,
     Brunenstig: 10,
     Room: 19,
 }
@@ -63,6 +65,7 @@ class Map {
 
         this.name = br.readString(0x40, "sjis");;
         this.textureDirectoryId = br.readUInt32LE();
+        console.log("check tex directory id", this.textureDirectoryId);
         this.typeAndFlags = br.readUInt8();
         br.readUInt8();
         br.readUInt32LE();
