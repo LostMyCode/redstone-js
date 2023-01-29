@@ -3,12 +3,6 @@ const X_BOUND_OFFSET = 64;
 const Y_BOUND_OFFSET = 32;
 
 export default new class Camera {
-    viewBoundingRect = {
-        top: 0,
-        left: 0,
-        right: window.innerWidth,
-        height: window.innerHeight
-    }
 
     mapSize = {
         width: 0,
@@ -44,6 +38,18 @@ export default new class Camera {
 
     get y() {
         return this._y;
+    }
+
+    /**
+     * @readonly
+     */
+    get viewBoundingRect() {
+        return {
+            top: this.y - window.innerHeight / 2,
+            left: this.x - window.innerWidth / 2,
+            right: this.x + window.innerWidth / 2,
+            bottom: this.y + window.innerHeight / 2
+        }
     }
 
     setPosition(x, y) {
