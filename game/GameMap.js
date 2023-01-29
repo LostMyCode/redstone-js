@@ -7,6 +7,7 @@ import { getKeyByValue } from "../utils/RedStoneRandom";
 import MainCanvas from "./MainCanvas";
 import Map from "./models/Map";
 import Camera from "./Camera";
+import LoadingScreen from "./interface/LoadingScreen";
 
 const DATA_DIR = "https://sigr.io/redstone";
 const MAPSET_DIR = "https://sigr.io/redstone/Mapset";
@@ -104,6 +105,10 @@ class GameMap {
 
                 this.renderTile(tileCode, j, i);
                 this.renderObject(objectCode, j, i);
+                // setTimeout(() => {
+                //     this.renderTile(tileCode, j, i);
+                //     this.renderObject(objectCode, j, i);
+                // }, 1 * (i * map.size.width + j));
             }
         }
 
@@ -347,9 +352,11 @@ class GameMap {
             sprite.on("click", async () => {
                 console.log("portal gate clicked", area.moveToFileName);
                 this.prevRmdName = this.currentRmdFileName;
+                LoadingScreen.render();
                 this.reset();
                 await this.loadMap(area.moveToFileName);
                 this.render();
+                LoadingScreen.destroy();
             });
 
             this.portalContainer.addChild(sprite);
