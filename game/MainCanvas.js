@@ -54,11 +54,11 @@ class MainCanvas {
     }
 
     observeKeyEvent() {
-        const moveAmount = 20;
-        
+        const moveAmount = 30;
+
         setInterval(() => {
             if (!this.pressingKeys.size) return;
-            
+
             this.pressingKeys.forEach(key => {
                 switch (key) {
                     case "w":
@@ -83,8 +83,8 @@ class MainCanvas {
             this.mainContainer.position.set(this.currentPos.x, this.currentPos.y);
 
             // this.render();
-            this.renderer.render(this.rootContainer);
-        }, 50);
+            // this.renderer.render(this.rootContainer);
+        }, 40);
     }
 
     init() {
@@ -101,6 +101,12 @@ class MainCanvas {
 
         camera.x = canvas.width / 2;
         camera.y = canvas.height / 2;
+
+        const ticker = new PIXI.Ticker();
+        ticker.add((delta) => {
+            this.renderer.render(this.rootContainer);
+        });
+        ticker.start();
     }
 
     render() {

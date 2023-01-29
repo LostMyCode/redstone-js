@@ -31,6 +31,14 @@ const getTextureFileName = (textureId, extension = "rso") => {
     }
 }
 
+// temp
+const animationObjectTexIds = {
+    Brunenstig: {
+        rso: [0, 1, 2, 3, 4, 5],
+        rfo: [4, 7]
+    }
+}
+
 class GameMap {
     constructor(mainCanvas) {
         /**
@@ -41,6 +49,7 @@ class GameMap {
          * @type {Map}
          */
         this.map = null;
+        this.mapsetName = null;
 
         this.tileContainer = new PIXI.Container();
         this.objectContainer = new PIXI.Container();
@@ -55,10 +64,10 @@ class GameMap {
         this.map = new RedStoneMap(new BufferReader(rmd));
         console.log("[Game]", "Scenario loaded");
 
-        const mapset = getKeyByValue(Mapset, this.map.textureDirectoryId);
-        this.tileTexture = await loadTexture(`${MAPSET_DIR}/${mapset}/tile.mpr`);
-        this.objectTextures = await loadZippedTextures(`${MAPSET_DIR}/${mapset}/${mapset}_Objects.zip`);
-        this.buildingTextures = Object.keys(this.map.buildingInfos).length ? await loadZippedTextures(`${MAPSET_DIR}/${mapset}/${mapset}_Buildings.zip`) : null;
+        const mapsetName = this.map.getMapsetName();
+        this.tileTexture = await loadTexture(`${MAPSET_DIR}/${mapsetName}/tile.mpr`);
+        this.objectTextures = await loadZippedTextures(`${MAPSET_DIR}/${mapsetName}/${mapsetName}_Objects.zip`);
+        this.buildingTextures = Object.keys(this.map.buildingInfos).length ? await loadZippedTextures(`${MAPSET_DIR}/${mapsetName}/${mapsetName}_Buildings.zip`) : null;
     }
 
     render() {
@@ -91,7 +100,7 @@ class GameMap {
 
         this.tileContainer.cacheAsBitmap = true;
         this.shadowContainer.cacheAsBitmap = true;
-        
+
         this.mainCanvas.mainContainer.addChild(this.tileContainer);
         this.mainCanvas.mainContainer.addChild(this.positionSpecifiedObjectContainer);
         this.mainCanvas.mainContainer.addChild(this.shadowContainer);
@@ -112,6 +121,7 @@ class GameMap {
         // TODO: sort objects and shadows
 
         const map = this.map;
+        const mapsetName = this.map.getMapsetName();
 
         if (code === 0) return;
         if (map.scenarioVersion === 5.3 && code < 16 << 8) return;
@@ -136,8 +146,6 @@ class GameMap {
             return;
         }
 
-        // TODO: アニメーションオブジェクト実装（古都中央の噴水など）
-
         const fileName = getTextureFileName(objectInfo.textureId, isBuilding ? "rbd" : undefined);
         const texture = isBuilding ? this.buildingTextures.getTexture(fileName) : this.objectTextures.getTexture(fileName);
         const pixiTexture = texture.getPixiTexture(0);
@@ -149,8 +157,22 @@ class GameMap {
 
         const sprite = new PIXI.Sprite(pixiTexture);
         sprite.position.set(x, y);
-
         this.objectContainer.addChild(sprite);
+
+        // animated objects (rso)
+        if (!isBuilding && animationObjectTexIds[mapsetName]?.rso?.includes(objectInfo.textureId)) {
+            const pixiTextures = [];
+            for (let i = 1; i < texture.frameCount; i++) {
+                pixiTextures.push(texture.getPixiTexture(i));
+            }
+            const x = blockCenterX - texture.shape.body.left[1];
+            const y = blockCenterY - texture.shape.body.top[1];
+            const sprite = new PIXI.AnimatedSprite(pixiTextures);
+            sprite.position.set(x, y);
+            sprite.animationSpeed = 0.1;
+            sprite.play();
+            this.objectContainer.addChild(sprite);
+        }
 
         // shadow
         if ((objectInfo.isDrawShadow || isBuilding) && texture.isExistShadow) {
@@ -179,6 +201,21 @@ class GameMap {
             sprite.position.set(x, y);
 
             this.objectContainer.addChild(sprite);
+
+            // animated objects (rfo)
+            if (animationObjectTexIds[mapsetName]?.rfo?.includes(textureId)) {
+                const pixiTextures = [];
+                for (let i = 1; i < texture.frameCount; i++) {
+                    pixiTextures.push(texture.getPixiTexture(i));
+                }
+                const x = blockCenterX - texture.shape.body.left[1];
+                const y = blockCenterY - texture.shape.body.top[1];
+                const sprite = new PIXI.AnimatedSprite(pixiTextures);
+                sprite.position.set(x, y);
+                sprite.animationSpeed = 0.1;
+                sprite.play();
+                this.objectContainer.addChild(sprite);
+            }
         });
 
         // render building parts
