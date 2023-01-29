@@ -301,7 +301,6 @@ class MapReaderDebug {
 
           const fileName = getTextureFileName(objectInfo.textureId, isBuilding ? "rbd" : undefined);
           const texture = isBuilding ? zippedBuildingTextures.getTexture(fileName) : zippedObjectTextures.getTexture(fileName);
-          // texture.setUseShadow(objectInfo.enableShadow);
           const textureCanvas = texture.getCanvas(0);
 
           const objectBodyTop = texture.maxSizeInfo.top - texture.shape.body.top[0];

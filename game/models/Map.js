@@ -370,16 +370,14 @@ class ObjectInfo {
         this.readSubObjects();
 
         // rest 14
-        this.enableShadow = br.readUInt16LE() === 1;
+        this.isDrawShadow = br.readUInt16LE() === 1;
         this.index = br.readUInt16LE();
         const unk2 = br.readUInt8();
         const unk3 = br.readUInt8();
         const unk4 = br.readUInt32LE();
         const unk5 = br.readUInt32LE();
 
-        if (this.textureId === 4) {
-            // console.log("check unknown values of countertable", this.enableShadow, this.index, unk2, unk3, unk4, unk5);
-        }
+        // console.log("check unknown values", this.enableShadow, this.index, unk2, unk3, unk4, unk5);
     }
 
     readSubObjects() {
