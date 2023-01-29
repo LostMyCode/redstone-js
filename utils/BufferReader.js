@@ -45,7 +45,7 @@ class BufferReader {
     }
 
     readUInt64LE() {
-        const value = this.buffer.readUInt64LE(this.offset);
+        const value = this.buffer.readBigUInt64LE(this.offset);
         this.offset += 8;
         return value;
     }
