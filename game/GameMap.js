@@ -8,14 +8,7 @@ import MainCanvas from "./MainCanvas";
 import Map from "./models/Map";
 import Camera from "./Camera";
 import LoadingScreen from "./interface/LoadingScreen";
-
-const DATA_DIR = "https://sigr.io/redstone";
-const MAPSET_DIR = "https://sigr.io/redstone/Mapset";
-const INTERFACE_DIR = "https://sigr.io/redstone/Interface";
-const RMD_DIR = "https://sigr.io/redstone/Scenario";
-
-const TILE_WIDTH = 64;
-const TILE_HEIGHT = 32;
+import { INTERFACE_DIR, MAPSET_DIR, RMD_DIR, TILE_HEIGHT, TILE_WIDTH } from "./Config";
 
 const getTextureFileName = (textureId, extension = "rso") => {
     if (!extension) throw new Error("[Error] Invalid file extension");
