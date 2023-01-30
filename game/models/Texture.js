@@ -390,7 +390,7 @@ class Texture {
 
                 tmpAddress += 8;
 
-                for (j = 0; j < spriteHeight; j++) {
+                for (let j = 0; j < spriteHeight; j++) {
                     unityCount = buffer.readUInt8(tmpAddress);
                     while (unityCount--) {
                         tmpAddress += 2;
@@ -576,7 +576,7 @@ class Texture {
                 tmpAddress += 8;
 
                 // このフレームデータの最後までスキップ
-                for (j = 0; j < this.shape.outline.height[i]; j++) {
+                for (let j = 0; j < this.shape.outline.height[i]; j++) {
                     let unityCount = buffer.readUInt8(tmpAddress);
                     while (unityCount--) {
                         tmpAddress += 2;
