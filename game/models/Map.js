@@ -76,8 +76,8 @@ class Map {
         this.size.height = br.readUInt32LE();
 
         this.name = br.readString(0x40, "sjis");;
-        this.textureDirectoryId = br.readUInt32LE();
-        console.log("check tex directory id", this.textureDirectoryId);
+        this.mapsetId = br.readUInt32LE();
+        console.log("Mapset ID", this.mapsetId);
         this.typeAndFlags = br.readUInt8();
         br.readUInt8();
         br.readUInt32LE();
@@ -216,7 +216,7 @@ class Map {
     }
 
     getMapsetName() {
-        return getKeyByValue(Mapset, this.textureDirectoryId);
+        return getKeyByValue(Mapset, this.mapsetId);
     }
 }
 

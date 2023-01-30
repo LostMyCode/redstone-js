@@ -77,7 +77,7 @@ class MapReaderDebug {
     this.setLastScroll();
     document.body.addEventListener("scroll", this.handleScroll);
 
-    const mapset = getKeyByValue(Mapset, map.textureDirectoryId);
+    const mapset = getKeyByValue(Mapset, map.mapsetId);
     this.tileTextures = await fetchBinaryFile(MAPSET_DIR + `${mapset}/tile.mpr`);
     this.tileTextures = new Texture("tile.mpr", Buffer.from(this.tileTextures));
 
