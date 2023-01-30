@@ -85,12 +85,12 @@ class Texture {
     }
 
     decodeBuffer() {
-        const reader = this.reader;
+        const buffer = this.textureFileBuffer;
 
         const ENCODE_KEY_LENGTH = 326;
         const ENCODE_START_ADDRESS = 0x1c;
 
-        const limitAddress = reader.readUInt32LE();
+        const limitAddress = buffer.readUInt32LE(0x4);
         const xorKey = new Int16Array(ENCODE_KEY_LENGTH);
         const numCounts = [];
 
@@ -111,7 +111,7 @@ class Texture {
 
         for (let i = ENCODE_KEY_LENGTH, j = null; i < limitAddress; i++) {
             j = (i - ENCODE_START_ADDRESS) % ENCODE_KEY_LENGTH;
-            this.textureFileBuffer[i] = this.textureFileBuffer[i] ^ xorKey[i];
+            this.textureFileBuffer[i] = this.textureFileBuffer[i] ^ xorKey[j];
         }
     }
 
