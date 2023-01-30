@@ -36,10 +36,10 @@ class MapReaderDebug {
   async loadNpcTextures(map) {
     this.npcTextures = {};
 
-    for (let i = 0; i < map.npcGroups.length; i++) {
-      const npcGroup = map.npcGroups[i];
-      if (!ActorImage[npcGroup.job]) return;
-      const textureFileName = ActorImage[npcGroup.job] + ".sad";
+    for (const key in map.actorGroups) {
+      const actorGroup = map.actorGroups[key];
+      if (!ActorImage[actorGroup.job]) return;
+      const textureFileName = ActorImage[actorGroup.job] + ".sad";
       if (this.npcTextures[textureFileName]) continue;
       const textureBuffer = await fetchBinaryFile(DATA_DIR + "NPC/" + textureFileName);
       this.npcTextures[textureFileName] = new Texture(textureFileName, textureBuffer);
@@ -124,32 +124,31 @@ class MapReaderDebug {
       });
     }
 
-    console.log(map.npcSingles, map.npcGroups);
+    console.log(map.actorSingles, map.actorGroups);
 
-    const drawNpc = () => {
+    const drawActor = () => {
       const framesPerAnimation = 8;
-      map.npcSingles.forEach(async npcSingle => {
-        const npcGroup = map.npcGroups.find(g => g.internalID === npcSingle.internalID);
-        const textureFileName = ActorImage[npcGroup.job] + ".sad";
-        // console.log(textureFileName);
+      map.actorSingles.forEach(actorSingle => {
+        const actorGroup = map.actorGroups[actorSingle.internalID];
+        const textureFileName = ActorImage[actorGroup.job] + ".sad";
         const texture = this.npcTextures[textureFileName];
         if (!texture) return;
-        console.log("check npc texture", texture, textureFileName);
-        const targetFrame = npcSingle.direct * framesPerAnimation;
+        console.log("check actor texture", texture, textureFileName);
+        const targetFrame = actorSingle.direct * framesPerAnimation;
         const textureCanvas = texture.getCanvas(targetFrame);
 
-        const x = npcSingle.point.x - textureCanvas.width / 2;
-        const y = npcSingle.point.y - textureCanvas.height + 16;
+        const x = actorSingle.point.x - textureCanvas.width / 2;
+        const y = actorSingle.point.y - textureCanvas.height + 16;
 
         this.ctx.drawImage(textureCanvas, x, y);
       });
     }
 
-    const drawNpcRect = () => {
+    const drawActorRects = () => {
       const ctx = this.ctx;
-      const npcs = map.npcSingles
-      npcs.forEach(npc => {
-        const { x, y } = npc.point;
+      const actors = map.actorSingles;
+      actors.forEach(actor => {
+        const { x, y } = actor.point;
 
         ctx.strokeStyle = "#11b";
         ctx.lineWidth = 2;
@@ -161,7 +160,7 @@ class MapReaderDebug {
 
         ctx.fillStyle = "#fff";
         ctx.font = "14px Arial";
-        ctx.fillText(npc.name, x, y);
+        ctx.fillText(actor.name, x, y);
       });
     }
 
@@ -410,11 +409,11 @@ class MapReaderDebug {
     drawPositionSpecifiedObjects();
     console.log("drawing portals");
     drawPortals();
-    drawNpc();
+    drawActor();
     console.log("drawing objects");
     drawObjects_Test();
     console.log("drawing draw npc rects");
-    drawNpcRect();
+    drawActorRects();
   }
 }
 

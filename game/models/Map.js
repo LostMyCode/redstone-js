@@ -6,15 +6,6 @@ import Event from "./Event";
 // from Basic.cs model
 const MagicStructSize = 12; // last is short Dark
 
-const LoadingTarget = {
-    Unknown: 0,
-    NpcLength: 1,
-    NpcGroupInfo: 2,
-    NpcSingleInfo: 3,
-    AreaInfo: 4,
-    ShopInfo: 5,
-}
-
 export const MapType = {
     Dungeon: 1,
     Village: 2,
@@ -40,9 +31,29 @@ class Map {
         this.name = "";
 
         /**
-         * @type {ObjectInfo[]}
+         * @type {Number[]}
          */
-        this.objectInfos = [];
+        this.actorIndexes = [];
+
+        /**
+         * @type {{[key: number]: MapActorGroup}}
+         */
+        this.actorGroups = {};
+
+        /**
+         * @type {MapActorSingle[]}
+         */
+        this.actorSingles = [];
+
+        /**
+         * @type {{[key: number]: ObjectInfo}}
+         */
+        this.objectInfos = {};
+
+        /**
+         * @type {{[key: number]: BuildingInfo}}
+         */
+        this.buildingInfos = {};
 
         this.readData(br);
     }
@@ -119,83 +130,50 @@ class Map {
             }
         }
 
-        let charIndexes;
-        Object.values(LoadingTarget).forEach(target => {
-            let nextOffset = br.readInt32LE();
-            // console.log("nextoffset", nextOffset);
-            switch (target) {
-                case LoadingTarget.Unknown:
-                    // console.log("unknown start", br.offset);
-                    br.offset = nextOffset;
-                    break;
+        // skip unknown
+        let nextOffset = br.readInt32LE();
+        br.offset = nextOffset;
 
-                case LoadingTarget.NpcLength:
-                    console.log("npclength", br.offset);
-                    const encryptedBytes = Buffer.from([0, 0, 0, 0]);
-                    encryptedBytes.writeInt32LE(nextOffset, 0);
-                    const decrypted = decodeScenarioBuffer(encryptedBytes, br.decodeKey);
-                    const readCount = decrypted.readUInt32LE(0);
+        // actor indexes length
+        let encryptedBytes = br.readStructUInt8(4);
+        let decryptedBuffer = decodeScenarioBuffer(encryptedBytes, br.decodeKey);
+        const actorIndexesLength = decryptedBuffer.readUInt32LE(0);
 
-                    const encryptedBytes2 = Buffer.from(br.readStructUInt8(readCount * 2)); // 2 = ushort size
-                    const decryptedBuf = decodeScenarioBuffer(encryptedBytes2, br.decodeKey);
-                    const de = new BufferReader(decryptedBuf);
-                    console.log("char start off", br.offset)
-                    charIndexes = de.readStructUInt16LE(readCount);
+        encryptedBytes = br.readStructUInt8(actorIndexesLength * 2);
+        decryptedBuffer = decodeScenarioBuffer(encryptedBytes, br.decodeKey);
+        this.actorIndexes = (new BufferReader(decryptedBuffer)).readStructUInt16LE(actorIndexesLength);
 
-                    console.log("check char indexes", charIndexes.length, charIndexes);
-                    break;
+        nextOffset = br.readInt32LE();
 
-                case LoadingTarget.NpcGroupInfo:
-                    // console.log("npcgroupinfo");
-                    const npcGroupInfoStructSize = this.scenarioVersion > 5.4 ? br.readInt32LE() : 0x2C;
-                    /**
-                     * @type {MapActorGroup[]}
-                     */
-                    this.npcGroups = [];
-                    for (let i = 0; i < charIndexes.length; i++) {
-                        const npcGroupInfo = new MapActorGroup(br, npcGroupInfoStructSize, charIndexes[i]);
-                        this.npcGroups.push(npcGroupInfo);
-                        // console.log(npcGroupInfo, "idx", i);
-                    }
-                    break;
+        // actor group info
+        const actorGroupInfoStructSize = this.scenarioVersion > 5.4 ? br.readInt32LE() : 0x2C;
+        for (let i = 0; i < this.actorIndexes.length; i++) {
+            const actorGroupInfo = new MapActorGroup(br, actorGroupInfoStructSize, this.actorIndexes[i]);
+            this.actorGroups[actorGroupInfo.internalID] = actorGroupInfo;
+        }
 
-                case LoadingTarget.NpcSingleInfo:
-                    // console.log("npcsingleinfo");
-                    const npcSingleInfoLen = decodeScenarioBuffer(br.readStructUInt8(4), br.decodeKey).readUInt32LE(0);
-                    /**
-                     * @type {MapActorSingle[]}
-                     */
-                    this.npcSingles = new Array(npcSingleInfoLen);
-                    // console.log("npc single info len", npcSingleInfoLen);
+        nextOffset = br.readInt32LE();
 
-                    for (let i = 0; i < npcSingleInfoLen; i++) {
-                        this.npcSingles[i] = new MapActorSingle(br);
-                    }
-                    break;
+        // actor single info
+        const actorSingleInfoLength = decodeScenarioBuffer(br.readStructUInt8(4), br.decodeKey).readUInt32LE(0);
+        this.actorSingles = new Array(actorSingleInfoLength);
+        for (let i = 0; i < actorSingleInfoLength; i++) {
+            this.actorSingles[i] = new MapActorSingle(br);
+        }
 
-                case LoadingTarget.AreaInfo: {
-                    // console.log("areainfo");
-                    const encryptedBytes = Buffer.from([0, 0, 0, 0]);
-                    encryptedBytes.writeInt32LE(nextOffset, 0);
-                    const decrypted = decodeScenarioBuffer(encryptedBytes, br.decodeKey);
-                    const areaInfoCount = decrypted.readUInt32LE(0);
-                    /**
-                     * @type {AreaInfo[]}
-                     */
-                    this.areaInfos = new Array(areaInfoCount);
-                    console.log("area info count", areaInfoCount);
-                    for (let i = 0; i < this.areaInfos.length; i++) {
-                        this.areaInfos[i] = new AreaInfo(br, portalAreaOffset, this.scenarioVersion);
-                    }
-                    break;
-                }
+        // area info
+        encryptedBytes = br.readStructUInt8(4);
+        decryptedBuffer = decodeScenarioBuffer(encryptedBytes, br.decodeKey);
+        const areaInfoLength = decryptedBuffer.readUInt32LE(0);
+        this.areaInfos = new Array(areaInfoLength);
+        for (let i = 0; i < areaInfoLength; i++) {
+            this.areaInfos[i] = new AreaInfo(br, portalAreaOffset, this.scenarioVersion);
+        }
 
-                case LoadingTarget.ShopInfo:
-                    // console.log("shopinfo");
-                    br.offset = nextOffset;
-                    break;
-            }
-        });
+        nextOffset = br.readInt32LE();
+
+        // shop info
+        br.offset = nextOffset; // skip
 
         const positionSpecifiedObjectCount = br.readInt32LE();
         console.log("Num of objects with absolute position specified:", positionSpecifiedObjectCount);
@@ -218,7 +196,6 @@ class Map {
         const unk_1 = br.readStructUInt8(12);
         console.log("object info count", objectInfoCount);
 
-        this.objectInfos = {};
         for (let i = 0; i < objectInfoCount; i++) {
             const objectInfo = new ObjectInfo(br);
             if (this.objectInfos[objectInfo.index]) {
@@ -228,12 +205,10 @@ class Map {
             this.objectInfos[objectInfo.index] = objectInfo;
         }
 
-        const aaa = br.readUInt32LE();
-        // const aaa = br.readStructUInt8(4);
-        console.log("some count?", aaa);
+        const buildingCount = br.readUInt32LE();
+        console.log("building count?", buildingCount);
 
-        this.buildingInfos = {};
-        for (let i = 0; i < (aaa ? 105 : 0); i++) {
+        for (let i = 0; i < (buildingCount ? 105 : 0); i++) {
             const buildingInfo = new BuildingInfo(br);
             this.buildingInfos[buildingInfo.index] = buildingInfo;
         }
