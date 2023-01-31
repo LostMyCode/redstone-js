@@ -32,12 +32,14 @@ class Player {
         this.position = { x: 0, y: 0 };
 
         this.container = new PIXI.Container();
+        this.initialized = false;
 
         this.init();
     }
 
     async load() {
         this.playerTexture = await loadTexture(`${DATA_DIR}/Heros/Rogue03.sad`);
+        this.rebirthTexture = await loadTexture(`${DATA_DIR}/Effects/rebirth01.sad`);
     }
 
     async init() {
@@ -68,6 +70,8 @@ class Player {
             Camera.x = this.position.x;
             Camera.y = this.position.y;
         }, 40);
+
+        this.initialized = true;
     }
 
     updateDirectionAndAction() {
@@ -92,6 +96,8 @@ class Player {
     }
 
     render() {
+        if (!this.initialized) return;
+
         const lastAction = this.action;
         const lastDirection = this.direction;
         const { x, y } = this.position;
@@ -110,10 +116,13 @@ class Player {
                     y - this.playerTexture.shape.shadow.top[this.lastActionStartOffset + currentFrame]
                 )
             }
+            // this.renderEffects();
             return;
         }
 
         this.container.removeChildren();
+        // this.rebirthSprite = null;
+        // this.renderEffects();
 
         let offset = 0;
         let targetActionFrameCount;
@@ -163,6 +172,35 @@ class Player {
             this.mainCanvas.mainContainer.addChild(this.container);
             this.onceRendered = true;
         }
+    }
+
+    renderEffects() {
+        const { x, y } = this.position;
+
+        if (this.rebirthSprite) {
+            const currentFrame = this.rebirthSprite.currentFrame;
+            this.rebirthSprite.position.set(
+                x - this.rebirthTexture.shape.body.left[currentFrame],
+                y - this.rebirthTexture.shape.body.top[currentFrame] + 25
+            );
+            return;
+        }
+
+        const rebirthTextures = [];
+        for (let i = 0; i < this.rebirthTexture.frameCount; i++) {
+            const texture = this.rebirthTexture.getPixiTexture(i);
+            rebirthTextures.push(texture);
+        }
+        const rebirthSprite = new PIXI.AnimatedSprite(rebirthTextures);
+        rebirthSprite.animationSpeed = 0.3;
+        rebirthSprite.position.set(
+            x - this.rebirthTexture.shape.body.left[0],
+            y - this.rebirthTexture.shape.body.top[0] + 25
+        );
+        rebirthSprite.blendMode = PIXI.BLEND_MODES.ADD;
+        rebirthSprite.play();
+        this.rebirthSprite = rebirthSprite;
+        this.container.addChild(rebirthSprite);
     }
 }
 
