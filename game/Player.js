@@ -4,6 +4,7 @@ import { loadTexture } from "../utils";
 import Camera from "./Camera";
 import { DATA_DIR } from "./Config";
 import Listener from "./Listener";
+import RedStone from "./RedStone";
 
 // Rogue03.sad
 const directionFrameOrder = ["up", "up-right", "right", "down-right", "down", "down-left", "left", "up-left"];
@@ -23,9 +24,7 @@ const actionData = [
 ]
 
 class Player {
-    constructor(mainCanvas) {
-        this.mainCanvas = mainCanvas;
-
+    constructor() {
         this.playerTexture = null;
         this.direction = "up";
         this.action = "stand";
@@ -169,7 +168,7 @@ class Player {
         this.lastActionStartOffset = offset;
 
         if (!this.onceRendered) {
-            this.mainCanvas.mainContainer.addChild(this.container);
+            RedStone.mainCanvas.mainContainer.addChild(this.container);
             this.onceRendered = true;
         }
     }

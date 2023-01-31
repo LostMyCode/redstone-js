@@ -4,12 +4,7 @@ import RedStone from "./RedStone";
 
 class MainCanvas {
 
-    constructor(redstone) {
-        /**
-         * @type {RedStone}
-         */
-        this.redstone = redstone;
-        
+    constructor() {
         this.canvas = document.getElementById("canvas");
         this.renderer = new PIXI.Renderer({
             view: this.canvas,
@@ -48,7 +43,7 @@ class MainCanvas {
     render() {
         this.mainContainer.position.set(window.innerWidth / 2 - Camera.x, window.innerHeight / 2 - Camera.y);
         // this.rootContainer.scale.set(1);
-        this.redstone.player.render();
+        RedStone.player.render();
         
         this.renderer.render(this.rootContainer);
     }

@@ -3,12 +3,11 @@ import * as PIXI from "pixi.js";
 import RedStoneMap, { Mapset, ObjectType, portalTextureInfo } from "./models/Map";
 import { fetchBinaryFile, loadTexture, loadZippedTextures } from "../utils";
 import BufferReader from "../utils/BufferReader";
-import { getKeyByValue } from "../utils/RedStoneRandom";
-import MainCanvas from "./MainCanvas";
 import Map from "./models/Map";
 import Camera from "./Camera";
 import LoadingScreen from "./interface/LoadingScreen";
 import { INTERFACE_DIR, MAPSET_DIR, RMD_DIR, TILE_HEIGHT, TILE_WIDTH } from "./Config";
+import RedStone from "./RedStone";
 
 const getTextureFileName = (textureId, extension = "rso") => {
     if (!extension) throw new Error("[Error] Invalid file extension");
@@ -35,11 +34,7 @@ const animationObjectTexIds = {
 }
 
 class GameMap {
-    constructor(mainCanvas) {
-        /**
-         * @type {MainCanvas}
-         */
-        this.mainCanvas = mainCanvas;
+    constructor() {
         /**
          * @type {Map}
          */
@@ -137,11 +132,11 @@ class GameMap {
         this.tileContainer.cacheAsBitmap = true;
         this.shadowContainer.cacheAsBitmap = true;
 
-        this.mainCanvas.mainContainer.addChild(this.tileContainer);
-        this.mainCanvas.mainContainer.addChild(this.portalContainer);
-        this.mainCanvas.mainContainer.addChild(this.shadowContainer);
-        this.mainCanvas.mainContainer.addChild(this.positionSpecifiedObjectContainer);
-        this.mainCanvas.mainContainer.addChild(this.objectContainer);
+        RedStone.mainCanvas.mainContainer.addChild(this.tileContainer);
+        RedStone.mainCanvas.mainContainer.addChild(this.portalContainer);
+        RedStone.mainCanvas.mainContainer.addChild(this.shadowContainer);
+        RedStone.mainCanvas.mainContainer.addChild(this.positionSpecifiedObjectContainer);
+        RedStone.mainCanvas.mainContainer.addChild(this.objectContainer);
     }
 
     renderTile(code, blockX, blockY) {
