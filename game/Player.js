@@ -2,7 +2,7 @@ import * as PIXI from "pixi.js";
 
 import { loadTexture } from "../utils";
 import Camera from "./Camera";
-import { DATA_DIR } from "./Config";
+import { DATA_DIR, TILE_HEIGHT, TILE_WIDTH, X_BOUND_OFFSET, Y_BOUND_OFFSET } from "./Config";
 import Listener from "./Listener";
 import RedStone from "./RedStone";
 
@@ -28,12 +28,23 @@ class Player {
         this.playerTexture = null;
         this.direction = "up";
         this.action = "stand";
-        this.position = { x: 0, y: 0 };
+
+        /**
+         * @private
+         * @type {Number}
+         */
+        this._x = 150 * TILE_WIDTH;
+        /**
+         * @private
+         * @type {Number}
+         */
+        this._y = 150 * TILE_HEIGHT;
 
         this.container = new PIXI.Container();
         this.initialized = false;
 
         this.init();
+        Camera.setPosition(this.x, this.y);
     }
 
     async load() {
@@ -50,27 +61,57 @@ class Player {
             Listener.pressingKeys.forEach(key => {
                 switch (key) {
                     case "w":
-                        this.position.y -= moveAmount;
+                        this.y -= moveAmount;
                         break;
 
                     case "d":
-                        this.position.x += moveAmount;
+                        this.x += moveAmount;
                         break;
 
                     case "s":
-                        this.position.y += moveAmount;
+                        this.y += moveAmount;
                         break;
 
                     case "a":
-                        this.position.x -= moveAmount;
+                        this.x -= moveAmount;
                         break;
                 }
             });
-            Camera.x = this.position.x;
-            Camera.y = this.position.y;
+            Camera.x = this.x;
+            Camera.y = this.y;
         }, 40);
 
         this.initialized = true;
+    }
+
+    set x(X) {
+        const mapSize = RedStone.gameMap.getRealSize();
+        if (X < X_BOUND_OFFSET) {
+            X = X_BOUND_OFFSET;
+        }
+        else if (mapSize.width && X > mapSize.width - X_BOUND_OFFSET) {
+            X = mapSize.width - X_BOUND_OFFSET;
+        }
+        this._x = X;
+    }
+
+    get x() {
+        return this._x;
+    }
+
+    set y(Y) {
+        const mapSize = RedStone.gameMap.getRealSize();
+        if (Y < Y_BOUND_OFFSET) {
+            Y = Y_BOUND_OFFSET;
+        }
+        else if (mapSize.height && Y > mapSize.height - Y_BOUND_OFFSET) {
+            Y = mapSize.height - Y_BOUND_OFFSET;
+        }
+        this._y = Y;
+    }
+
+    get y() {
+        return this._y;
     }
 
     updateDirectionAndAction() {
@@ -99,7 +140,7 @@ class Player {
 
         const lastAction = this.action;
         const lastDirection = this.direction;
-        const { x, y } = this.position;
+        const { x, y } = this;
 
         this.updateDirectionAndAction();
 
@@ -174,7 +215,7 @@ class Player {
     }
 
     renderEffects() {
-        const { x, y } = this.position;
+        const { x, y } = this;
 
         if (this.rebirthSprite) {
             const currentFrame = this.rebirthSprite.currentFrame;

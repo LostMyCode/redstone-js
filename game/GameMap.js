@@ -359,6 +359,14 @@ class GameMap {
             Camera.setPosition(portalToPrevMap.centerPos.x, portalToPrevMap.centerPos.y);
         }
     }
+
+    getRealSize() {
+        if (!this.map) return null;
+        return {
+            width: this.map.size.width * TILE_WIDTH,
+            height: this.map.size.height * TILE_HEIGHT
+        }
+    }
 }
 
 export default GameMap;
