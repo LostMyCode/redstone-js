@@ -33,12 +33,12 @@ class Player {
          * @private
          * @type {Number}
          */
-        this._x = 150 * TILE_WIDTH;
+        this._x = 6 * TILE_WIDTH;
         /**
          * @private
          * @type {Number}
          */
-        this._y = 150 * TILE_HEIGHT;
+        this._y = 60 * TILE_HEIGHT;
 
         this.container = new PIXI.Container();
         this.initialized = false;
@@ -114,6 +114,12 @@ class Player {
         return this._y;
     }
 
+    reset() {
+        this.onceRendered = false;
+        this.playerBodySprite = null;
+        this.playerShadowSprite = null;
+    }
+
     updateDirectionAndAction() {
         const has = value => Listener.pressingKeys.has(value);
 
@@ -137,6 +143,7 @@ class Player {
 
     render() {
         if (!this.initialized) return;
+        if (!RedStone.gameMap.onceRendered) return;
 
         const lastAction = this.action;
         const lastDirection = this.direction;
@@ -155,9 +162,9 @@ class Player {
                     x - this.playerTexture.shape.shadow.left[this.lastActionStartOffset + currentFrame],
                     y - this.playerTexture.shape.shadow.top[this.lastActionStartOffset + currentFrame]
                 )
+                return;
             }
             // this.renderEffects();
-            return;
         }
 
         this.container.removeChildren();
@@ -241,6 +248,11 @@ class Player {
         rebirthSprite.play();
         this.rebirthSprite = rebirthSprite;
         this.container.addChild(rebirthSprite);
+    }
+
+    setPosition(x, y) {
+        this.x = x;
+        this.y = y;
     }
 }
 

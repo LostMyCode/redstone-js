@@ -58,8 +58,15 @@ class GameMap {
         this.shadowContainer.destroy();
         this.tileContainer = new PIXI.Container();
         this.shadowContainer = new PIXI.Container();
+        RedStone.mainCanvas.mainContainer.removeChild(
+            this.objectContainer,
+            this.positionSpecifiedObjectContainer,
+            this.shadowContainer,
+            this.portalContainer
+        );
 
         this.map = null;
+        this.onceRendered = false;
     }
 
     async loadCommon() {
@@ -137,6 +144,10 @@ class GameMap {
         RedStone.mainCanvas.mainContainer.addChild(this.shadowContainer);
         RedStone.mainCanvas.mainContainer.addChild(this.positionSpecifiedObjectContainer);
         RedStone.mainCanvas.mainContainer.addChild(this.objectContainer);
+
+        if (!this.onceRendered) {
+            this.onceRendered = true;
+        }
     }
 
     renderTile(code, blockX, blockY) {
@@ -337,14 +348,9 @@ class GameMap {
             const sprite = new PIXI.Sprite(pixiTexture);
             sprite.position.set(x, y);
             sprite.interactive = true;
-            sprite.on("click", async () => {
+            sprite.on("click", () => {
                 console.log("portal gate clicked", area.moveToFileName);
-                this.prevRmdName = this.currentRmdFileName;
-                LoadingScreen.render();
-                this.reset();
-                await this.loadMap(area.moveToFileName);
-                this.render();
-                LoadingScreen.destroy();
+                this.moveTo(area.moveToFileName);
             });
 
             this.portalContainer.addChild(sprite);
@@ -357,6 +363,7 @@ class GameMap {
             console.log(this.map.areaInfos.filter(area => area.moveToFileName));
             if (!portalToPrevMap) console.log("prev map portal not found :(");
             Camera.setPosition(portalToPrevMap.centerPos.x, portalToPrevMap.centerPos.y);
+            RedStone.player.setPosition(portalToPrevMap.centerPos.x, portalToPrevMap.centerPos.y);
         }
     }
 
@@ -366,6 +373,18 @@ class GameMap {
             width: this.map.size.width * TILE_WIDTH,
             height: this.map.size.height * TILE_HEIGHT
         }
+    }
+
+    async moveTo(rmdFileName) {
+        this.prevRmdName = this.currentRmdFileName;
+        LoadingScreen.render();
+        this.reset();
+        await this.loadMap(rmdFileName);
+        this.render();
+        RedStone.mainCanvas.mainContainer.removeChild(RedStone.player.container);
+        RedStone.player.reset();
+        RedStone.player.render();
+        LoadingScreen.destroy();
     }
 }
 
