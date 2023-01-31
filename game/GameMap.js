@@ -81,7 +81,7 @@ class GameMap {
         this.currentRmdFileName = rmdFileName;
         console.log("[Game]", "Scenario loaded");
 
-        Camera.setMapSize(this.map.size.width * TILE_WIDTH, this.map.size.width * TILE_HEIGHT);
+        Camera.setMapSize(this.map.size.width * TILE_WIDTH, this.map.size.height * TILE_HEIGHT);
         this.initPosition();
 
         const mapsetName = this.map.getMapsetName();
