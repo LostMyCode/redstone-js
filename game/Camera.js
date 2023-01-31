@@ -1,6 +1,4 @@
-
-const X_BOUND_OFFSET = 64;
-const Y_BOUND_OFFSET = 32;
+import { X_BOUND_OFFSET, Y_BOUND_OFFSET } from "./Config";
 
 export default new class Camera {
 

@@ -85,12 +85,12 @@ class Texture {
     }
 
     decodeBuffer() {
-        const reader = this.reader;
+        const buffer = this.textureFileBuffer;
 
         const ENCODE_KEY_LENGTH = 326;
         const ENCODE_START_ADDRESS = 0x1c;
 
-        const limitAddress = reader.readUInt32LE();
+        const limitAddress = buffer.readUInt32LE(0x4);
         const xorKey = new Int16Array(ENCODE_KEY_LENGTH);
         const numCounts = [];
 
@@ -111,7 +111,7 @@ class Texture {
 
         for (let i = ENCODE_KEY_LENGTH, j = null; i < limitAddress; i++) {
             j = (i - ENCODE_START_ADDRESS) % ENCODE_KEY_LENGTH;
-            this.textureFileBuffer[i] = this.textureFileBuffer[i] ^ xorKey[i];
+            this.textureFileBuffer[i] = this.textureFileBuffer[i] ^ xorKey[j];
         }
     }
 
@@ -390,7 +390,7 @@ class Texture {
 
                 tmpAddress += 8;
 
-                for (j = 0; j < spriteHeight; j++) {
+                for (let j = 0; j < spriteHeight; j++) {
                     unityCount = buffer.readUInt8(tmpAddress);
                     while (unityCount--) {
                         tmpAddress += 2;
@@ -576,7 +576,7 @@ class Texture {
                 tmpAddress += 8;
 
                 // このフレームデータの最後までスキップ
-                for (j = 0; j < this.shape.outline.height[i]; j++) {
+                for (let j = 0; j < this.shape.outline.height[i]; j++) {
                     let unityCount = buffer.readUInt8(tmpAddress);
                     while (unityCount--) {
                         tmpAddress += 2;

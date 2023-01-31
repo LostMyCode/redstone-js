@@ -2,17 +2,18 @@ import MainCanvas from "./MainCanvas";
 import GameMap from "./GameMap";
 import LoadingScreen from "./interface/LoadingScreen";
 import Listener from "./Listener";
+import Player from "./Player";
 
 class RedStone {
-    constructor() {
-        this.mainCanvas = new MainCanvas(this);
-        this.gameMap = new GameMap(this.mainCanvas);
-    }
 
-    async init() {
+    static mainCanvas = new MainCanvas();
+    static gameMap = new GameMap();
+    static player = new Player();
+
+    static async init() {
 
         // display loading screen
-        await LoadingScreen.init(this.mainCanvas);
+        await LoadingScreen.init();
         LoadingScreen.render();
 
         // load common resources
@@ -20,16 +21,15 @@ class RedStone {
         // check save data
 
         // load common resources
-        await this.gameMap.loadCommon();
+        await RedStone.gameMap.loadCommon();
+
+        // load player
 
         // load map
-        await this.gameMap.loadMap();
+        await RedStone.gameMap.loadMap();
 
         // draw map
-        this.gameMap.render();
-
-        // render game
-        // this.mainCanvas.render();
+        RedStone.gameMap.render();
 
         LoadingScreen.destroy();
     }

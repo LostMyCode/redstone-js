@@ -1,24 +1,18 @@
 import * as PIXI from "pixi.js";
 import { loadTexture } from "../../utils";
-import MainCanvas from "../MainCanvas";
+import RedStone from "../RedStone";
 
 const INTERFACE_DIR = "https://sigr.io/redstone/Interface";
 
 class LoadingScreen {
-    constructor(mainCanvas) {
-        /**
-         * @type {MainCanvas}
-         */
-        this.mainCanvas = mainCanvas;
-
+    constructor() {
         this.loadingTexture = null;
         this.loadingTexture2 = null;
 
         this.container = new PIXI.Container();
     }
 
-    async init(mainCanvas) {
-        this.mainCanvas = mainCanvas;
+    async init() {
         await this.loadResources();
     }
 
@@ -58,13 +52,13 @@ class LoadingScreen {
         this.container.addChild(loadingBg);
 
         // this.renderer.render(this.container);
-        this.mainCanvas.rootContainer.addChild(this.container);
+        RedStone.mainCanvas.rootContainer.addChild(this.container);
     }
 
     destroy() {
         this.container.removeChildren();
-        const index = this.mainCanvas.rootContainer.getChildIndex(this.container);
-        this.mainCanvas.rootContainer.removeChildAt(index);
+        const index = RedStone.mainCanvas.rootContainer.getChildIndex(this.container);
+        RedStone.mainCanvas.rootContainer.removeChildAt(index);
     }
 }
 

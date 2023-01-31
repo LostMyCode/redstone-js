@@ -3,19 +3,11 @@ import * as PIXI from "pixi.js";
 import RedStoneMap, { Mapset, ObjectType, portalTextureInfo } from "./models/Map";
 import { fetchBinaryFile, loadTexture, loadZippedTextures } from "../utils";
 import BufferReader from "../utils/BufferReader";
-import { getKeyByValue } from "../utils/RedStoneRandom";
-import MainCanvas from "./MainCanvas";
 import Map from "./models/Map";
 import Camera from "./Camera";
 import LoadingScreen from "./interface/LoadingScreen";
-
-const DATA_DIR = "https://sigr.io/redstone";
-const MAPSET_DIR = "https://sigr.io/redstone/Mapset";
-const INTERFACE_DIR = "https://sigr.io/redstone/Interface";
-const RMD_DIR = "https://sigr.io/redstone/Scenario";
-
-const TILE_WIDTH = 64;
-const TILE_HEIGHT = 32;
+import { INTERFACE_DIR, MAPSET_DIR, RMD_DIR, TILE_HEIGHT, TILE_WIDTH } from "./Config";
+import RedStone from "./RedStone";
 
 const getTextureFileName = (textureId, extension = "rso") => {
     if (!extension) throw new Error("[Error] Invalid file extension");
@@ -42,11 +34,7 @@ const animationObjectTexIds = {
 }
 
 class GameMap {
-    constructor(mainCanvas) {
-        /**
-         * @type {MainCanvas}
-         */
-        this.mainCanvas = mainCanvas;
+    constructor() {
         /**
          * @type {Map}
          */
@@ -70,8 +58,15 @@ class GameMap {
         this.shadowContainer.destroy();
         this.tileContainer = new PIXI.Container();
         this.shadowContainer = new PIXI.Container();
+        RedStone.mainCanvas.mainContainer.removeChild(
+            this.objectContainer,
+            this.positionSpecifiedObjectContainer,
+            this.shadowContainer,
+            this.portalContainer
+        );
 
         this.map = null;
+        this.onceRendered = false;
     }
 
     async loadCommon() {
@@ -86,7 +81,7 @@ class GameMap {
         this.currentRmdFileName = rmdFileName;
         console.log("[Game]", "Scenario loaded");
 
-        Camera.setMapSize(this.map.size.width * TILE_WIDTH, this.map.size.width * TILE_HEIGHT);
+        Camera.setMapSize(this.map.size.width * TILE_WIDTH, this.map.size.height * TILE_HEIGHT);
         this.initPosition();
 
         const mapsetName = this.map.getMapsetName();
@@ -144,11 +139,15 @@ class GameMap {
         this.tileContainer.cacheAsBitmap = true;
         this.shadowContainer.cacheAsBitmap = true;
 
-        this.mainCanvas.mainContainer.addChild(this.tileContainer);
-        this.mainCanvas.mainContainer.addChild(this.portalContainer);
-        this.mainCanvas.mainContainer.addChild(this.shadowContainer);
-        this.mainCanvas.mainContainer.addChild(this.positionSpecifiedObjectContainer);
-        this.mainCanvas.mainContainer.addChild(this.objectContainer);
+        RedStone.mainCanvas.mainContainer.addChild(this.tileContainer);
+        RedStone.mainCanvas.mainContainer.addChild(this.portalContainer);
+        RedStone.mainCanvas.mainContainer.addChild(this.shadowContainer);
+        RedStone.mainCanvas.mainContainer.addChild(this.positionSpecifiedObjectContainer);
+        RedStone.mainCanvas.mainContainer.addChild(this.objectContainer);
+
+        if (!this.onceRendered) {
+            this.onceRendered = true;
+        }
     }
 
     renderTile(code, blockX, blockY) {
@@ -349,14 +348,9 @@ class GameMap {
             const sprite = new PIXI.Sprite(pixiTexture);
             sprite.position.set(x, y);
             sprite.interactive = true;
-            sprite.on("click", async () => {
+            sprite.on("click", () => {
                 console.log("portal gate clicked", area.moveToFileName);
-                this.prevRmdName = this.currentRmdFileName;
-                LoadingScreen.render();
-                this.reset();
-                await this.loadMap(area.moveToFileName);
-                this.render();
-                LoadingScreen.destroy();
+                this.moveTo(area.moveToFileName);
             });
 
             this.portalContainer.addChild(sprite);
@@ -369,7 +363,28 @@ class GameMap {
             console.log(this.map.areaInfos.filter(area => area.moveToFileName));
             if (!portalToPrevMap) console.log("prev map portal not found :(");
             Camera.setPosition(portalToPrevMap.centerPos.x, portalToPrevMap.centerPos.y);
+            RedStone.player.setPosition(portalToPrevMap.centerPos.x, portalToPrevMap.centerPos.y);
         }
+    }
+
+    getRealSize() {
+        if (!this.map) return null;
+        return {
+            width: this.map.size.width * TILE_WIDTH,
+            height: this.map.size.height * TILE_HEIGHT
+        }
+    }
+
+    async moveTo(rmdFileName) {
+        this.prevRmdName = this.currentRmdFileName;
+        LoadingScreen.render();
+        this.reset();
+        await this.loadMap(rmdFileName);
+        this.render();
+        RedStone.mainCanvas.mainContainer.removeChild(RedStone.player.container);
+        RedStone.player.reset();
+        RedStone.player.render();
+        LoadingScreen.destroy();
     }
 }
 

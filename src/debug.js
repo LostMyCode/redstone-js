@@ -8,6 +8,5 @@ if (location.pathname.match(/^\/Map\//)) {
 }
 else if (location.pathname.match(/^\/Game/)) {
     console.log("[Mode] Red Stone Online");
-    const game = new RedStone();
-    game.init();
+    RedStone.init();
 }

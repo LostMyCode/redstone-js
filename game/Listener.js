@@ -6,7 +6,6 @@ export default new class Listener {
         this.pressingKeys = new Set();
         
         this.addListeners();
-        this.observeKeyEvent();
     }
 
     addListeners() {
@@ -24,33 +23,5 @@ export default new class Listener {
         else if (e.type === "keyup") {
             this.pressingKeys.delete(e.key);
         }
-    }
-
-    observeKeyEvent() {
-        const moveAmount = 30;
-
-        setInterval(() => {
-            if (!this.pressingKeys.size) return;
-
-            this.pressingKeys.forEach(key => {
-                switch (key) {
-                    case "w":
-                        Camera.y -= moveAmount;
-                        break;
-
-                    case "d":
-                        Camera.x += moveAmount;
-                        break;
-
-                    case "s":
-                        Camera.y += moveAmount;
-                        break;
-
-                    case "a":
-                        Camera.x -= moveAmount;
-                        break;
-                }
-            });
-        }, 40);
     }
 }
