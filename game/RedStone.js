@@ -6,11 +6,23 @@ import Player from "./Player";
 
 class RedStone {
 
-    static mainCanvas = new MainCanvas();
-    static gameMap = new GameMap();
-    static player = new Player();
+    /**
+     * @type {MainCanvas}
+     */
+    static mainCanvas;
+    /**
+     * @type {GameMap}
+     */
+    static gameMap;
+    /**
+     * @type {Player}
+     */
+    static player;
 
     static async init() {
+        RedStone.mainCanvas = new MainCanvas();
+        RedStone.gameMap = new GameMap();
+        RedStone.player = new Player();
 
         // display loading screen
         await LoadingScreen.init();
@@ -25,11 +37,8 @@ class RedStone {
 
         // load player
 
-        // load map
-        await RedStone.gameMap.loadMap();
-
-        // draw map
-        RedStone.gameMap.render();
+        // init map
+        await RedStone.gameMap.init();
 
         LoadingScreen.destroy();
     }

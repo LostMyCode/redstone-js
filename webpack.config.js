@@ -52,7 +52,7 @@ module.exports = (env, options) => {
 
         plugins: [
             new HtmlWebpackPlugin({
-                inject: true,
+                inject: "body",
                 template: path.join(PUBLIC_DIR_PATH, 'index.html'),
             }),
             new MiniCssExtractPlugin({

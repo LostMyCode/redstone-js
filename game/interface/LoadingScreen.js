@@ -39,7 +39,7 @@ class LoadingScreen {
         animatedLoadingText.animationSpeed = 0.2;
         animatedLoadingText.position.set(
             window.innerWidth / 2 - targetTexture.shape.body.width[0] / 2,
-            window.innerHeight - targetTexture.shape.body.height[0]
+            window.innerHeight - targetTexture.shape.body.height[0] - 50
         );
         animatedLoadingText.play();
         this.container.addChild(animatedLoadingText);
