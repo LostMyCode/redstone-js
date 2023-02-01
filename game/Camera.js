@@ -1,4 +1,5 @@
 import { X_BOUND_OFFSET, Y_BOUND_OFFSET } from "./Config";
+import * as RectUtils from "../utils/RectUtils";
 
 export default new class Camera {
 
@@ -58,5 +59,30 @@ export default new class Camera {
     setMapSize(width, height) {
         this.mapSize.width = width;
         this.mapSize.height = height;
+    }
+
+    isInView(x, y) {
+        const { top, left, right, bottom } = this.viewBoundingRect;
+        return x >= left && x <= right && y >= top && y <= bottom;
+    }
+
+    /**
+     * 
+     * @param {{top: Number, left: Number, width: Number, height: Number}} rect 
+     * @returns 
+     */
+    isRectInView(rect) {
+        const view = this.viewBoundingRect;
+        const right = rect.left + rect.width;
+        const bottom = rect.top + rect.height;
+
+        const a = { x1: rect.left, y1: rect.top, x2: right, y2: bottom };
+        const b = { x1: view.left, y1: view.top, x2: view.right, y2: view.bottom };
+
+        return (
+            RectUtils.contains(a, b) || 
+            RectUtils.contains(b, a) ||
+            RectUtils.overlaps(a, b)
+        );
     }
 }
