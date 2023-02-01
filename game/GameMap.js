@@ -33,6 +33,8 @@ const animationObjectTexIds = {
     }
 }
 
+const CONTAINER_SPLIT_BLOCK_SIZE = 50;
+
 class GameMap {
     constructor() {
         /**
@@ -45,6 +47,26 @@ class GameMap {
         this.positionSpecifiedObjectContainer = new PIXI.Container();
         this.shadowContainer = new PIXI.Container();
         this.portalContainer = new PIXI.Container();
+
+        /**
+         * @type {{[key: String]: PIXI.Container}}
+         */
+        this.tileSubContainers = {};
+
+        /**
+         * @type {PIXI.Sprite[]}
+         */
+        this.objectSprites = [];
+
+        /**
+         * @type {PIXI.Sprite[]}
+         */
+        this.shadowSprites = [];
+
+        /**
+         * @type {PIXI.Sprite[]}
+         */
+        this.positionSpecifiedObjectSprites = [];
     }
 
     reset() {
@@ -54,10 +76,6 @@ class GameMap {
         this.shadowContainer.removeChildren();
         this.portalContainer.removeChildren();
 
-        this.tileContainer.destroy()
-        this.shadowContainer.destroy();
-        this.tileContainer = new PIXI.Container();
-        this.shadowContainer = new PIXI.Container();
         RedStone.mainCanvas.mainContainer.removeChild(
             this.objectContainer,
             this.positionSpecifiedObjectContainer,
@@ -65,8 +83,14 @@ class GameMap {
             this.portalContainer
         );
 
+        this.tileSubContainers = [];
+        this.objectSprites = [];
+        this.shadowSprites = [];
+        this.positionSpecifiedObjectSprites = [];
+
         this.map = null;
         this.onceRendered = false;
+        this.initialized = false;
     }
 
     async loadCommon() {
@@ -74,12 +98,14 @@ class GameMap {
     }
 
     async loadMap(rmdFileName = "[000]T01.rmd") {
+        // async loadMap(rmdFileName = "[130]G09.rmd") {
+        // async loadMap(rmdFileName = "[010]G13.rmd") {
         console.log("[Game]", "Loading scenario file...");
         // const rmd = await fetchBinaryFile(`${RMD_DIR}/[060]T01_A01.rmd`);
         const rmd = await fetchBinaryFile(`${RMD_DIR}/${rmdFileName}`);
         this.map = new RedStoneMap(new BufferReader(rmd));
         this.currentRmdFileName = rmdFileName;
-        console.log("[Game]", "Scenario loaded");
+        console.log("[Game]", "Scenario loaded", this.map);
 
         Camera.setMapSize(this.map.size.width * TILE_WIDTH, this.map.size.height * TILE_HEIGHT);
         this.initPosition();
@@ -90,7 +116,8 @@ class GameMap {
         this.buildingTextures = Object.keys(this.map.buildingInfos).length ? await loadZippedTextures(`${MAPSET_DIR}/${mapsetName}/${mapsetName}_Buildings.zip`) : null;
     }
 
-    render() {
+    async init() {
+        if (!this.map) await this.loadMap();
         const map = this.map;
 
         for (let i = 0; i < map.size.height; i++) {
@@ -100,10 +127,6 @@ class GameMap {
 
                 this.renderTile(tileCode, j, i);
                 this.renderObject(objectCode, j, i);
-                // setTimeout(() => {
-                //     this.renderTile(tileCode, j, i);
-                //     this.renderObject(objectCode, j, i);
-                // }, 1 * (i * map.size.width + j));
             }
         }
 
@@ -119,7 +142,8 @@ class GameMap {
             const sprite = new PIXI.Sprite(pixiTexture);
             sprite.position.set(x, y);
 
-            this.positionSpecifiedObjectContainer.addChild(sprite);
+            // this.positionSpecifiedObjectContainer.addChild(sprite);
+            this.positionSpecifiedObjectSprites.push(sprite);
 
             if (texture.isExistShadow) {
                 const pixiTexture = texture.getPixiTexture(0, "shadow");
@@ -130,34 +154,110 @@ class GameMap {
                 const sprite = new PIXI.Sprite(pixiTexture);
                 sprite.position.set(x, y);
 
-                this.shadowContainer.addChild(sprite);
+                // this.shadowContainer.addChild(sprite);
+                this.shadowSprites.push(sprite);
             }
         });
 
         this.renderPortals();
 
-        this.tileContainer.cacheAsBitmap = true;
-        this.shadowContainer.cacheAsBitmap = true;
-
         RedStone.mainCanvas.mainContainer.addChild(this.tileContainer);
         RedStone.mainCanvas.mainContainer.addChild(this.portalContainer);
-        RedStone.mainCanvas.mainContainer.addChild(this.shadowContainer);
         RedStone.mainCanvas.mainContainer.addChild(this.positionSpecifiedObjectContainer);
+        RedStone.mainCanvas.mainContainer.addChild(this.shadowContainer);
         RedStone.mainCanvas.mainContainer.addChild(this.objectContainer);
 
         if (!this.onceRendered) {
             this.onceRendered = true;
         }
+
+        this.initialized = true;
+    }
+
+    render() {
+        if (!this.initialized) return;
+
+        const startTime = performance.now();
+
+        this.tileContainer.removeChildren();
+        this.objectContainer.removeChildren();
+        this.shadowContainer.removeChildren();
+        this.positionSpecifiedObjectContainer.removeChildren();
+
+        Object.keys(this.tileSubContainers).forEach((key, idx) => {
+            const [blockX, blockY] = key.split("-").map(Number);
+            const x = blockX * TILE_WIDTH * CONTAINER_SPLIT_BLOCK_SIZE;
+            const y = blockY * TILE_HEIGHT * CONTAINER_SPLIT_BLOCK_SIZE;
+
+            if (!Camera.isRectInView({
+                top: y, left: x,
+                width: TILE_WIDTH * CONTAINER_SPLIT_BLOCK_SIZE,
+                height: TILE_HEIGHT * CONTAINER_SPLIT_BLOCK_SIZE
+            })) {
+                return;
+            }
+
+            const tc = this.tileSubContainers[key];
+            tc.position.set(x, y);
+            tc.cacheAsBitmap = true;
+            this.tileContainer.addChild(tc);
+        });
+
+        this.objectSprites.forEach(sprite => {
+            const { x, y, width, height } = sprite;
+
+            if (!Camera.isRectInView({
+                top: y, left: x, width, height
+            })) {
+                return;
+            }
+
+            this.objectContainer.addChild(sprite);
+        });
+
+        this.shadowSprites.forEach(sprite => {
+            const { x, y, width, height } = sprite;
+
+            if (!Camera.isRectInView({
+                top: y, left: x, width, height
+            })) {
+                return;
+            }
+
+            this.shadowContainer.addChild(sprite);
+        });
+
+        this.positionSpecifiedObjectSprites.forEach(sprite => {
+            const { x, y, width, height } = sprite;
+
+            if (!Camera.isRectInView({
+                top: y, left: x, width, height
+            })) {
+                return;
+            }
+
+            this.positionSpecifiedObjectContainer.addChild(sprite);
+        });
+
+        const endTime = performance.now();
+        // window.redgemDebugLog.push({ type: "GameMap Render Time", time: endTime - startTime });
     }
 
     renderTile(code, blockX, blockY) {
         const tileTextureId = code % (16 << 10);
         const texture = this.tileTexture.getPixiTexture(tileTextureId);
         const sprite = new PIXI.Sprite(texture);
-        sprite.position.set(blockX * TILE_WIDTH, blockY * TILE_HEIGHT);
         sprite.width = TILE_WIDTH;
         sprite.height = TILE_HEIGHT;
-        this.tileContainer.addChild(sprite);
+
+        const chunkX = ~~(blockX / CONTAINER_SPLIT_BLOCK_SIZE);
+        const chunkY = ~~(blockY / CONTAINER_SPLIT_BLOCK_SIZE);
+        const chunkName = `${chunkX}-${chunkY}`;
+
+        sprite.position.set((blockX - chunkX * 50) * TILE_WIDTH, (blockY - chunkY * 50) * TILE_HEIGHT);
+
+        this.tileSubContainers[chunkName] = this.tileSubContainers[chunkName] || new PIXI.Container();
+        this.tileSubContainers[chunkName].addChild(sprite);
     }
 
     renderObject(code, blockX, blockY) {
@@ -191,16 +291,16 @@ class GameMap {
 
         const fileName = getTextureFileName(objectInfo.textureId, isBuilding ? "rbd" : undefined);
         const texture = isBuilding ? this.buildingTextures.getTexture(fileName) : this.objectTextures.getTexture(fileName);
-        const pixiTexture = texture.getPixiTexture(0);
 
         const blockCenterX = blockX * TILE_WIDTH + TILE_WIDTH / 2;
         const blockCenterY = blockY * TILE_HEIGHT + TILE_HEIGHT / 2;
         const x = blockCenterX - texture.shape.body.left[0];
         const y = blockCenterY - texture.shape.body.top[0];
 
+        const pixiTexture = texture.getPixiTexture(0);
         const sprite = new PIXI.Sprite(pixiTexture);
         sprite.position.set(x, y);
-        this.objectContainer.addChild(sprite);
+        this.objectSprites.push(sprite);
 
         // animated objects (rso)
         if (!isBuilding && animationObjectTexIds[mapsetName]?.rso?.includes(objectInfo.textureId)) {
@@ -214,7 +314,7 @@ class GameMap {
             sprite.position.set(x, y);
             sprite.animationSpeed = 0.1;
             sprite.play();
-            this.objectContainer.addChild(sprite);
+            this.objectSprites.push(sprite);
         }
 
         // shadow
@@ -227,7 +327,7 @@ class GameMap {
             const sprite = new PIXI.Sprite(pixiTexture);
             sprite.position.set(x, y);
 
-            this.shadowContainer.addChild(sprite);
+            this.shadowSprites.push(sprite);
         }
 
         // render sub objects
@@ -242,8 +342,7 @@ class GameMap {
 
             const sprite = new PIXI.Sprite(pixiTexture);
             sprite.position.set(x, y);
-
-            this.objectContainer.addChild(sprite);
+            this.objectSprites.push(sprite);
 
             // animated objects (rfo)
             if (animationObjectTexIds[mapsetName]?.rfo?.includes(textureId)) {
@@ -257,7 +356,7 @@ class GameMap {
                 sprite.position.set(x, y);
                 sprite.animationSpeed = 0.1;
                 sprite.play();
-                this.objectContainer.addChild(sprite);
+                this.objectSprites.push(sprite);
             }
         });
 
@@ -276,7 +375,7 @@ class GameMap {
                 const sprite = new PIXI.Sprite(pixiTexture);
                 sprite.position.set(x, y);
 
-                this.objectContainer.addChild(sprite);
+                this.objectSprites.push(sprite);
 
                 if (texture.isExistShadow) {
                     const pixiTexture = texture.getPixiTexture(id, "shadow");
@@ -287,7 +386,7 @@ class GameMap {
                     const sprite = new PIXI.Sprite(pixiTexture);
                     sprite.position.set(x, y);
 
-                    this.shadowContainer.addChild(sprite);
+                    this.shadowSprites.push(sprite);
                 }
             }
         }
@@ -380,6 +479,7 @@ class GameMap {
         LoadingScreen.render();
         this.reset();
         await this.loadMap(rmdFileName);
+        await this.init();
         this.render();
         RedStone.mainCanvas.mainContainer.removeChild(RedStone.player.container);
         RedStone.player.reset();

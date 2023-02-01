@@ -37,11 +37,8 @@ class RedStone {
 
         // load player
 
-        // load map
-        await RedStone.gameMap.loadMap();
-
-        // draw map
-        RedStone.gameMap.render();
+        // init map
+        await RedStone.gameMap.init();
 
         LoadingScreen.destroy();
     }
