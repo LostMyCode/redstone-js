@@ -6,8 +6,9 @@ import BufferReader from "../utils/BufferReader";
 import Map from "./models/Map";
 import Camera from "./Camera";
 import LoadingScreen from "./interface/LoadingScreen";
-import { INTERFACE_DIR, MAPSET_DIR, RMD_DIR, TILE_HEIGHT, TILE_WIDTH } from "./Config";
+import { DATA_DIR, INTERFACE_DIR, MAPSET_DIR, RMD_DIR, TILE_HEIGHT, TILE_WIDTH } from "./Config";
 import RedStone from "./RedStone";
+import { ActorImage } from "./models/Actor";
 
 const getTextureFileName = (textureId, extension = "rso") => {
     if (!extension) throw new Error("[Error] Invalid file extension");
@@ -47,6 +48,7 @@ class GameMap {
         this.positionSpecifiedObjectContainer = new PIXI.Container();
         this.shadowContainer = new PIXI.Container();
         this.portalContainer = new PIXI.Container();
+        this.actorContainer = new PIXI.Container();
 
         /**
          * @type {{[key: String]: PIXI.Container}}
@@ -67,6 +69,11 @@ class GameMap {
          * @type {PIXI.Sprite[]}
          */
         this.positionSpecifiedObjectSprites = [];
+
+        /**
+         * @type {PIXI.Sprite[]}
+         */
+        this.actorSprites = [];
     }
 
     reset() {
@@ -160,11 +167,13 @@ class GameMap {
         });
 
         this.renderPortals();
+        this.renderActors();
 
         RedStone.mainCanvas.mainContainer.addChild(this.tileContainer);
         RedStone.mainCanvas.mainContainer.addChild(this.portalContainer);
         RedStone.mainCanvas.mainContainer.addChild(this.positionSpecifiedObjectContainer);
         RedStone.mainCanvas.mainContainer.addChild(this.shadowContainer);
+        RedStone.mainCanvas.mainContainer.addChild(this.actorContainer);
         RedStone.mainCanvas.mainContainer.addChild(this.objectContainer);
 
         if (!this.onceRendered) {
@@ -237,6 +246,18 @@ class GameMap {
             }
 
             this.positionSpecifiedObjectContainer.addChild(sprite);
+        });
+
+        this.actorSprites.forEach(sprite => {
+            const { x, y, width, height } = sprite;
+
+            if (!Camera.isRectInView({
+                top: y, left: x, width, height
+            })) {
+                return;
+            }
+
+            this.actorContainer.addChild(sprite);
         });
 
         const endTime = performance.now();
@@ -453,6 +474,45 @@ class GameMap {
             });
 
             this.portalContainer.addChild(sprite);
+        });
+    }
+
+    renderActors() {
+        const textureCache = {};
+        const framesPerAnimation = 8;
+
+        this.map.actorSingles.forEach(async actor => {
+            const group = this.map.actorGroups[actor.internalID];
+
+            if (!ActorImage[group.job]) return;
+
+            const textureFileName = ActorImage[group.job] + ".sad";
+            let texture = textureCache[group.job];
+
+            if (!texture) {
+                texture = await loadTexture(`${DATA_DIR}/NPC/${textureFileName}`);
+                textureCache[group.job] = texture;
+            }
+
+            const targetFrame = actor.direct * framesPerAnimation;
+            const pixiTexture = texture.getPixiTexture(targetFrame);
+
+            const x = actor.point.x - texture.shape.body.left[targetFrame];
+            const y = actor.point.y - texture.shape.body.top[targetFrame] - TILE_HEIGHT / 2;
+
+            const sprite = new PIXI.Sprite(pixiTexture);
+            sprite.position.set(x, y);
+
+            this.actorSprites.push(sprite);
+
+            const shadowTexture = texture.getPixiTexture(targetFrame, "shadow");
+            const shadowX = actor.point.x - texture.shape.shadow.left[targetFrame];
+            const shadowY = actor.point.y - texture.shape.shadow.top[targetFrame] - TILE_HEIGHT / 2;
+
+            const shadowSprite = new PIXI.Sprite(shadowTexture);
+            shadowSprite.position.set(shadowX, shadowY);
+
+            this.shadowSprites.push(shadowSprite);
         });
     }
 

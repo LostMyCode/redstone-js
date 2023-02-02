@@ -154,7 +154,7 @@ class MapReaderDebug {
 
         ctx.fillStyle = "#fff";
         ctx.font = "14px Arial";
-        ctx.fillText(actor.name, x, y);
+        ctx.fillText(actor.name + `(${map.actorGroups[actor.internalID].job})`, x, y);
       });
     }
 

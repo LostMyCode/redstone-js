@@ -222,12 +222,27 @@ export const ActorDirect = {
 }
 
 export const ActorImage = {
+    251: "MAN2",
+    254: "YOUNG_MAN1",
+    255: "YOUNG_MAN2",
+    256: "LADY1",
+    257: "LADY2",
+    280: "WOODCUTTER1",
+    281: "WOODCUTTER2",
     305: "PITCHMAN_F",
 }
 
 export class MapActorSingle {
     constructor(br) {
+        /**
+         * @type {BufferReader}
+         */
         this.br = br;
+        /**
+         * @type {Number}
+         */
+        this.internalID = null;
+        
         this.readData(br);
     }
 
