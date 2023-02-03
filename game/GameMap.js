@@ -88,7 +88,8 @@ class GameMap {
             this.portalContainer
         );
 
-        this.tileSubContainers = [];
+        this.tileSubContainers = {};
+        this.objectSubContainers = {};
         this.objectSprites = [];
         this.shadowSprites = [];
         this.positionSpecifiedObjectSprites = [];
