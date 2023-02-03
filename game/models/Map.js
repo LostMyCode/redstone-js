@@ -194,7 +194,6 @@ class Map {
         }
 
         const objectInfoCount = br.readUInt32LE();
-        const unk_1 = br.readStructUInt8(12);
         console.log("object info count", objectInfoCount);
 
         for (let i = 0; i < objectInfoCount; i++) {
@@ -207,9 +206,9 @@ class Map {
         }
 
         const buildingCount = br.readUInt32LE();
-        console.log("building count?", buildingCount);
+        console.log("building count", buildingCount);
 
-        for (let i = 0; i < (buildingCount ? 105 : 0); i++) {
+        for (let i = 0; i < buildingCount; i++) {
             const buildingInfo = new BuildingInfo(br);
             this.buildingInfos[buildingInfo.index] = buildingInfo;
         }
@@ -333,18 +332,16 @@ class ObjectInfo {
      * @param {BufferReader} br 
      */
     readData(br) {
+        this.index = br.readUInt16LE();
+        const unk1 = br.readUInt8(); // 0xCD (205) ??
+        const unk2 = br.readUInt8(); // 0xCD (205) ??
+        const unk3 = br.readUInt32LE();
+        const unk4 = br.readUInt32LE();
+
         this.textureId = br.readUInt16LE();
         this.readSubObjects();
 
-        // rest 14
         this.isDrawShadow = br.readUInt16LE() === 1;
-        this.index = br.readUInt16LE();
-        const unk2 = br.readUInt8();
-        const unk3 = br.readUInt8();
-        const unk4 = br.readUInt32LE();
-        const unk5 = br.readUInt32LE();
-
-        // if (this.index === 7) console.log("check unknown values", this.isDrawShadow, this.index, unk2, unk3, unk4, unk5);
     }
 
     readSubObjects() {
@@ -384,6 +381,7 @@ class ObjectInfo {
 class BuildingInfo {
     constructor(br) {
         this.br = br;
+        this.parts = [];
         this.readData(br);
     }
 
@@ -391,13 +389,35 @@ class BuildingInfo {
      * @param {BufferReader} br 
      */
     readData(br) {
-        this.textureId = br.readUInt16LE();
-        br.readUInt16LE();
-        br.readUInt16LE();
-        br.readUInt16LE();
-        this.unk0 = br.readStructUInt8(64);
         this.index = br.readUInt16LE();
-        this.unk1 = br.readStructUInt8(10);
+
+        const unk1 = br.readUInt8(); // 0xCD (205) ??
+        const unk2 = br.readUInt8(); // 0xCD (205) ??
+        const unk3 = br.readUInt32LE();
+        const unk4 = br.readUInt32LE();
+
+        this.textureId = br.readUInt16LE();
+
+        // unknown 6 bytes 
+        br.readUInt16LE();
+        br.readUInt16LE();
+        br.readUInt16LE();
+
+        const parts = br.readStructUInt8(42);
+        const partsReader = new BufferReader(Buffer.from(parts));
+        
+        // 42 bytes
+        for (let i = 0; i < 21; i++) {
+            const textureId = partsReader.readUInt16LE();
+
+            if (textureId === 0xffff) break;
+
+            this.parts.push(textureId);
+        }
+
+        // unknown data
+        // br.readStructUInt8(22);
+        br.offset += 22;
     }
 }
 

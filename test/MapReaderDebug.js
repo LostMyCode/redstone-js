@@ -270,7 +270,7 @@ class MapReaderDebug {
             isBuilding = code >= 16 << 11;
             index = isBuilding ? code % (16 << 11) : code % (16 << 10);
           }
-          const objectInfo = isBuilding ? map.buildingInfos[index + 1] : map.objectInfos[index + 1];
+          const objectInfo = isBuilding ? map.buildingInfos[index] : map.objectInfos[index];
           if (!objectInfo) {
             // console.log("invalid object index", index, bytes);
             continue;
@@ -296,15 +296,11 @@ class MapReaderDebug {
 
           this.ctx.drawImage(textureCanvas, x, y);
 
-          if (isBuilding && texture.frameCount > 1) {
-            const r = new BufferReader(Buffer.from(objectInfo.unk0));
-            while (true) {
-              const id = r.readUInt16LE();
-              if (id === 65535) break;
-              // console.log("check id", id);
-              const textureCanvas = texture.getCanvas(id);
-              const x = blockCenterX - texture.shape.body.left[id];
-              const y = blockCenterY - texture.shape.body.top[id];
+          if (isBuilding) {
+            objectInfo.parts.forEach(frameIndex => {
+              const textureCanvas = texture.getCanvas(frameIndex);
+              const x = blockCenterX - texture.shape.body.left[frameIndex];
+              const y = blockCenterY - texture.shape.body.top[frameIndex];
               this.ctx.drawImage(textureCanvas, x, y);
 
               setTimeout(() => {
@@ -322,11 +318,7 @@ class MapReaderDebug {
                 // info text
                 this.ctx.fillText(`tex: ${id}, ${i * map.size.width + j}, ${fileName}`, x, y);
               }, 100);
-            }
-
-            // if (i * map.size.width + j === 32611) {
-            //   console.log(objectInfo.unk0);
-            // }
+            });
           }
 
           !isBuilding && objectInfo.subObjectInfos.forEach(subObjectInfo => {
