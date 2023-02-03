@@ -82,18 +82,21 @@ class GameMap {
         this.positionSpecifiedObjectContainer.removeChildren();
         this.shadowContainer.removeChildren();
         this.portalContainer.removeChildren();
+        this.actorContainer.removeChildren();
 
         RedStone.mainCanvas.mainContainer.removeChild(
             this.objectContainer,
             this.positionSpecifiedObjectContainer,
             this.shadowContainer,
-            this.portalContainer
+            this.portalContainer,
+            this.actorContainer,
         );
 
         this.tileSubContainers = [];
         this.objectSprites = [];
         this.shadowSprites = [];
         this.positionSpecifiedObjectSprites = [];
+        this.actorSprites = [];
 
         this.map = null;
         this.onceRendered = false;
