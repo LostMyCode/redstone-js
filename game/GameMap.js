@@ -284,7 +284,7 @@ class GameMap {
             console.log("[Map Object Renderer] Untested scenario version:", map.scenarioVersion);
         }
 
-        const objectInfo = isBuilding ? map.buildingInfos[index + 1] : map.objectInfos[index + 1];
+        const objectInfo = isBuilding ? map.buildingInfos[index] : map.objectInfos[index];
         if (!objectInfo) {
             return;
         }
@@ -361,16 +361,12 @@ class GameMap {
         });
 
         // render building parts
-        if (isBuilding && texture.frameCount > 1) {
-            const r = new BufferReader(Buffer.from(objectInfo.unk0));
-            while (true) {
-                const id = r.readUInt16LE();
-                if (id === 65535) break;
+        if (isBuilding) {
+            objectInfo.parts.forEach(frameIndex => {
+                const pixiTexture = texture.getPixiTexture(frameIndex);
 
-                const pixiTexture = texture.getPixiTexture(id);
-
-                const x = blockCenterX - texture.shape.body.left[id];
-                const y = blockCenterY - texture.shape.body.top[id];
+                const x = blockCenterX - texture.shape.body.left[frameIndex];
+                const y = blockCenterY - texture.shape.body.top[frameIndex];
 
                 const sprite = new PIXI.Sprite(pixiTexture);
                 sprite.position.set(x, y);
@@ -378,17 +374,17 @@ class GameMap {
                 this.objectSprites.push(sprite);
 
                 if (texture.isExistShadow) {
-                    const pixiTexture = texture.getPixiTexture(id, "shadow");
+                    const pixiTexture = texture.getPixiTexture(frameIndex, "shadow");
 
-                    const x = blockCenterX - texture.shape.shadow.left[id];
-                    const y = blockCenterY - texture.shape.shadow.top[id];
+                    const x = blockCenterX - texture.shape.shadow.left[frameIndex];
+                    const y = blockCenterY - texture.shape.shadow.top[frameIndex];
 
                     const sprite = new PIXI.Sprite(pixiTexture);
                     sprite.position.set(x, y);
 
                     this.shadowSprites.push(sprite);
                 }
-            }
+            });
         }
     }
 
