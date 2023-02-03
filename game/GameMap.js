@@ -8,7 +8,7 @@ import Camera from "./Camera";
 import LoadingScreen from "./interface/LoadingScreen";
 import { DATA_DIR, INTERFACE_DIR, MAPSET_DIR, RMD_DIR, TILE_HEIGHT, TILE_WIDTH } from "./Config";
 import RedStone from "./RedStone";
-import { ActorImage } from "./models/Actor";
+import { ActorImage, CType } from "./models/Actor";
 
 const getTextureFileName = (textureId, extension = "rso") => {
     if (!extension) throw new Error("[Error] Invalid file extension");
@@ -522,11 +522,24 @@ class GameMap {
 
             if (!ActorImage[group.job]) return;
 
-            const textureFileName = ActorImage[group.job] + ".sad";
+            let textureFileName = ActorImage[group.job] + ".sad";
             let texture = textureCache[group.job];
 
             if (!texture) {
-                texture = await loadTexture(`${DATA_DIR}/NPC/${textureFileName}`);
+                let dir;
+                switch (actor.charType) {
+                    case CType.Monster:
+                    case CType.QuestMonster:
+                        dir = "monsters";
+                        ActorImage[group.job] + ".sad";
+                        break;
+
+                    default:
+                        dir = "NPC";
+                        ActorImage[group.job] + ".sad";
+                        return;
+                }
+                texture = await loadTexture(`${DATA_DIR}/${dir}/${textureFileName}`);
                 textureCache[group.job] = texture;
             }
 
@@ -538,6 +551,7 @@ class GameMap {
 
             const sprite = new PIXI.Sprite(pixiTexture);
             sprite.position.set(x, y);
+            sprite.scale.set(group.scale.width / 100, group.scale.height / 100);
 
             this.actorSprites.push(sprite);
 

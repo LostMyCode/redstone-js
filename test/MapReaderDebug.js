@@ -35,7 +35,7 @@ class MapReaderDebug {
       if (!ActorImage[actorGroup.job]) return;
       const textureFileName = ActorImage[actorGroup.job] + ".sad";
       if (this.npcTextures[textureFileName]) continue;
-      const textureBuffer = await fetchBinaryFile(`${DATA_DIR}/NPC/${textureFileName}`);
+      const textureBuffer = await fetchBinaryFile(`${DATA_DIR}/${actorGroup.job < 250 ? "monsters" : "NPC"}/${textureFileName}`);
       this.npcTextures[textureFileName] = new Texture(textureFileName, textureBuffer);
     }
   }
