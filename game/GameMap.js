@@ -79,6 +79,8 @@ class GameMap {
          * @type {PIXI.Sprite[]}
          */
         this.actorSprites = [];
+
+        this.actorTextures = {};
     }
 
     reset() {
@@ -130,6 +132,31 @@ class GameMap {
         this.tileTexture = await loadTexture(`${MAPSET_DIR}/${mapsetName}/tile.mpr`);
         this.objectTextures = await loadZippedTextures(`${MAPSET_DIR}/${mapsetName}/${mapsetName}_Objects.zip`);
         this.buildingTextures = Object.keys(this.map.buildingInfos).length ? await loadZippedTextures(`${MAPSET_DIR}/${mapsetName}/${mapsetName}_Buildings.zip`) : null;
+
+        // load actor textures
+        for (let actor of this.map.actorSingles) {
+            const group = this.map.actorGroups[actor.internalID];
+            if (!ActorImage[group.job]) continue;
+            if (this.actorTextures[group.job]) continue;
+
+            let dir;
+            switch (actor.charType) {
+                case CType.Monster:
+                case CType.QuestMonster:
+                    dir = "monsters";
+                    ActorImage[group.job] + ".sad";
+                    break;
+
+                default:
+                    dir = "NPC";
+                    ActorImage[group.job] + ".sad";
+                    break;
+            }
+
+            const textureFileName = ActorImage[group.job] + ".sad";
+            const texture = await loadTexture(`${DATA_DIR}/${dir}/${textureFileName}`);
+            this.actorTextures[group.job] = texture;
+        }
     }
 
     async init() {
@@ -273,6 +300,13 @@ class GameMap {
                 top: y, left: x, width, height
             })) {
                 return;
+            }
+
+            if (typeof sprite.currentFrame === "number") {
+                sprite.position.set(
+                    sprite.baseX - sprite.shape.left[sprite.startFrameIndex + sprite.currentFrame],
+                    sprite.baseY - sprite.shape.top[sprite.startFrameIndex + sprite.currentFrame]
+                );
             }
 
             this.actorContainer.addChild(sprite);
@@ -523,46 +557,93 @@ class GameMap {
             if (!ActorImage[group.job]) return;
 
             let textureFileName = ActorImage[group.job] + ".sad";
-            let texture = textureCache[group.job];
+            let texture = this.actorTextures[group.job];
 
-            if (!texture) {
-                let dir;
-                switch (actor.charType) {
-                    case CType.Monster:
-                    case CType.QuestMonster:
-                        dir = "monsters";
-                        ActorImage[group.job] + ".sad";
-                        break;
+            let dir;
+            switch (actor.charType) {
+                case CType.Monster:
+                case CType.QuestMonster:
+                    dir = "monsters";
+                    ActorImage[group.job] + ".sad";
+                    break;
 
-                    default:
-                        dir = "NPC";
-                        ActorImage[group.job] + ".sad";
-                        return;
-                }
-                texture = await loadTexture(`${DATA_DIR}/${dir}/${textureFileName}`);
-                textureCache[group.job] = texture;
+                default:
+                    dir = "NPC";
+                    ActorImage[group.job] + ".sad";
+                    break;
             }
 
-            const targetFrame = actor.direct * framesPerAnimation;
-            const pixiTexture = texture.getPixiTexture(targetFrame);
+            const action = texture.actions.find(a => a.name.match(/^02/));
+            const startFrameIndex = action.startFrameIndex;
+            let frameCount;
+            let nextFrameIndex;
+
+            if (action.index === texture.actions.length - 1) {
+                // theres no next action
+                nextFrameIndex = texture.frameCount;
+            } else {
+                const nextAction = texture.actions[texture.actions.indexOf(action) + 1];
+                nextFrameIndex = nextAction.startFrameIndex;
+            }
+
+            frameCount = (nextFrameIndex - startFrameIndex) / 8;
+
+            const actorDirect = actor.direct === 8 ? ~~(Math.random() * 8) : actor.direct;
+            const targetFrame = startFrameIndex + actorDirect * frameCount;
+
+            const pixiTextures = [];
+            const pixiShadowTextures = [];
+
+            for (let i = 0; i < frameCount; i++) {
+                const tex = texture.getPixiTexture(targetFrame + i);
+                pixiTextures.push(tex);
+                const shadowTex = texture.getPixiTexture(targetFrame + i, "shadow");
+                pixiShadowTextures.push(shadowTex);
+            }
 
             const x = actor.point.x - texture.shape.body.left[targetFrame];
             const y = actor.point.y - texture.shape.body.top[targetFrame] - TILE_HEIGHT / 2;
 
-            const sprite = new PIXI.Sprite(pixiTexture);
+            // const sprite = new PIXI.Sprite(pixiTexture);
+            const sprite = new PIXI.AnimatedSprite(pixiTextures);
             sprite.position.set(x, y);
             sprite.scale.set(group.scale.width / 100, group.scale.height / 100);
-
-            this.actorSprites.push(sprite);
+            sprite.animationSpeed = 0.1;
+            sprite.startFrameIndex = targetFrame;
+            sprite.shape = texture.shape.body;
+            sprite.baseX = actor.point.x;
+            sprite.baseY = actor.point.y;
+            sprite.play();
 
             const shadowTexture = texture.getPixiTexture(targetFrame, "shadow");
             const shadowX = actor.point.x - texture.shape.shadow.left[targetFrame];
             const shadowY = actor.point.y - texture.shape.shadow.top[targetFrame] - TILE_HEIGHT / 2;
 
-            const shadowSprite = new PIXI.Sprite(shadowTexture);
+            const shadowSprite = new PIXI.AnimatedSprite(pixiShadowTextures);
             shadowSprite.position.set(shadowX, shadowY);
+            shadowSprite.scale.set(group.scale.width / 100, group.scale.height / 100);
+            shadowSprite.animationSpeed = 0.1;
+            shadowSprite.startFrameIndex = targetFrame;
+            shadowSprite.shape = texture.shape.shadow;
+            shadowSprite.baseX = actor.point.x;
+            shadowSprite.baseY = actor.point.y;
+            shadowSprite.play();
 
-            this.shadowSprites.push(shadowSprite);
+            if (dir === "NPC") { // set cool time if target is NPC (to be natural)
+                sprite.loop = false;
+                shadowSprite.loop = false;
+                const onComplete = () => {
+                    setTimeout(() => {
+                        sprite.gotoAndPlay(0);
+                        shadowSprite.gotoAndPlay(0);
+                    }, 10000);
+                };
+                sprite.onComplete = onComplete;
+            }
+
+            // this.shadowSprites.push(shadowSprite);
+            this.actorSprites.push(shadowSprite); // temp
+            this.actorSprites.push(sprite);
         });
     }
 
