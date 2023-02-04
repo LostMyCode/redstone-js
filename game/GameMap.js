@@ -135,6 +135,7 @@ class GameMap {
     async init() {
         if (!this.map) await this.loadMap();
         const map = this.map;
+        const mapsetName = this.map.getMapsetName();
 
         for (let i = 0; i < map.size.height; i++) {
             for (let j = 0; j < map.size.width; j++) {
@@ -160,6 +161,22 @@ class GameMap {
 
             // this.positionSpecifiedObjectContainer.addChild(sprite);
             this.positionSpecifiedObjectSprites.push(sprite);
+
+            // animated objects (rfo)
+            if (animationObjectTexIds[mapsetName]?.rfo?.includes(obj.textureId)) {
+                const pixiTextures = [];
+                for (let i = 1; i < texture.frameCount; i++) {
+                    pixiTextures.push(texture.getPixiTexture(i));
+                }
+                const x = obj.point.x - texture.shape.body.left[1];
+                const y = obj.point.y - texture.shape.body.top[1];
+                const sprite = new PIXI.AnimatedSprite(pixiTextures);
+                sprite.position.set(x, y);
+                sprite.animationSpeed = 0.1;
+                sprite.play();
+                // this.objectSprites.push(sprite);
+                this.positionSpecifiedObjectSprites.push(sprite);
+            }
 
             if (texture.isExistShadow) {
                 const pixiTexture = texture.getPixiTexture(0, "shadow");
