@@ -1,0 +1,14 @@
+
+
+Add all sprites to containers + enable cacheAsBitmap for tile and shadow containers
+Render time (Average of 1000 times) [1]: 1.6775000047683717 ms
+Render time (Average of 1000 times) [2]: 1.930899996995926 ms
+
+After map render bugfix (to avoid black screen) [230202]
+Commit: https://github.com/LostMyCode/redstone-js/commit/50f5939c676f19922fc33526efe43e0f59e210f9
+Render time (Average of 1000 times) [1]: 5.720600002527237 ms
+Render time (Average of 1000 times) [2]: 5.522700001478195 ms
+
+Split object container into sub containers
+Render time (Average of 1000 times) [1]: 3.997700001955032 ms
+Render time (Average of 1000 times) [2]: 4.1768999979496 ms

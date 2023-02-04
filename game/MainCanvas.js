@@ -2,6 +2,16 @@ import * as PIXI from "pixi.js";
 import Camera from "./Camera";
 import RedStone from "./RedStone";
 
+const renderTimes = [];
+
+window.getBenchmarkResult = () => {
+    const len = renderTimes.length;
+    const sum = renderTimes.reduce((total, val, index) => total + val, 0);
+    console.log("sum:", sum);
+    console.log("length:", renderTimes.length);
+    console.log("ave:", sum / len);
+}
+
 class MainCanvas {
 
     constructor() {
@@ -41,11 +51,20 @@ class MainCanvas {
     }
 
     render() {
+        const startTime = performance.now();
+
         this.mainContainer.position.set(window.innerWidth / 2 - Camera.x, window.innerHeight / 2 - Camera.y);
         // this.rootContainer.scale.set(1);
+        RedStone.gameMap.render();
         RedStone.player.render();
         
         this.renderer.render(this.rootContainer);
+
+        const endTime = performance.now();
+
+        // if (renderTimes.length < 1000) {
+        //     renderTimes.push(endTime - startTime);
+        // }
     }
 }
 

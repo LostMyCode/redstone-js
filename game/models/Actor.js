@@ -222,12 +222,46 @@ export const ActorDirect = {
 }
 
 export const ActorImage = {
+    15: "Zombie",
+    25: "Ghost",
+    35: "GhostArmor",
+    75: "DarkPriest",
+    105: "Reptile",
+    185: "Wolf",
+    250: "MAN1",
+    251: "MAN2",
+    254: "YOUNG_MAN1",
+    255: "YOUNG_MAN2",
+    256: "LADY1",
+    257: "LADY2",
+    260: "BOY1",
+    261: "GIRL2",
+    262: "GIRL1",
+    263: "BOY2",
+    264: "NOBLE_MAN1",
+    265: "NOBLE_MAN2",
+    266: "NOBLE_WOMAN1",
+    267: "NOBLE_WOMAN2",
+    280: "WOODCUTTER1",
+    281: "WOODCUTTER2",
+    288: "PRIEST",
+    299: "MAGICIAN_M",
+    300: "MAGICIAN_F",
+    301: "SHOPKEEPER_WEAPON",
     305: "PITCHMAN_F",
 }
 
 export class MapActorSingle {
     constructor(br) {
+        /**
+         * @type {BufferReader}
+         */
         this.br = br;
+        /**
+         * @type {Number}
+         */
+        this.internalID = null;
+
         this.readData(br);
     }
 
@@ -282,7 +316,7 @@ export class MapActorGroup {
         this.name = baseReader.readString(0x14, "sjis");
         this.imageSumCandidate = baseReader.readStructUInt16LE(0x03);
         this.unknown_4 = baseReader.readUInt16LE();
-        [this.sizeWidth, this.sizeHeight] = baseReader.readStructUInt16LE(2);
+        this.scale = { width: baseReader.readUInt16LE(), height: baseReader.readUInt16LE() };
         this.maxLevel = baseReader.readUInt16LE();
         this.unknown_3 = baseReader.readStructUInt8(this.structLength - baseReader.offset);
 
