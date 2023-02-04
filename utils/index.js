@@ -1,3 +1,4 @@
+import { DATA_DIR } from "../game/Config";
 import Texture, { ZippedTextures } from "../game/models/Texture";
 
 export const fetchBinaryFile = async (path) => {
@@ -42,16 +43,14 @@ export const loadZippedImages = async (path) => {
 
 export const loadTexture = async (path) => {
     const buf = await fetchBinaryFile(path);
-    console.log("[Texture] Loading texture...", path);
     const texture = new Texture(path.split("/").pop(), buf);
-    console.log("[Texture] Ready!!", path);
+    console.log("[Texture] Loaded", path.replace(DATA_DIR + "/", ""));
     return texture;
 }
 
 export const loadZippedTextures = async (path) => {
     const buf = await fetchBinaryFile(path);
-    console.log("[Texture] Loading zipped textures...", path);
     const zippedTextures = new ZippedTextures(buf);
-    console.log("[Texture] Ready!!", path);
+    console.log("[Texture] Loaded", path.replace(DATA_DIR + "/", ""));
     return zippedTextures;
 }
