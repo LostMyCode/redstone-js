@@ -3,6 +3,7 @@ import GameMap from "./GameMap";
 import LoadingScreen from "./interface/LoadingScreen";
 import Listener from "./Listener";
 import Player from "./Player";
+import CommonUI from "./interface/CommonUI";
 
 class RedStone {
 
@@ -29,6 +30,7 @@ class RedStone {
         LoadingScreen.render();
 
         // load common resources
+        await CommonUI.init();
 
         // check save data
 

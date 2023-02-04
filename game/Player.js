@@ -3,6 +3,7 @@ import * as PIXI from "pixi.js";
 import { loadTexture } from "../utils";
 import Camera from "./Camera";
 import { DATA_DIR, TILE_HEIGHT, TILE_WIDTH, X_BOUND_OFFSET, Y_BOUND_OFFSET } from "./Config";
+import CommonUI from "./interface/CommonUI";
 import Listener from "./Listener";
 import RedStone from "./RedStone";
 
@@ -114,6 +115,11 @@ class Player {
         return this._y;
     }
 
+    setPosition(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+
     reset() {
         this.onceRendered = false;
         this.playerBodySprite = null;
@@ -162,6 +168,7 @@ class Player {
                     x - this.playerTexture.shape.shadow.left[this.lastActionStartOffset + currentFrame],
                     y - this.playerTexture.shape.shadow.top[this.lastActionStartOffset + currentFrame]
                 )
+                this.renderGuage();
                 return;
             }
             // this.renderEffects();
@@ -215,6 +222,8 @@ class Player {
 
         this.lastActionStartOffset = offset;
 
+        this.renderGuage();
+
         if (!this.onceRendered) {
             RedStone.mainCanvas.mainContainer.addChild(this.container);
             this.onceRendered = true;
@@ -250,9 +259,22 @@ class Player {
         this.container.addChild(rebirthSprite);
     }
 
-    setPosition(x, y) {
-        this.x = x;
-        this.y = y;
+    renderGuage() {
+        this.guageTexture = this.guageTexture || PIXI.Texture.from(CommonUI.getGuage("myPlayer", "MyPlayer (200)"));
+        const texture = this.guageTexture;
+        /**
+         * @type {PIXI.Sprite}
+         */
+        const sprite = this.guageSprite || new PIXI.Sprite(texture);
+        sprite.position.set(this.x - sprite.width / 2, this.y - 70);
+
+        if (!this.guageSprite) {
+            this.container.addChild(sprite);
+            this.guageSprite = sprite;
+        } else {
+            this.container.removeChild(sprite);
+            this.container.addChild(sprite);
+        }
     }
 }
 

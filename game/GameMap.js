@@ -9,6 +9,7 @@ import LoadingScreen from "./interface/LoadingScreen";
 import { DATA_DIR, INTERFACE_DIR, MAPSET_DIR, RMD_DIR, TILE_HEIGHT, TILE_WIDTH } from "./Config";
 import RedStone from "./RedStone";
 import { ActorImage, CType } from "./models/Actor";
+import CommonUI from "./interface/CommonUI";
 
 const getTextureFileName = (textureId, extension = "rso") => {
     if (!extension) throw new Error("[Error] Invalid file extension");
@@ -565,9 +566,6 @@ class GameMap {
     }
 
     renderActors() {
-        const textureCache = {};
-        const framesPerAnimation = 8;
-
         this.map.actorSingles.forEach(async actor => {
             const group = this.map.actorGroups[actor.internalID];
 
@@ -632,7 +630,6 @@ class GameMap {
             sprite.baseY = actor.point.y;
             sprite.play();
 
-            const shadowTexture = texture.getPixiTexture(targetFrame, "shadow");
             const shadowX = actor.point.x - texture.shape.shadow.left[targetFrame];
             const shadowY = actor.point.y - texture.shape.shadow.top[targetFrame] - TILE_HEIGHT / 2;
 
@@ -653,9 +650,15 @@ class GameMap {
                     setTimeout(() => {
                         sprite.gotoAndPlay(0);
                         shadowSprite.gotoAndPlay(0);
-                    }, 10000);
+                    }, 5000 * ~~(Math.random() * 3));
                 };
                 sprite.onComplete = onComplete;
+
+                const texture = PIXI.Texture.from(CommonUI.getGuage("npc", actor.name));
+                const guageSprite = new PIXI.Sprite(texture);
+                guageSprite.position.set(actor.point.x - guageSprite.width / 2, actor.point.y - sprite.height + 10);
+
+                this.actorSprites.push(guageSprite);
             }
 
             // this.shadowSprites.push(shadowSprite);
