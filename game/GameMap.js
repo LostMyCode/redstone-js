@@ -220,6 +220,19 @@ class GameMap {
             }
         });
 
+        // sort object sub containers
+        const sortedKeys = Object.keys(this.objectSubContainers).sort((a, b) => {
+            const [aBlockX, aBlockY] = a.split("-").map(Number);
+            const [bBlockX, bBlockY] = b.split("-").map(Number);
+
+            return (aBlockY * CONTAINER_SPLIT_BLOCK_SIZE + aBlockX) - (bBlockY * CONTAINER_SPLIT_BLOCK_SIZE + bBlockX);
+        });
+        const subContainers = this.objectSubContainers;
+        this.objectSubContainers = {};
+        sortedKeys.forEach(key => {
+            this.objectSubContainers[key] = subContainers[key];
+        });
+
         this.renderPortals();
         this.renderActors();
 
@@ -512,7 +525,7 @@ class GameMap {
             let pixiTexture = defaultTexture;
             // it is better way to load all rmd and check MapType of map beyond the gate
             // check the filename instead as its easier
-            const isGateOrDungeon = area.moveToFileName.match(/G\d+|_D\d+|T\d+/);
+            const isGateOrDungeon = area.moveToFileName.match(/G\d+|_D\d+|T\d+\./);
             if (
                 // mapBeyondTheGate.typeAndFlags !== MapType.Shop
                 // area.subObjectInfo === 13 || area.subObjectInfo === 21
