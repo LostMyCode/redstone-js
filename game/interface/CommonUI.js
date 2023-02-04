@@ -1,5 +1,10 @@
+import * as PIXI from "pixi.js";
+
 import { loadTexture } from "../../utils";
 import { INTERFACE_DIR } from "../Config";
+import { CType, MapActorSingle } from "../models/Actor";
+
+const shopIconTextures = {};
 
 class CommonUI {
     constructor() {
@@ -11,6 +16,8 @@ class CommonUI {
 
     async load() {
         this.interface = await loadTexture(`${INTERFACE_DIR}/interface.sd`);
+        this.shopIcon = await loadTexture(`${INTERFACE_DIR}/shopIcon.sad`);
+        this.shopIconBrightTexture = this.shopIcon.getPixiTexture(0);
         // this.interface2 = await loadTexture(`${INTERFACE_DIR}/interface2.sd`);
     }
 
@@ -59,6 +66,61 @@ class CommonUI {
         ctx.fillText(text, 10, 12);
 
         return canvas;
+    }
+
+    /**
+     * @param {MapActorSingle} actor 
+     */
+    getActorHeadIcon(actor) {
+        let index;
+
+        switch (actor.charType) {
+            case CType.Equipment_merchant:
+                index = 3;
+                break;
+
+            case CType.ArmorMerchant:
+                index = 4;
+                break;
+
+            case CType.MiscellaneousGoodsMerchant:
+                index = 8;
+                break;
+
+            case CType.GeneralQuest:
+                index = 9;
+                break;
+
+            case CType.MainQuest:
+                index = 12;
+                break;
+
+            case CType.Teleporters:
+                index = 15;
+                break;
+
+            case CType.Healers:
+                index = 16;
+                break;
+
+            case CType.Blacksmith:
+                index = 18;
+                break;
+
+            case CType.GuildHallTeleporters:
+                index = 30;
+                break;
+
+            case CType.EventGuidepeople:
+                index = 31;
+                break;
+        }
+
+        if (typeof index !== "number") return null;
+
+        shopIconTextures[index] = this.shopIcon.getPixiTexture(index);
+
+        return shopIconTextures[index];
     }
 }
 

@@ -50,6 +50,7 @@ class GameMap {
         this.shadowContainer = new PIXI.Container();
         this.portalContainer = new PIXI.Container();
         this.actorContainer = new PIXI.Container();
+        this.foremostContainer = new PIXI.Container();
 
         /**
          * @type {{[key: String]: PIXI.Container}}
@@ -98,6 +99,7 @@ class GameMap {
             this.shadowContainer,
             this.portalContainer,
             this.actorContainer,
+            this.foremostContainer
         );
 
         this.tileSubContainers = {};
@@ -242,6 +244,7 @@ class GameMap {
         RedStone.mainCanvas.mainContainer.addChild(this.shadowContainer);
         RedStone.mainCanvas.mainContainer.addChild(this.actorContainer);
         RedStone.mainCanvas.mainContainer.addChild(this.objectContainer);
+        RedStone.mainCanvas.mainContainer.addChild(this.foremostContainer);
 
         if (!this.onceRendered) {
             this.onceRendered = true;
@@ -338,6 +341,10 @@ class GameMap {
                     sprite.baseX - sprite.shape.left[sprite.startFrameIndex + sprite.currentFrame],
                     sprite.baseY - sprite.shape.top[sprite.startFrameIndex + sprite.currentFrame]
                 );
+            }
+
+            if (sprite.subSprites) {
+                this.foremostContainer.addChild(...sprite.subSprites);
             }
 
             this.actorContainer.addChild(sprite);
@@ -671,13 +678,33 @@ class GameMap {
                 const guageSprite = new PIXI.Sprite(texture);
                 guageSprite.position.set(actor.point.x - guageSprite.width / 2, actor.point.y - sprite.height + 10);
 
-                this.actorSprites.push(guageSprite);
+                // this.actorSprites.push(guageSprite);
+                sprite.subSprites = [guageSprite];
+
+                this.renderHeadIcon(actor, sprite);
             }
 
             // this.shadowSprites.push(shadowSprite);
             this.actorSprites.push(shadowSprite); // temp
             this.actorSprites.push(sprite);
         });
+    }
+
+    renderHeadIcon(actor, actorSprite) {
+        const iconTexture = CommonUI.getActorHeadIcon(actor);
+
+        if (!iconTexture) return;
+
+        const brightSprite = new PIXI.Sprite(CommonUI.shopIconBrightTexture);
+        const sprite = new PIXI.Sprite(iconTexture);
+        brightSprite.anchor.set(0.5, 0.5);
+        sprite.anchor.set(0.5, 0.5);
+        sprite.position.set(actor.point.x, actor.point.y - actorSprite.height - 20);
+        brightSprite.blendMode = PIXI.BLEND_MODES.ADD;
+        brightSprite.position.set(actor.point.x, actor.point.y - actorSprite.height - 20);
+        // this.actorSprites.push(brightSprite);
+        // this.actorSprites.push(sprite);
+        actorSprite.subSprites.push(brightSprite, sprite);
     }
 
     initPosition() {
