@@ -15,6 +15,7 @@ export const MapType = {
 export const Mapset = {
     Grassland: 0,
     Mountains: 1,
+    Desert: 2,
     Cave: 4,
     Dungeon: 5,
     Brunenstig: 10,
