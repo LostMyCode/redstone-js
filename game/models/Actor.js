@@ -222,6 +222,12 @@ export const ActorDirect = {
 }
 
 export const ActorImage = {
+    15: "Zombie",
+    25: "Ghost",
+    35: "GhostArmor",
+    75: "DarkPriest",
+    105: "Reptile",
+    185: "Wolf",
     250: "MAN1",
     251: "MAN2",
     254: "YOUNG_MAN1",
@@ -310,7 +316,7 @@ export class MapActorGroup {
         this.name = baseReader.readString(0x14, "sjis");
         this.imageSumCandidate = baseReader.readStructUInt16LE(0x03);
         this.unknown_4 = baseReader.readUInt16LE();
-        [this.sizeWidth, this.sizeHeight] = baseReader.readStructUInt16LE(2);
+        this.scale = { width: baseReader.readUInt16LE(), height: baseReader.readUInt16LE() };
         this.maxLevel = baseReader.readUInt16LE();
         this.unknown_3 = baseReader.readStructUInt8(this.structLength - baseReader.offset);
 

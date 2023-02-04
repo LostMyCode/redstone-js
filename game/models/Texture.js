@@ -80,6 +80,10 @@ class Texture {
         }
         this.evaluateMaxSize();
 
+        if (this.fileExtension === "sad") {
+            this.analyzeAction();
+        }
+
         // this.createTextureCanvases();
         this.isAnalyzed = true;
     }
@@ -633,6 +637,65 @@ class Texture {
                 this.shape.outline.top[i] = 0;
             }
         }
+    }
+
+    analyzeAction() {
+        if (this.fileExtension !== "sad") return;
+
+        const byteLen = this.textureFileBuffer.byteLength;
+        const br = new BufferReader(this.textureFileBuffer);
+
+        let actionCount = 0;
+        let checkCount = 0;
+        let hasAction = false;
+        while (true) {
+            br.offset = byteLen - 64 * (actionCount + 1);
+            const actionName = br.readString(64); // its not correct length though
+
+            const m = actionName.match(/^0\d+/);
+            if (m) {
+                hasAction = true;
+            } else if (hasAction) {
+                break;
+            } else {
+                if (checkCount < 3) { // check atleast 3 times coz there may be action name that doesnt match [00name] pattern
+                    checkCount++;
+                } else {
+                    hasAction = false;
+                    break;
+                }
+            }
+
+            actionCount++;
+        }
+
+        if (!hasAction || !actionCount) return;
+
+        br.offset = byteLen;
+        br.offset -= 64 * actionCount;
+        br.offset -= 4; // 0 0 0 0
+        br.offset -= 4 * (actionCount + 1); // actionStartFrameIndexes and lastFrame - 1 index
+        br.offset -= 4; // action count
+
+        const c = br.readUInt32LE();
+        if (actionCount !== c) {
+            throw new Error(`Failed to analyze action info. action count didnt match. File: ${this.fileName}, Count: ${actionCount} vs ${c}`);
+        }
+
+        const actions = new Array(actionCount);
+
+        for (let i = 0; i < actionCount; i++) {
+            actions[i] = { startFrameIndex: br.readUInt32LE(), index: i };
+        }
+
+        br.offset += 4; // last frame index
+        br.offset += 4; // 0 0 0 0
+
+        for (let i = 0; i < actionCount; i++) {
+            actions[i].name = br.readString(64);
+        }
+
+        this.actions = actions;
     }
 
     evaluateMaxSize() {
