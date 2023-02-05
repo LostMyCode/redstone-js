@@ -92,6 +92,7 @@ class GameMap {
         this.shadowContainer.removeChildren();
         this.portalContainer.removeChildren();
         this.actorContainer.removeChildren();
+        this.foremostContainer.removeChildren();
 
         RedStone.mainCanvas.mainContainer.removeChild(
             this.objectContainer,
