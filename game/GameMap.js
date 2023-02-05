@@ -94,6 +94,8 @@ class GameMap {
     }
 
     reset() {
+        window.dispatchEvent(new CustomEvent("displayLogUpdate", { detail: { key: "map-name", value: null } }));
+
         this.tileContainer.removeChildren();
         this.objectContainer.removeChildren();
         this.positionSpecifiedObjectContainer.removeChildren();
@@ -249,6 +251,7 @@ class GameMap {
         }
 
         this.initialized = true;
+        window.dispatchEvent(new CustomEvent("displayLogUpdate", { detail: { key: "map-name", value: this.map.name } }));
     }
 
     render() {

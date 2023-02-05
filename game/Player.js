@@ -62,7 +62,12 @@ class Player {
 
         const moveAmount = 30;
         setInterval(() => {
-            if (!RedStone.gameMap.initialized) return;
+            if (!RedStone.gameMap.initialized) {
+                window.dispatchEvent(new CustomEvent("displayLogUpdate", { detail: { key: "player-pos", value: null } }));
+                return;
+            }
+
+            window.dispatchEvent(new CustomEvent("displayLogUpdate", { detail: { key: "player-pos", value: `Player Position: (${Math.round(this.x / TILE_WIDTH)}, ${Math.round(this.y / TILE_HEIGHT)})` } }));
 
             let positionUpdated = false;
 
