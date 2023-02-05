@@ -52,6 +52,9 @@ class Player {
     async load() {
         this.playerTexture = await loadTexture(`${DATA_DIR}/Heros/Rogue03.sad`);
         this.rebirthTexture = await loadTexture(`${DATA_DIR}/Effects/rebirth01.sad`);
+
+        // custom
+        this.guildIconTexture = await PIXI.Texture.fromURL(`${DATA_DIR}/custom/rs_guild_icon.png`);
     }
 
     async init() {
@@ -60,7 +63,7 @@ class Player {
         const moveAmount = 30;
         setInterval(() => {
             if (!RedStone.gameMap.initialized) return;
-            
+
             let positionUpdated = false;
 
             if (Listener.pressingKeys.size) {
@@ -205,6 +208,7 @@ class Player {
                     y - this.playerTexture.shape.shadow.top[this.lastActionStartOffset + currentFrame]
                 )
                 this.renderGuage();
+                this.renderGuildIcon_test();
                 return;
             }
             // this.renderEffects();
@@ -259,6 +263,7 @@ class Player {
         this.lastActionStartOffset = offset;
 
         this.renderGuage();
+        this.renderGuildIcon_test();
 
         if (!this.onceRendered) {
             RedStone.mainCanvas.mainContainer.addChild(this.container);
@@ -302,13 +307,29 @@ class Player {
          * @type {PIXI.Sprite}
          */
         const sprite = this.guageSprite || new PIXI.Sprite(texture);
-        sprite.position.set(this.x - sprite.width / 2, this.y - 70);
+        sprite.position.set(this.x - sprite.width / 2, this.y - 65);
 
         if (!this.guageSprite) {
             this.container.addChild(sprite);
             this.guageSprite = sprite;
         } else {
             this.container.removeChild(sprite);
+            this.container.addChild(sprite);
+        }
+    }
+
+    renderGuildIcon_test() {
+        if (this.guildIconSprite) {
+            const sprite = this.guildIconSprite;
+            sprite.position.set(this.guageSprite.x - 32, this.guageSprite.y - (32 - this.guageSprite.height) / 2);
+            this.container.removeChild(sprite);
+            this.container.addChild(sprite);
+        } else {
+            this.guildIconSprite = new PIXI.Sprite(this.guildIconTexture);
+            const sprite = this.guildIconSprite;
+            sprite.width = 32;
+            sprite.height = 32;
+            sprite.position.set(this.guageSprite.x - 32, this.guageSprite.y - (32 - this.guageSprite.height) / 2);
             this.container.addChild(sprite);
         }
     }
