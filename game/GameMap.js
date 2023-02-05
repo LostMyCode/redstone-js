@@ -128,6 +128,7 @@ class GameMap {
     }
 
     async loadMap(rmdFileName = "[000]T01.rmd") {
+        // async loadMap(rmdFileName = "[373]T02.rmd") {
         // async loadMap(rmdFileName = "[130]G09.rmd") {
         // async loadMap(rmdFileName = "[010]G13.rmd") {
         console.log("[Game]", "Loading scenario file...");
@@ -151,19 +152,7 @@ class GameMap {
             if (!ActorImage[group.job]) continue;
             if (this.actorTextures[group.job]) continue;
 
-            let dir;
-            switch (actor.charType) {
-                case CType.Monster:
-                case CType.QuestMonster:
-                    dir = "monsters";
-                    ActorImage[group.job] + ".sad";
-                    break;
-
-                default:
-                    dir = "NPC";
-                    ActorImage[group.job] + ".sad";
-                    break;
-            }
+            const dir = group.job < 200 ? "monsters" : "NPC";
 
             const textureFileName = ActorImage[group.job] + ".sad";
             const texture = await loadTexture(`${DATA_DIR}/${dir}/${textureFileName}`);
@@ -412,21 +401,16 @@ class GameMap {
         const map = this.map;
         const mapsetName = this.map.getMapsetName();
 
-        if (code === 0) return;
-        if (map.scenarioVersion === 5.3 && code < 16 << 8) return;
-        if (map.scenarioVersion === 6.1 && code < 16 << 10) return;
+        if (code === 0 || code === 8193) return;
+        if (code < 16 << 8) return;
 
         let index;
         let isBuilding = false;
 
-        if (map.scenarioVersion === 5.3) {
-            index = code % (16 << 8);
-        }
-        else if (map.scenarioVersion === 6.1) {
-            isBuilding = code >= 16 << 11;
-            index = isBuilding ? code % (16 << 11) : code % (16 << 10);
-        }
-        else {
+        isBuilding = code >= 16 << 11;
+        index = isBuilding ? code % (16 << 11) : code >= (16 << 10) ? code % (16 << 10) : code % (16 << 8);
+
+        if (![5.3, 6.1].includes(map.scenarioVersion)) {
             console.log("[Map Object Renderer] Untested scenario version:", map.scenarioVersion);
         }
 
@@ -550,11 +534,12 @@ class GameMap {
             let pixiTexture = defaultTexture;
             // it is better way to load all rmd and check MapType of map beyond the gate
             // check the filename instead as its easier
-            const isGateOrDungeon = area.moveToFileName.match(/G\d+|_D\d+|T\d+\./);
+            const isGateOrDungeon = area.moveToFileName.match(/G\d+|_D\d+|T\d+\.|M\d+\.|S\d+\./);
+            const isInDoor = this.currentRmdFileName.match(/_A\d+\.|_B\d+\.|_W\d+\.|_I\d+\./);
             if (
                 // mapBeyondTheGate.typeAndFlags !== MapType.Shop
                 // area.subObjectInfo === 13 || area.subObjectInfo === 21
-                isGateOrDungeon
+                isGateOrDungeon && !isInDoor
             ) {
                 const isNearLeftBorder = centerPos.x < 500;
                 const isNearTopBorder = centerPos.y < 500;
