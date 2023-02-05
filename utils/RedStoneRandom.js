@@ -98,3 +98,54 @@ export const logger = {
 export const getKeyByValue = (object, value) => {
     return Object.keys(object).find(key => object[key] === value);
 }
+
+/**
+ * @link https://qiita.com/arthur87/items/23d3c896dafbc8223fd5
+ */
+export const getAngle = (a, b) => {
+    let r = Math.atan2(b.y - a.y, b.x - a.x)
+    if (r < 0) {
+        r = r + 2 * Math.PI;
+    }
+    return Math.floor(r * 360 / (2 * Math.PI));
+}
+
+/**
+ * @link https://qiita.com/arthur87/items/23d3c896dafbc8223fd5 
+ */
+export const getDirection = (angle) => {
+    if (23 <= angle && angle <= 67) {
+        return 7;
+    } else if (68 <= angle && angle <= 112) {
+        return 6;
+    } else if (113 <= angle && angle <= 157) {
+        return 5;
+    } else if (158 <= angle && angle <= 202) {
+        return 4;
+    } else if (203 <= angle && angle <= 247) {
+        return 3;
+    } else if (248 <= angle && angle <= 292) {
+        return 2;
+    } else if (293 <= angle && angle <= 337) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+export const getDirectionString = (directionNum) => {
+    switch (directionNum) {
+        case 0: return "right";
+        case 1: return "up-right";
+        case 2: return "up";
+        case 3: return "up-left";
+        case 4: return "left";
+        case 5: return "down-left";
+        case 6: return "down";
+        case 7: return "down-right";
+    }
+}
+
+export const getDistance = (p1, p2) => {
+    return Math.hypot(p2.x - p1.x, p2.y - p1.y);
+} 

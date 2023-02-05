@@ -1,6 +1,7 @@
 import * as PIXI from "pixi.js";
 
 import { loadTexture } from "../utils";
+import { angle, direction, getAngle, getDirection, getDirectionString } from "../utils/RedStoneRandom";
 import Camera from "./Camera";
 import { DATA_DIR, TILE_HEIGHT, TILE_WIDTH, X_BOUND_OFFSET, Y_BOUND_OFFSET } from "./Config";
 import CommonUI from "./interface/CommonUI";
@@ -58,26 +59,52 @@ class Player {
 
         const moveAmount = 30;
         setInterval(() => {
-            if (!Listener.pressingKeys.size) return;
-            Listener.pressingKeys.forEach(key => {
-                switch (key) {
-                    case "w":
-                        this.y -= moveAmount;
-                        break;
+            if (!RedStone.gameMap.initialized) return;
+            
+            let positionUpdated = false;
 
-                    case "d":
-                        this.x += moveAmount;
-                        break;
+            if (Listener.pressingKeys.size) {
+                Listener.pressingKeys.forEach(key => {
+                    switch (key) {
+                        case "w":
+                            this.y -= moveAmount;
+                            positionUpdated = true;
+                            break;
 
-                    case "s":
-                        this.y += moveAmount;
-                        break;
+                        case "d":
+                            this.x += moveAmount;
+                            positionUpdated = true;
+                            break;
 
-                    case "a":
-                        this.x -= moveAmount;
-                        break;
-                }
-            });
+                        case "s":
+                            this.y += moveAmount;
+                            positionUpdated = true;
+                            break;
+
+                        case "a":
+                            this.x -= moveAmount;
+                            positionUpdated = true;
+                            break;
+                    }
+                });
+            }
+
+            if (positionUpdated) {
+                Camera.x = this.x;
+                Camera.y = this.y;
+                return;
+            }
+
+            if (!Listener.isMouseDown) return;
+
+            const targetX = Listener.mouseX - RedStone.mainCanvas.canvas.width / 2 + Camera.x;
+            const targetY = Listener.mouseY - RedStone.mainCanvas.canvas.height / 2 + Camera.y;
+
+            this.oldX = this.x;
+            this.oldY = this.y;
+            this.x += targetX - this.x > 0 ? Math.min(40, targetX - this.x) : Math.max(-40, targetX - this.x);
+            this.y += targetY - this.y > 0 ? Math.min(40, targetY - this.y) : Math.max(-40, targetY - this.y);
+
             Camera.x = this.x;
             Camera.y = this.y;
         }, 40);
@@ -143,7 +170,16 @@ class Player {
 
         this.action = "run";
 
+        if (!direction.length) {
+            if (Listener.isMouseDown) {
+                const agl = getAngle({ x: this.oldX, y: this.oldY }, this);
+                const dir = getDirection(agl);
+                direction.push(...getDirectionString(dir).split("-"));
+            }
+        }
+
         if (!direction.length) return this.action = "stand";
+
         this.direction = direction.join("-");
     }
 

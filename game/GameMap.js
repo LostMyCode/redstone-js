@@ -10,6 +10,8 @@ import { DATA_DIR, INTERFACE_DIR, MAPSET_DIR, RMD_DIR, TILE_HEIGHT, TILE_WIDTH }
 import RedStone from "./RedStone";
 import { ActorImage, CType } from "./models/Actor";
 import CommonUI from "./interface/CommonUI";
+import Listener from "./Listener";
+import { getDistance } from "../utils/RedStoneRandom";
 
 const getTextureFileName = (textureId, extension = "rso") => {
     if (!extension) throw new Error("[Error] Invalid file extension");
@@ -83,6 +85,12 @@ class GameMap {
         this.actorSprites = [];
 
         this.actorTextures = {};
+
+        window.addEventListener("mouseup", () => {
+            if (this.selectedPortal) {
+                this.selectedPortal = null;
+            }
+        });
     }
 
     reset() {
@@ -258,6 +266,15 @@ class GameMap {
         if (!this.initialized) return;
 
         const startTime = performance.now();
+
+        if (this.selectedPortal) {
+            if (getDistance(RedStone.player, this.selectedPortal.sprite) < 100) {
+                console.log("portal gate", this.selectedPortal.area.moveToFileName);
+                this.moveTo(this.selectedPortal.area.moveToFileName);
+                this.selectedPortal = null;
+                return;
+            }
+        }
 
         this.tileContainer.removeChildren();
         this.objectContainer.removeChildren();
@@ -577,9 +594,16 @@ class GameMap {
             const sprite = new PIXI.Sprite(pixiTexture);
             sprite.position.set(x, y);
             sprite.interactive = true;
-            sprite.on("click", () => {
-                console.log("portal gate clicked", area.moveToFileName);
-                this.moveTo(area.moveToFileName);
+            sprite.on("mouseenter", () => {
+                sprite.isHovering = true;
+
+                // TOOD: implement portal grow animations
+            });
+            sprite.on("mouseleave", () => {
+                sprite.isHovering = false;
+            });
+            sprite.on("mousedown", () => {
+                this.selectedPortal = { area, sprite };
             });
 
             this.portalContainer.addChild(sprite);
@@ -727,12 +751,12 @@ class GameMap {
     }
 
     async moveTo(rmdFileName) {
+        if (this.prevRmdName === this.currentRmdFileName) return;
         this.prevRmdName = this.currentRmdFileName;
         LoadingScreen.render();
         this.reset();
         await this.loadMap(rmdFileName);
         await this.init();
-        this.render();
         RedStone.mainCanvas.mainContainer.removeChild(RedStone.player.container);
         RedStone.player.reset();
         RedStone.player.render();
