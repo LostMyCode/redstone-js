@@ -28,11 +28,27 @@
             font-size: 12px;
             text-shadow: 1px 1px 2px rgb(46, 46, 46), 0 0 1em rgb(42, 42, 42), 0 0 0.2em rgb(45, 45, 45);
         }
+
+        .water-mark {
+            position: fixed;
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+            opacity: 0.5;
+            bottom: 10px;
+            right: 15px;
+        }
+
+        .water-mark:hover {
+            opacity: 0.8;
+            cursor: pointer;
+        }
     </style>
     <script src="/static/unzip.min.js"></script>
 </head>
 
 <body>
+    <div class="water-mark">LostMyCode</div>
     <div id="root"></div>
     <canvas id="canvas"></canvas>
 </body>

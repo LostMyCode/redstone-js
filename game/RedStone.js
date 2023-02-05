@@ -42,6 +42,11 @@ class RedStone {
         // init map
         await RedStone.gameMap.init();
 
+        // water mark click event
+        document.querySelector(".water-mark").addEventListener("click", () => {
+            location.href = "https://github.com/LostMyCode/redstone-js";
+        });
+
         LoadingScreen.destroy();
     }
 }
