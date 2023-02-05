@@ -57,8 +57,7 @@ class LoadingScreen {
 
     destroy() {
         this.container.removeChildren();
-        const index = RedStone.mainCanvas.rootContainer.getChildIndex(this.container);
-        RedStone.mainCanvas.rootContainer.removeChildAt(index);
+        RedStone.mainCanvas.rootContainer.removeChild(this.container);
     }
 }
 
