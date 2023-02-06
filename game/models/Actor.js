@@ -222,8 +222,10 @@ export const ActorDirect = {
 }
 
 export const ActorImage = {
+    0: "SkeletonAxe",
     15: "Zombie",
     25: "Ghost",
+    30: "Mummy",
     35: "GhostArmor",
     75: "DarkPriest",
     80: "DarkElf",
