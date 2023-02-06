@@ -18,8 +18,10 @@ export const Mapset = {
     Savana: 3,
     Cave: 4,
     Dungeon: 5,
+    Mine: 7,
     Brunenstig: 10,
     Bigaple: 11,
+    Mountains_Village: 14,
     Room: 19,
 }
 
