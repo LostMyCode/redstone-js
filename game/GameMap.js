@@ -723,10 +723,17 @@ class GameMap {
     initPosition() {
         if (this.prevRmdName) {
             const portalToPrevMap = this.map.areaInfos.find(area => area.moveToFileName === this.prevRmdName);
-            console.log(this.map.areaInfos.filter(area => area.moveToFileName));
-            if (!portalToPrevMap) console.log("prev map portal not found :(");
-            Camera.setPosition(portalToPrevMap.centerPos.x, portalToPrevMap.centerPos.y);
-            RedStone.player.setPosition(portalToPrevMap.centerPos.x, portalToPrevMap.centerPos.y);
+
+            if (portalToPrevMap) {
+                Camera.setPosition(portalToPrevMap.centerPos.x, portalToPrevMap.centerPos.y);
+                RedStone.player.setPosition(portalToPrevMap.centerPos.x, portalToPrevMap.centerPos.y);
+            } else {
+                console.log("prev map portal not found :(");
+                const portals = this.map.areaInfos.filter(area => [ObjectType.WarpPortal, ObjectType.SystemMovePosition].includes(area.objectInfo));
+                const randomPortal = portals[Math.floor(Math.random() * portals.length)];
+                Camera.setPosition(randomPortal.centerPos.x, randomPortal.centerPos.y);
+                RedStone.player.setPosition(randomPortal.centerPos.x, randomPortal.centerPos.y);
+            }
         }
     }
 
@@ -739,7 +746,7 @@ class GameMap {
     }
 
     async moveTo(rmdFileName) {
-        if (this.prevRmdName === this.currentRmdFileName) return;
+        if (rmdFileName === this.currentRmdFileName) return;
         this.prevRmdName = this.currentRmdFileName;
         LoadingScreen.render();
         this.reset();

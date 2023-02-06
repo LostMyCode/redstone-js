@@ -4,6 +4,9 @@ import LoadingScreen from "./interface/LoadingScreen";
 import Listener from "./Listener";
 import Player from "./Player";
 import CommonUI from "./interface/CommonUI";
+import { fetchBinaryFile } from "../utils";
+import { DATA_DIR } from "./Config";
+import BufferReader from "../utils/BufferReader";
 
 class RedStone {
 
@@ -19,6 +22,10 @@ class RedStone {
      * @type {Player}
      */
     static player;
+    /**
+     * @type {{[index: Number]: {size: [Number, Number], type: Number, name: String, fileName: String}}}
+     */
+    static mapList = {};
 
     static async init() {
         RedStone.mainCanvas = new MainCanvas();
@@ -31,6 +38,9 @@ class RedStone {
 
         // load common resources
         await CommonUI.init();
+
+        // load map list
+        await this.loadMapList();
 
         // check save data
 
@@ -48,7 +58,36 @@ class RedStone {
         });
 
         LoadingScreen.destroy();
+
+        this.initialized = true;
+    }
+
+    static async loadMapList() {
+        const mapListData = await fetchBinaryFile(`${DATA_DIR}/mapList.dat`);
+        const br = new BufferReader(mapListData);
+
+        while (true) {
+            const index = br.readUInt16LE();
+            if (index === 0xFFFF) break;
+            this.mapList[index] = {
+                size: br.readStructUInt16LE(2),
+                type: br.readUInt16LE(),
+                name: br.readString(0x40, "sjis"),
+                fileName: br.readString(0x40, "sjis")
+            }
+        }
+
+        const event = new CustomEvent("mapListLoaded", { detail: this.mapList });
+        window.dispatchEvent(event);
+        window.mapList = this.mapList;
+    }
+
+    static loadMap(rmdFileName) {
+        if (!this.initialized) return;
+        this.gameMap.moveTo(rmdFileName);
     }
 }
+
+window.RedStone = RedStone;
 
 export default RedStone;
