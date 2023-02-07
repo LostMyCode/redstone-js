@@ -6,7 +6,7 @@ if (location.pathname.match(/^\/Map\//)) {
     const mapDebug = new MapReaderDebug();
     mapDebug.execute();
 }
-else if (location.pathname.match(/^\/Game/)) {
+else if (location.pathname.match(/^\/Game/) || location.pathname === "/") {
     console.log("[Mode] Red Stone Online");
     RedStone.init();
 }
