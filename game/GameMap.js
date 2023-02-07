@@ -34,6 +34,9 @@ const animationObjectTexIds = {
     Brunenstig: {
         rso: [0, 1, 2, 3, 4, 5],
         rfo: [4, 7, 10, 13, 15, 25, 26, 28, 29]
+    },
+    Mountains_Village: {
+        rso: [0, 52]
     }
 }
 
