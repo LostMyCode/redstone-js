@@ -44,8 +44,8 @@ class MapListPanel extends React.Component {
                 <div className="map-list-expander" onClick={this.handleExpanderClick}>
                     <div>{expanded ? "Close map list" : "Show map list"}</div>
                     <div>
-                        <a href="https://twitter.com/LostMyCode" style={{ marginRight: 5 }}>Twitter</a>
-                        <a href="https://github.com/LostMyCode/redstone-js">GitHub</a>
+                        <a href="https://twitter.com/LostMyCode" target="_blank" style={{ marginRight: 5 }}>Twitter</a>
+                        <a href="https://github.com/LostMyCode/redstone-js" target="_blank">GitHub</a>
                     </div>
                 </div>
                 <div className="map-list-panel" style={{
