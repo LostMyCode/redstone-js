@@ -23,8 +23,8 @@ class MainCanvas {
             view: this.canvas,
             width: window.innerWidth,
             height: window.innerHeight,
-            // resolution: window.devicePixelRatio,
-            resolution: 1,
+            resolution: window.devicePixelRatio || 1,
+            autoDensity: true,
         });
 
         this.rootContainer = new PIXI.Container;
