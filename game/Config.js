@@ -9,3 +9,5 @@ export const TILE_HEIGHT = 32;
 
 export const X_BOUND_OFFSET = 64;
 export const Y_BOUND_OFFSET = 32;
+
+export const ENABLE_PERFORMANCE_MONITOR = false;
