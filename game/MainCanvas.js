@@ -1,5 +1,8 @@
 import * as PIXI from "pixi.js";
+import Stats from "stats.js";
+
 import Camera from "./Camera";
+import { ENABLE_PERFORMANCE_MONITOR } from "./Config";
 import RedStone from "./RedStone";
 
 const renderTimes = [];
@@ -38,13 +41,30 @@ class MainCanvas {
 
     init() {
         this.handleResize();
-
         window.addEventListener("resize", this.handleResize);
 
         const ticker = new PIXI.Ticker();
-        ticker.add((delta) => {
-            this.render();
-        });
+
+        if (ENABLE_PERFORMANCE_MONITOR) {
+            const stats = new Stats();
+            document.body.appendChild(stats.dom);
+            stats.dom
+                .querySelectorAll("canvas")
+                .forEach(el => el.style.display = "block");
+            stats.dom.style.top = "50px";
+            stats.dom.style.left = "5px";
+
+            ticker.add((delta) => {
+                stats.begin();
+                this.render();
+                stats.end();
+            });
+        } else {
+            ticker.add((delta) => {
+                this.render();
+            });
+        }
+
         ticker.start();
 
         this.rootContainer.addChild(this.mainContainer);
@@ -57,7 +77,7 @@ class MainCanvas {
         // this.rootContainer.scale.set(1);
         RedStone.gameMap.render();
         RedStone.player.render();
-        
+
         this.renderer.render(this.rootContainer);
 
         const endTime = performance.now();
