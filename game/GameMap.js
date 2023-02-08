@@ -9,6 +9,9 @@ import LoadingScreen from "./interface/LoadingScreen";
 import { DATA_DIR, INTERFACE_DIR, MAPSET_DIR, RMD_DIR, TILE_HEIGHT, TILE_WIDTH } from "./Config";
 import RedStone from "./RedStone";
 import { ActorImage, CType } from "./models/Actor";
+import CommonUI from "./interface/CommonUI";
+import Listener from "./Listener";
+import { getDistance } from "../utils/RedStoneRandom";
 
 const getTextureFileName = (textureId, extension = "rso") => {
     if (!extension) throw new Error("[Error] Invalid file extension");
@@ -31,6 +34,9 @@ const animationObjectTexIds = {
     Brunenstig: {
         rso: [0, 1, 2, 3, 4, 5],
         rfo: [4, 7, 10, 13, 15, 25, 26, 28, 29]
+    },
+    Mountains_Village: {
+        rso: [0, 52]
     }
 }
 
@@ -49,6 +55,7 @@ class GameMap {
         this.shadowContainer = new PIXI.Container();
         this.portalContainer = new PIXI.Container();
         this.actorContainer = new PIXI.Container();
+        this.foremostContainer = new PIXI.Container();
 
         /**
          * @type {{[key: String]: PIXI.Container}}
@@ -81,15 +88,24 @@ class GameMap {
         this.actorSprites = [];
 
         this.actorTextures = {};
+
+        window.addEventListener("mouseup", () => {
+            if (this.selectedPortal) {
+                this.selectedPortal = null;
+            }
+        });
     }
 
     reset() {
+        window.dispatchEvent(new CustomEvent("displayLogUpdate", { detail: { key: "map-name", value: null } }));
+
         this.tileContainer.removeChildren();
         this.objectContainer.removeChildren();
         this.positionSpecifiedObjectContainer.removeChildren();
         this.shadowContainer.removeChildren();
         this.portalContainer.removeChildren();
         this.actorContainer.removeChildren();
+        this.foremostContainer.removeChildren();
 
         RedStone.mainCanvas.mainContainer.removeChild(
             this.objectContainer,
@@ -97,6 +113,7 @@ class GameMap {
             this.shadowContainer,
             this.portalContainer,
             this.actorContainer,
+            this.foremostContainer
         );
 
         this.tileSubContainers = {};
@@ -116,6 +133,7 @@ class GameMap {
     }
 
     async loadMap(rmdFileName = "[000]T01.rmd") {
+        // async loadMap(rmdFileName = "[373]T02.rmd") {
         // async loadMap(rmdFileName = "[130]G09.rmd") {
         // async loadMap(rmdFileName = "[010]G13.rmd") {
         console.log("[Game]", "Loading scenario file...");
@@ -139,19 +157,7 @@ class GameMap {
             if (!ActorImage[group.job]) continue;
             if (this.actorTextures[group.job]) continue;
 
-            let dir;
-            switch (actor.charType) {
-                case CType.Monster:
-                case CType.QuestMonster:
-                    dir = "monsters";
-                    ActorImage[group.job] + ".sad";
-                    break;
-
-                default:
-                    dir = "NPC";
-                    ActorImage[group.job] + ".sad";
-                    break;
-            }
+            const dir = group.job < 200 ? "monsters" : "NPC";
 
             const textureFileName = ActorImage[group.job] + ".sad";
             const texture = await loadTexture(`${DATA_DIR}/${dir}/${textureFileName}`);
@@ -219,6 +225,19 @@ class GameMap {
             }
         });
 
+        // sort object sub containers
+        const sortedKeys = Object.keys(this.objectSubContainers).sort((a, b) => {
+            const [aBlockX, aBlockY] = a.split("-").map(Number);
+            const [bBlockX, bBlockY] = b.split("-").map(Number);
+
+            return (aBlockY * CONTAINER_SPLIT_BLOCK_SIZE + aBlockX) - (bBlockY * CONTAINER_SPLIT_BLOCK_SIZE + bBlockX);
+        });
+        const subContainers = this.objectSubContainers;
+        this.objectSubContainers = {};
+        sortedKeys.forEach(key => {
+            this.objectSubContainers[key] = subContainers[key];
+        });
+
         this.renderPortals();
         this.renderActors();
 
@@ -228,18 +247,29 @@ class GameMap {
         RedStone.mainCanvas.mainContainer.addChild(this.shadowContainer);
         RedStone.mainCanvas.mainContainer.addChild(this.actorContainer);
         RedStone.mainCanvas.mainContainer.addChild(this.objectContainer);
+        RedStone.mainCanvas.mainContainer.addChild(this.foremostContainer);
 
         if (!this.onceRendered) {
             this.onceRendered = true;
         }
 
         this.initialized = true;
+        window.dispatchEvent(new CustomEvent("displayLogUpdate", { detail: { key: "map-name", value: this.map.name } }));
     }
 
     render() {
         if (!this.initialized) return;
 
         const startTime = performance.now();
+
+        if (this.selectedPortal) {
+            if (getDistance(RedStone.player, this.selectedPortal.sprite) < 100) {
+                console.log("portal gate", this.selectedPortal.area.moveToFileName);
+                this.moveTo(this.selectedPortal.area.moveToFileName);
+                this.selectedPortal = null;
+                return;
+            }
+        }
 
         this.tileContainer.removeChildren();
         this.objectContainer.removeChildren();
@@ -326,6 +356,10 @@ class GameMap {
                 );
             }
 
+            if (sprite.subSprites) {
+                this.foremostContainer.addChild(...sprite.subSprites);
+            }
+
             this.actorContainer.addChild(sprite);
         });
 
@@ -373,21 +407,16 @@ class GameMap {
         const map = this.map;
         const mapsetName = this.map.getMapsetName();
 
-        if (code === 0) return;
-        if (map.scenarioVersion === 5.3 && code < 16 << 8) return;
-        if (map.scenarioVersion === 6.1 && code < 16 << 10) return;
+        if (code === 0 || code === 8193) return;
+        if (code < 16 << 8) return;
 
         let index;
         let isBuilding = false;
 
-        if (map.scenarioVersion === 5.3) {
-            index = code % (16 << 8);
-        }
-        else if (map.scenarioVersion === 6.1) {
-            isBuilding = code >= 16 << 11;
-            index = isBuilding ? code % (16 << 11) : code % (16 << 10);
-        }
-        else {
+        isBuilding = code >= 16 << 11;
+        index = isBuilding ? code % (16 << 11) : code >= (16 << 10) ? code % (16 << 10) : code % (16 << 8);
+
+        if (![5.3, 6.1].includes(map.scenarioVersion)) {
             console.log("[Map Object Renderer] Untested scenario version:", map.scenarioVersion);
         }
 
@@ -511,11 +540,12 @@ class GameMap {
             let pixiTexture = defaultTexture;
             // it is better way to load all rmd and check MapType of map beyond the gate
             // check the filename instead as its easier
-            const isGateOrDungeon = area.moveToFileName.match(/G\d+|_D\d+|T\d+/);
+            const isGateOrDungeon = area.moveToFileName.match(/G\d+|_D\d+|T\d+\.|M\d+\.|S\d+\./);
+            const isInDoor = this.currentRmdFileName.match(/_A\d+\.|_B\d+\.|_W\d+\.|_I\d+\./);
             if (
                 // mapBeyondTheGate.typeAndFlags !== MapType.Shop
                 // area.subObjectInfo === 13 || area.subObjectInfo === 21
-                isGateOrDungeon
+                isGateOrDungeon && !isInDoor
             ) {
                 const isNearLeftBorder = centerPos.x < 500;
                 const isNearTopBorder = centerPos.y < 500;
@@ -555,9 +585,16 @@ class GameMap {
             const sprite = new PIXI.Sprite(pixiTexture);
             sprite.position.set(x, y);
             sprite.interactive = true;
-            sprite.on("click", () => {
-                console.log("portal gate clicked", area.moveToFileName);
-                this.moveTo(area.moveToFileName);
+            sprite.on("mouseenter", () => {
+                sprite.isHovering = true;
+
+                // TOOD: implement portal grow animations
+            });
+            sprite.on("mouseleave", () => {
+                sprite.isHovering = false;
+            });
+            sprite.on("mousedown", () => {
+                this.selectedPortal = { area, sprite };
             });
 
             this.portalContainer.addChild(sprite);
@@ -565,9 +602,6 @@ class GameMap {
     }
 
     renderActors() {
-        const textureCache = {};
-        const framesPerAnimation = 8;
-
         this.map.actorSingles.forEach(async actor => {
             const group = this.map.actorGroups[actor.internalID];
 
@@ -632,7 +666,6 @@ class GameMap {
             sprite.baseY = actor.point.y;
             sprite.play();
 
-            const shadowTexture = texture.getPixiTexture(targetFrame, "shadow");
             const shadowX = actor.point.x - texture.shape.shadow.left[targetFrame];
             const shadowY = actor.point.y - texture.shape.shadow.top[targetFrame] - TILE_HEIGHT / 2;
 
@@ -653,9 +686,18 @@ class GameMap {
                     setTimeout(() => {
                         sprite.gotoAndPlay(0);
                         shadowSprite.gotoAndPlay(0);
-                    }, 10000);
+                    }, 5000 * ~~(Math.random() * 3));
                 };
                 sprite.onComplete = onComplete;
+
+                const texture = PIXI.Texture.from(CommonUI.getGuage("npc", actor.name));
+                const guageSprite = new PIXI.Sprite(texture);
+                guageSprite.position.set(actor.point.x - guageSprite.width / 2, actor.point.y - sprite.height + 10);
+
+                // this.actorSprites.push(guageSprite);
+                sprite.subSprites = [guageSprite];
+
+                this.renderHeadIcon(actor, sprite);
             }
 
             // this.shadowSprites.push(shadowSprite);
@@ -664,13 +706,37 @@ class GameMap {
         });
     }
 
+    renderHeadIcon(actor, actorSprite) {
+        const iconTexture = CommonUI.getActorHeadIcon(actor);
+
+        if (!iconTexture) return;
+
+        const brightSprite = new PIXI.Sprite(CommonUI.shopIconBrightTexture);
+        const sprite = new PIXI.Sprite(iconTexture);
+        brightSprite.anchor.set(0.5, 0.5);
+        sprite.anchor.set(0.5, 0.5);
+        sprite.position.set(actor.point.x, actor.point.y - actorSprite.height - 20);
+        brightSprite.blendMode = PIXI.BLEND_MODES.ADD;
+        brightSprite.position.set(actor.point.x, actor.point.y - actorSprite.height - 20);
+        // this.actorSprites.push(brightSprite);
+        // this.actorSprites.push(sprite);
+        actorSprite.subSprites.push(brightSprite, sprite);
+    }
+
     initPosition() {
         if (this.prevRmdName) {
             const portalToPrevMap = this.map.areaInfos.find(area => area.moveToFileName === this.prevRmdName);
-            console.log(this.map.areaInfos.filter(area => area.moveToFileName));
-            if (!portalToPrevMap) console.log("prev map portal not found :(");
-            Camera.setPosition(portalToPrevMap.centerPos.x, portalToPrevMap.centerPos.y);
-            RedStone.player.setPosition(portalToPrevMap.centerPos.x, portalToPrevMap.centerPos.y);
+
+            if (portalToPrevMap) {
+                Camera.setPosition(portalToPrevMap.centerPos.x, portalToPrevMap.centerPos.y);
+                RedStone.player.setPosition(portalToPrevMap.centerPos.x, portalToPrevMap.centerPos.y);
+            } else {
+                console.log("prev map portal not found :(");
+                const portals = this.map.areaInfos.filter(area => [ObjectType.WarpPortal, ObjectType.SystemMovePosition].includes(area.objectInfo));
+                const randomPortal = portals[Math.floor(Math.random() * portals.length)];
+                Camera.setPosition(randomPortal.centerPos.x, randomPortal.centerPos.y);
+                RedStone.player.setPosition(randomPortal.centerPos.x, randomPortal.centerPos.y);
+            }
         }
     }
 
@@ -683,12 +749,12 @@ class GameMap {
     }
 
     async moveTo(rmdFileName) {
+        if (rmdFileName === this.currentRmdFileName) return;
         this.prevRmdName = this.currentRmdFileName;
         LoadingScreen.render();
         this.reset();
         await this.loadMap(rmdFileName);
         await this.init();
-        this.render();
         RedStone.mainCanvas.mainContainer.removeChild(RedStone.player.container);
         RedStone.player.reset();
         RedStone.player.render();

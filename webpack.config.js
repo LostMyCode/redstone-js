@@ -15,7 +15,6 @@ module.exports = (env, options) => {
         mode,
         entry: {
             index: APP_PATH + "/index.js",
-            debug: APP_PATH + "/debug.js"
         },
 
         output: {

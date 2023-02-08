@@ -16,9 +16,21 @@ export const Mapset = {
     Grassland: 0,
     Mountains: 1,
     Desert: 2,
+    Savana: 3,
     Cave: 4,
     Dungeon: 5,
+    Tower: 6,
+    Mine: 7,
+    Hell: 8,
+    Heaven: 9,
     Brunenstig: 10,
+    Bigaple: 11,
+    Augusta: 12,
+    Bridgehead: 13,
+    Mountains_Village: 14,
+    Arian: 15,
+    FarmHouse: 17,
+    Gypsy: 18,
     Room: 19,
 }
 
@@ -349,16 +361,6 @@ class ObjectInfo {
         const subObjectBytes = this.br.readStructUInt8(48);
         const subObjectReader = new BufferReader(Buffer.from(subObjectBytes));
 
-        // const subObjects = br.readStructUInt8(48);
-        // sub object 
-        /* 
-            uint16: texture id
-            uint8: offset x
-            uint8: 0x00(offset x from block center?), 0xff(offset x from map bounding box left?)
-            uint8: offset y
-            uint8: 0x00(offset y from block center?), 0xff(offset y from map bounding box top?)
-         */
-
         for (let i = 0; i < 8; i++) {
             const textureId = subObjectReader.readUInt16LE();
 
@@ -371,10 +373,6 @@ class ObjectInfo {
                 offsetY: subObjectReader.readUInt8(),
                 yAnchorFlag: subObjectReader.readUInt8()
             });
-        }
-
-        if (this.textureId === 88) {
-            // console.log("check sub objects of countertable", this.subObjectInfos);
         }
     }
 }

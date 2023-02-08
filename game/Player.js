@@ -1,8 +1,10 @@
 import * as PIXI from "pixi.js";
 
 import { loadTexture } from "../utils";
+import { angle, direction, getAngle, getDirection, getDirectionString } from "../utils/RedStoneRandom";
 import Camera from "./Camera";
 import { DATA_DIR, TILE_HEIGHT, TILE_WIDTH, X_BOUND_OFFSET, Y_BOUND_OFFSET } from "./Config";
+import CommonUI from "./interface/CommonUI";
 import Listener from "./Listener";
 import RedStone from "./RedStone";
 
@@ -50,6 +52,9 @@ class Player {
     async load() {
         this.playerTexture = await loadTexture(`${DATA_DIR}/Heros/Rogue03.sad`);
         this.rebirthTexture = await loadTexture(`${DATA_DIR}/Effects/rebirth01.sad`);
+
+        // custom
+        this.guildIconTexture = await PIXI.Texture.fromURL(`${DATA_DIR}/custom/rs_guild_icon.png`);
     }
 
     async init() {
@@ -57,26 +62,57 @@ class Player {
 
         const moveAmount = 30;
         setInterval(() => {
-            if (!Listener.pressingKeys.size) return;
-            Listener.pressingKeys.forEach(key => {
-                switch (key) {
-                    case "w":
-                        this.y -= moveAmount;
-                        break;
+            if (!RedStone.gameMap.initialized) {
+                window.dispatchEvent(new CustomEvent("displayLogUpdate", { detail: { key: "player-pos", value: null } }));
+                return;
+            }
 
-                    case "d":
-                        this.x += moveAmount;
-                        break;
+            window.dispatchEvent(new CustomEvent("displayLogUpdate", { detail: { key: "player-pos", value: `Player Position: (${Math.round(this.x / TILE_WIDTH)}, ${Math.round(this.y / TILE_HEIGHT)})` } }));
 
-                    case "s":
-                        this.y += moveAmount;
-                        break;
+            let positionUpdated = false;
 
-                    case "a":
-                        this.x -= moveAmount;
-                        break;
-                }
-            });
+            if (Listener.pressingKeys.size) {
+                Listener.pressingKeys.forEach(key => {
+                    switch (key) {
+                        case "w":
+                            this.y -= moveAmount;
+                            positionUpdated = true;
+                            break;
+
+                        case "d":
+                            this.x += moveAmount;
+                            positionUpdated = true;
+                            break;
+
+                        case "s":
+                            this.y += moveAmount;
+                            positionUpdated = true;
+                            break;
+
+                        case "a":
+                            this.x -= moveAmount;
+                            positionUpdated = true;
+                            break;
+                    }
+                });
+            }
+
+            if (positionUpdated) {
+                Camera.x = this.x;
+                Camera.y = this.y;
+                return;
+            }
+
+            if (!Listener.isMouseDown) return;
+
+            const targetX = Listener.mouseX - RedStone.mainCanvas.canvas.width / 2 + Camera.x;
+            const targetY = Listener.mouseY - RedStone.mainCanvas.canvas.height / 2 + Camera.y;
+
+            this.oldX = this.x;
+            this.oldY = this.y;
+            this.x += targetX - this.x > 0 ? Math.min(40, targetX - this.x) : Math.max(-40, targetX - this.x);
+            this.y += targetY - this.y > 0 ? Math.min(40, targetY - this.y) : Math.max(-40, targetY - this.y);
+
             Camera.x = this.x;
             Camera.y = this.y;
         }, 40);
@@ -114,6 +150,11 @@ class Player {
         return this._y;
     }
 
+    setPosition(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+
     reset() {
         this.onceRendered = false;
         this.playerBodySprite = null;
@@ -137,7 +178,16 @@ class Player {
 
         this.action = "run";
 
+        if (!direction.length) {
+            if (Listener.isMouseDown) {
+                const agl = getAngle({ x: this.oldX, y: this.oldY }, this);
+                const dir = getDirection(agl);
+                direction.push(...getDirectionString(dir).split("-"));
+            }
+        }
+
         if (!direction.length) return this.action = "stand";
+
         this.direction = direction.join("-");
     }
 
@@ -162,6 +212,8 @@ class Player {
                     x - this.playerTexture.shape.shadow.left[this.lastActionStartOffset + currentFrame],
                     y - this.playerTexture.shape.shadow.top[this.lastActionStartOffset + currentFrame]
                 )
+                this.renderGuage();
+                this.renderGuildIcon_test();
                 return;
             }
             // this.renderEffects();
@@ -215,6 +267,9 @@ class Player {
 
         this.lastActionStartOffset = offset;
 
+        this.renderGuage();
+        this.renderGuildIcon_test();
+
         if (!this.onceRendered) {
             RedStone.mainCanvas.mainContainer.addChild(this.container);
             this.onceRendered = true;
@@ -250,9 +305,38 @@ class Player {
         this.container.addChild(rebirthSprite);
     }
 
-    setPosition(x, y) {
-        this.x = x;
-        this.y = y;
+    renderGuage() {
+        this.guageTexture = this.guageTexture || PIXI.Texture.from(CommonUI.getGuage("myPlayer", "MyPlayer (200)"));
+        const texture = this.guageTexture;
+        /**
+         * @type {PIXI.Sprite}
+         */
+        const sprite = this.guageSprite || new PIXI.Sprite(texture);
+        sprite.position.set(this.x - sprite.width / 2, this.y - 65);
+
+        if (!this.guageSprite) {
+            this.container.addChild(sprite);
+            this.guageSprite = sprite;
+        } else {
+            this.container.removeChild(sprite);
+            this.container.addChild(sprite);
+        }
+    }
+
+    renderGuildIcon_test() {
+        if (this.guildIconSprite) {
+            const sprite = this.guildIconSprite;
+            sprite.position.set(this.guageSprite.x - 32, this.guageSprite.y - (32 - this.guageSprite.height) / 2);
+            this.container.removeChild(sprite);
+            this.container.addChild(sprite);
+        } else {
+            this.guildIconSprite = new PIXI.Sprite(this.guildIconTexture);
+            const sprite = this.guildIconSprite;
+            sprite.width = 32;
+            sprite.height = 32;
+            sprite.position.set(this.guageSprite.x - 32, this.guageSprite.y - (32 - this.guageSprite.height) / 2);
+            this.container.addChild(sprite);
+        }
     }
 }
 

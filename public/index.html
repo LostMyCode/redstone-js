@@ -5,7 +5,18 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RS</title>
+    <title>RedStoneJS (ウェブ版レッドストーン)</title>
+    <meta name="description" content="Play redstone online on your browser! ダウンロード不要！懐かしのレッドストーンをブラウザだけでプレイしよう！">
+    <meta property="og:site_name" content="RedStoneJS">
+    <meta property="og:url" content="https://rs.sigr.io/">
+    <meta property="og:title" content="RedStoneJS">
+    <meta property="og:description" content="">
+    <meta property="og:image" content="https://sigr.io/redstone/custom/card.jpg">
+    <meta property="og:image:width" content="1280">
+    <meta property="og:image:height" content="720">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@LostMyCode">
+    <link rel="shortcut icon" href="/static/favicon.ico" />
 
     <style>
         html,
@@ -19,11 +30,70 @@
             height: 100%;
             position: fixed;
         }
+
+        #log-container {
+            position: fixed;
+            top: 5px;
+            left: 5px;
+            color: #fff;
+            font-size: 12px;
+            text-shadow: 1px 1px 2px rgb(46, 46, 46), 0 0 1em rgb(42, 42, 42), 0 0 0.2em rgb(45, 45, 45);
+        }
+
+        .water-mark {
+            position: fixed;
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+            opacity: 0.5;
+            bottom: 10px;
+            right: 15px;
+        }
+
+        .water-mark:hover {
+            opacity: 0.8;
+            cursor: pointer;
+        }
+        
+        .map-list-panel {
+            font-weight: bold;
+            color: rgb(190, 190, 190);
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            transition: all 0.5s;
+        }
+        
+        .map-list-item:hover {
+            color: rgb(255, 255, 255);
+            cursor: pointer;
+        }
+        
+        .map-list-container {
+            position: fixed;
+            top: 10px;
+            right: 15px;
+            font-size: 12px;
+        }
+
+        .map-list-expander {
+            display: flex;
+            justify-content: space-between;
+            color: #fff;
+            background: rgba(42, 42, 42, 0.6);
+            padding: 10px;
+            border: 1px solid rgb(230, 230, 230);
+            cursor: pointer;
+        }
+
+        .map-list-expander a {
+            color: rgb(185, 185, 185);
+        }
     </style>
     <script src="/static/unzip.min.js"></script>
 </head>
 
 <body>
+    <div class="water-mark">LostMyCode</div>
     <div id="root"></div>
     <canvas id="canvas"></canvas>
 </body>

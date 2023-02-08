@@ -222,15 +222,22 @@ export const ActorDirect = {
 }
 
 export const ActorImage = {
+    0: "SkeletonAxe",
     15: "Zombie",
     25: "Ghost",
+    30: "Mummy",
     35: "GhostArmor",
     50: "DarkElf",
     75: "DarkPriest",
+    80: "DarkElf",
     105: "Reptile",
     116: "LizardWarrior",
-    155: "Spider",
+    155: "Spider", // ?
     170: "GiantWorm",
+    157: "Spider", // ?
+    161: "Scorpion",
+    170: "GiantWorm",
+    181: "InsectSwarm",
     185: "Wolf",
     250: "MAN1",
     251: "MAN2",
