@@ -105,8 +105,8 @@ class Player {
 
             if (!Listener.isMouseDown) return;
 
-            const targetX = Listener.mouseX - RedStone.mainCanvas.canvas.width / 2 + Camera.x;
-            const targetY = Listener.mouseY - RedStone.mainCanvas.canvas.height / 2 + Camera.y;
+            const targetX = Listener.mouseX - innerWidth / 2 + Camera.x;
+            const targetY = Listener.mouseY - innerHeight / 2 + Camera.y;
 
             this.oldX = this.x;
             this.oldY = this.y;
