@@ -253,6 +253,7 @@ export const ActorImage = {
     265: "NOBLE_MAN2",
     266: "NOBLE_WOMAN1",
     267: "NOBLE_WOMAN2",
+    273: "GYPSY_WOMAN2",
     280: "WOODCUTTER1",
     281: "WOODCUTTER2",
     288: "PRIEST",
