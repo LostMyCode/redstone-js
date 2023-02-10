@@ -10,7 +10,7 @@ RedStoneJS is a port of "RED STONE ONLINE" to HTML5 (web)
 Overview
 --------
 
-The project is designed to port the Red Stone Online to HTML5 (to make it available on browsers and mobiles)
+This project is designed to port the Red Stone Online to HTML5 (to make it available on browsers and mobiles)
 
 Red Stone is 2D Fantasy MMORPG set in the fantasy world of Prandel.
 
