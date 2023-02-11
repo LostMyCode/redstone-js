@@ -107,11 +107,15 @@ class Player {
 
             const targetX = Listener.mouseX - innerWidth / 2 + Camera.x;
             const targetY = Listener.mouseY - innerHeight / 2 + Camera.y;
+            const angle = Math.atan2(targetY - this.y, targetX - this.x);
+
+            const moveX = Math.min(40, 40 * Math.cos(angle));
+            const moveY = Math.min(40, 40 * Math.sin(angle));
 
             this.oldX = this.x;
             this.oldY = this.y;
-            this.x += targetX - this.x > 0 ? Math.min(40, targetX - this.x) : Math.max(-40, targetX - this.x);
-            this.y += targetY - this.y > 0 ? Math.min(40, targetY - this.y) : Math.max(-40, targetY - this.y);
+            this.x += moveX;
+            this.y += moveY;
 
             Camera.x = this.x;
             Camera.y = this.y;
