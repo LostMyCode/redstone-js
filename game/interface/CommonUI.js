@@ -99,12 +99,12 @@ class CommonUI {
                 index = 15;
                 break;
 
-            case CType.Healers:
-                index = 16;
+            case CType.Blacksmith:
+                index = 27;
                 break;
 
-            case CType.Blacksmith:
-                index = 18;
+            case CType.Healers:
+                index = 28;
                 break;
 
             case CType.GuildHallTeleporters:

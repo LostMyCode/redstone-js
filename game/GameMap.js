@@ -721,9 +721,9 @@ class GameMap {
 
         const brightSprite = new PIXI.Sprite(CommonUI.shopIconBrightTexture);
         const sprite = new PIXI.Sprite(iconTexture);
-        brightSprite.anchor.set(0.5, 0.5);
         sprite.anchor.set(0.5, 0.5);
         sprite.position.set(actor.point.x, actor.point.y - actorSprite.height - 20);
+        brightSprite.anchor.set(0.5, 0.5);
         brightSprite.blendMode = PIXI.BLEND_MODES.ADD;
         brightSprite.position.set(actor.point.x, actor.point.y - actorSprite.height - 20);
         // this.actorSprites.push(brightSprite);
