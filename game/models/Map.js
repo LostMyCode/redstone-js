@@ -29,6 +29,7 @@ export const Mapset = {
     Bridgehead: 13,
     Mountains_Village: 14,
     Arian: 15,
+    Ruined_City: 16,
     FarmHouse: 17,
     Gypsy: 18,
     Room: 19,
