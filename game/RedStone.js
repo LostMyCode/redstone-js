@@ -7,6 +7,7 @@ import CommonUI from "./interface/CommonUI";
 import { fetchBinaryFile } from "../utils";
 import { DATA_DIR } from "./Config";
 import BufferReader from "../utils/BufferReader";
+import MonsterSource from "./models/MonsterSource";
 
 class RedStone {
 
@@ -41,6 +42,9 @@ class RedStone {
 
         // load map list
         await this.loadMapList();
+
+        // load monsters
+        await MonsterSource.loadAllMonsters();
 
         // check save data
 

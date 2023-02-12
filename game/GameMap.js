@@ -8,10 +8,11 @@ import Camera from "./Camera";
 import LoadingScreen from "./interface/LoadingScreen";
 import { DATA_DIR, INTERFACE_DIR, MAPSET_DIR, RMD_DIR, TILE_HEIGHT, TILE_WIDTH } from "./Config";
 import RedStone from "./RedStone";
-import { ActorImage, CType } from "./models/Actor";
+import { ActorImage, CType, MonsterType } from "./models/Actor";
 import CommonUI from "./interface/CommonUI";
 import Listener from "./Listener";
 import { getDistance } from "../utils/RedStoneRandom";
+import MonsterSource from "./models/MonsterSource";
 
 const getTextureFileName = (textureId, extension = "rso") => {
     if (!extension) throw new Error("[Error] Invalid file extension");
@@ -154,13 +155,24 @@ class GameMap {
         // load actor textures
         for (let actor of this.map.actorSingles) {
             const group = this.map.actorGroups[actor.internalID];
-            if (!ActorImage[group.job]) continue;
             if (this.actorTextures[group.job]) continue;
 
-            const dir = group.job < 200 ? "monsters" : "NPC";
+            const isMonster = [CType.Monster, CType.QuestMonster].includes(actor.charType);
+            let actorTextureName;
 
-            const textureFileName = ActorImage[group.job] + ".sad";
-            const texture = await loadTexture(`${DATA_DIR}/${dir}/${textureFileName}`);
+            if (isMonster) {
+                const monsterSource = MonsterSource.allMonsters[group.job];
+                actorTextureName = MonsterType[monsterSource.textureId];
+                if (actorTextureName === "SkeletonSanta") continue;
+            } else {
+                actorTextureName = ActorImage[group.job];
+            }
+
+            if (!actorTextureName) continue;
+
+            const dir = isMonster ? "monsters" : "NPC";
+            const fileName = actorTextureName + ".sad";
+            const texture = await loadTexture(`${DATA_DIR}/${dir}/${fileName}`);
             this.actorTextures[group.job] = texture;
         }
     }
@@ -416,10 +428,6 @@ class GameMap {
         isBuilding = code >= 16 << 11;
         index = isBuilding ? code % (16 << 11) : code >= (16 << 10) ? code % (16 << 10) : code % (16 << 8);
 
-        if (![5.3, 6.1].includes(map.scenarioVersion)) {
-            console.log("[Map Object Renderer] Untested scenario version:", map.scenarioVersion);
-        }
-
         const objectInfo = isBuilding ? map.buildingInfos[index] : map.objectInfos[index];
         if (!objectInfo) {
             return;
@@ -604,11 +612,10 @@ class GameMap {
     renderActors() {
         this.map.actorSingles.forEach(async actor => {
             const group = this.map.actorGroups[actor.internalID];
+            const texture = this.actorTextures[group.job];
 
-            if (!ActorImage[group.job]) return;
-
-            let textureFileName = ActorImage[group.job] + ".sad";
-            let texture = this.actorTextures[group.job];
+            if (!texture) return;
+            if (!texture.actions || !texture.actions.length) return; // not supported yet (e.g. ギルディル川　沼地洞窟　Ｂ１ "TongueEye.sad")
 
             let dir;
             switch (actor.charType) {
@@ -638,6 +645,7 @@ class GameMap {
             }
 
             frameCount = (nextFrameIndex - startFrameIndex) / 8;
+            if (frameCount === 0) return;
 
             const actorDirect = actor.direct === 8 ? ~~(Math.random() * 8) : actor.direct;
             const targetFrame = startFrameIndex + actorDirect * frameCount;
