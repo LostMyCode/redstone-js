@@ -83,6 +83,10 @@ class CommonUI {
                 index = 4;
                 break;
 
+            case CType.Banker:
+                index = 7;
+                break;
+
             case CType.MiscellaneousGoodsMerchant:
                 index = 8;
                 break;
