@@ -615,7 +615,7 @@ class GameMap {
             const texture = this.actorTextures[group.job];
 
             if (!texture) return;
-            if (!texture.actions) return; // not supported yet (e.g. ギルディル川　沼地洞窟　Ｂ１ "TongueEye.sad")
+            if (!texture.actions || !texture.actions.length) return; // not supported yet (e.g. ギルディル川　沼地洞窟　Ｂ１ "TongueEye.sad")
 
             let dir;
             switch (actor.charType) {
@@ -645,6 +645,7 @@ class GameMap {
             }
 
             frameCount = (nextFrameIndex - startFrameIndex) / 8;
+            if (frameCount === 0) return;
 
             const actorDirect = actor.direct === 8 ? ~~(Math.random() * 8) : actor.direct;
             const targetFrame = startFrameIndex + actorDirect * frameCount;
