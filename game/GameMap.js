@@ -41,7 +41,7 @@ const animationObjectTexIds = {
     }
 }
 
-const CONTAINER_SPLIT_BLOCK_SIZE = 50;
+const CONTAINER_SPLIT_BLOCK_SIZE = 10;
 
 class GameMap {
     constructor() {
@@ -192,6 +192,15 @@ class GameMap {
             }
         }
 
+        for (const key in this.tileSubContainers) {
+            const sc = this.tileSubContainers[key];
+            const [blockX, blockY] = key.split("-").map(Number);
+            const x = blockX * TILE_WIDTH * CONTAINER_SPLIT_BLOCK_SIZE;
+            const y = blockY * TILE_HEIGHT * CONTAINER_SPLIT_BLOCK_SIZE;
+            sc.position.set(x, y);
+            sc.cacheAsBitmap = true;
+        }
+
         // render position specified objects
         const objects = map.positionSpecifiedObjects;
         objects.forEach(obj => {
@@ -292,6 +301,7 @@ class GameMap {
             const [blockX, blockY] = key.split("-").map(Number);
             const x = blockX * TILE_WIDTH * CONTAINER_SPLIT_BLOCK_SIZE;
             const y = blockY * TILE_HEIGHT * CONTAINER_SPLIT_BLOCK_SIZE;
+            const tc = this.tileSubContainers[key];
 
             if (!Camera.isRectInView({
                 top: y, left: x,
@@ -301,9 +311,6 @@ class GameMap {
                 return;
             }
 
-            const tc = this.tileSubContainers[key];
-            tc.position.set(x, y);
-            tc.cacheAsBitmap = true;
             this.tileContainer.addChild(tc);
         });
 
