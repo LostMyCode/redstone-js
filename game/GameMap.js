@@ -84,7 +84,7 @@ class GameMap {
         this.positionSpecifiedObjectSprites = [];
 
         /**
-         * @type {PIXI.Sprite[]}
+         * @type {PIXI.Sprite[] | PIXI.AnimatedSprite[]}
          */
         this.actorSprites = [];
 
@@ -296,6 +296,8 @@ class GameMap {
         this.objectContainer.removeChildren();
         this.shadowContainer.removeChildren();
         this.positionSpecifiedObjectContainer.removeChildren();
+        this.actorContainer.removeChildren();
+        this.foremostContainer.removeChildren();
 
         Object.keys(this.tileSubContainers).forEach((key, idx) => {
             const [blockX, blockY] = key.split("-").map(Number);
@@ -375,11 +377,25 @@ class GameMap {
                 );
             }
 
-            if (sprite.subSprites) {
-                this.foremostContainer.addChild(...sprite.subSprites);
+            if (sprite.guageSprite) {
+                this.foremostContainer.addChild(sprite.guageSprite);
+            }
+            if (sprite.headIconSpriteSet) {
+                this.foremostContainer.addChild(...sprite.headIconSpriteSet);
             }
 
             this.actorContainer.addChild(sprite);
+
+            if (sprite.isHovering) {
+                const texture = typeof sprite.currentFrame === "number" ? sprite.textures[sprite.currentFrame] : sprite.texture;
+                const hoverSprite = new PIXI.Sprite(texture);
+                hoverSprite.position.set(sprite.position._x, sprite.position._y);
+                hoverSprite.scale.set(sprite.scale._x, sprite.scale._y);
+                hoverSprite.animationSpeed = sprite.animationSpeed;
+                hoverSprite.blendMode = PIXI.BLEND_MODES.ADD;
+                hoverSprite.alpha = 0.5;
+                this.actorContainer.addChild(hoverSprite);
+            }
         });
 
         const endTime = performance.now();
@@ -694,6 +710,10 @@ class GameMap {
             shadowSprite.baseY = actor.point.y;
             shadowSprite.play();
 
+            const guageTexture = PIXI.Texture.from(CommonUI.getGuage(dir === "NPC" ? "npc" : "enemy", actor.name));
+            const guageSprite = new PIXI.Sprite(guageTexture);
+            guageSprite.position.set(actor.point.x - guageSprite.width / 2, y - 15);
+
             if (dir === "NPC") { // set cool time if target is NPC (to be natural)
                 sprite.loop = false;
                 shadowSprite.loop = false;
@@ -704,16 +724,19 @@ class GameMap {
                     }, 5000 * ~~(Math.random() * 3));
                 };
                 sprite.onComplete = onComplete;
-
-                const texture = PIXI.Texture.from(CommonUI.getGuage("npc", actor.name));
-                const guageSprite = new PIXI.Sprite(texture);
-                guageSprite.position.set(actor.point.x - guageSprite.width / 2, actor.point.y - sprite.height + 10);
-
-                // this.actorSprites.push(guageSprite);
-                sprite.subSprites = [guageSprite];
-
+                sprite.guageSprite = guageSprite;
                 this.renderHeadIcon(actor, sprite);
             }
+
+            sprite.interactive = true;
+            sprite.on("mouseover", () => {
+                sprite.isHovering = true;
+                if (dir !== "NPC") sprite.guageSprite = guageSprite;
+            });
+            sprite.on("mouseout", () => {
+                sprite.isHovering = false;
+                if (dir !== "NPC") sprite.guageSprite = null;
+            });
 
             // this.shadowSprites.push(shadowSprite);
             this.actorSprites.push(shadowSprite); // temp
@@ -735,7 +758,7 @@ class GameMap {
         brightSprite.position.set(actor.point.x, actor.point.y - actorSprite.height - 20);
         // this.actorSprites.push(brightSprite);
         // this.actorSprites.push(sprite);
-        actorSprite.subSprites.push(brightSprite, sprite);
+        actorSprite.headIconSpriteSet = [brightSprite, sprite];
     }
 
     initPosition() {
