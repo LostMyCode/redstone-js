@@ -10,8 +10,6 @@ class CommonUI {
     constructor() {
         this.interface = null;
         this.interface2 = null;
-
-        this.myPlayerGuage = null;
     }
 
     async load() {
@@ -19,13 +17,27 @@ class CommonUI {
         this.shopIcon = await loadTexture(`${INTERFACE_DIR}/shopIcon.sad`);
         this.shopIconBrightTexture = this.shopIcon.getPixiTexture(0);
         // this.interface2 = await loadTexture(`${INTERFACE_DIR}/interface2.sd`);
+        this.nameBar = await loadTexture(`${INTERFACE_DIR}/name_bar.sd`);
     }
 
     async init() {
         await this.load();
-        this.myPlayerGuage = this.interface.getCanvas(319);
-        this.enemyGuage = this.interface.getCanvas(322);
-        this.npcGuage = this.interface.getCanvas(324);
+
+        this.myPlayerGuageParts = {
+            leftEdge: this.nameBar.getCanvas(3),
+            rightEdge: this.nameBar.getCanvas(4),
+            body: this.nameBar.getCanvas(5)
+        }
+        this.enemyGuageParts = {
+            leftEdge: this.nameBar.getCanvas(6),
+            rightEdge: this.nameBar.getCanvas(7),
+            body: this.nameBar.getCanvas(8)
+        }
+        this.npcGuageParts = {
+            leftEdge: this.nameBar.getCanvas(12),
+            rightEdge: this.nameBar.getCanvas(13),
+            body: this.nameBar.getCanvas(14)
+        }
     }
 
     /**
@@ -35,33 +47,35 @@ class CommonUI {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
 
-        ctx.beginPath();
-        ctx.font = '12px Arial'
+        ctx.font = '10px sans-serif'
+        ctx.fillStyle = "#fff";
         const { width: textWidth } = ctx.measureText(text);
-        const width = textWidth + 15;
+        const width = textWidth + 20;
 
         canvas.width = width;
         canvas.height = 17;
 
-        let base;
+        let parts;
 
         switch (type) {
             case "myPlayer":
-                base = this.myPlayerGuage;
+                parts = this.myPlayerGuageParts;
                 break;
 
             case "enemy":
-                base = this.enemyGuage;
+                parts = this.enemyGuageParts;
                 break;
 
             case "npc":
-                base = this.npcGuage;
+                parts = this.npcGuageParts;
                 break;
         }
 
-        ctx.drawImage(base, 0, 0, width - 20, 17, 0, 0, width - 20, 17);
-        ctx.drawImage(base, 228 - 20, 0, 20, 17, width - 20, 0, 20, 17);
+        ctx.drawImage(parts.leftEdge, 0, 0);
+        ctx.drawImage(parts.body, 0, 0, width - 10, 17, 5, 0, width - 10, 17);
+        ctx.drawImage(parts.rightEdge, width - 5, 0, 5, 17);
 
+        ctx.font = '10px sans-serif'
         ctx.fillStyle = "#fff";
         ctx.fillText(text, 10, 12);
 
