@@ -88,7 +88,7 @@ class RedStone {
 
     static loadMap(rmdFileName) {
         if (!this.initialized) return;
-        this.gameMap.moveTo(rmdFileName);
+        this.gameMap.moveField(rmdFileName);
     }
 }
 

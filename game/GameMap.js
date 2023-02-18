@@ -286,7 +286,7 @@ class GameMap {
         if (this.selectedPortal) {
             if (getDistance(RedStone.player, this.selectedPortal.sprite) < 100) {
                 console.log("portal gate", this.selectedPortal.area.moveToFileName);
-                this.moveTo(this.selectedPortal.area.moveToFileName);
+                this.moveField(this.selectedPortal.area.moveToFileName);
                 this.selectedPortal = null;
                 return;
             }
@@ -786,7 +786,7 @@ class GameMap {
         }
     }
 
-    async moveTo(rmdFileName) {
+    async moveField(rmdFileName) {
         if (rmdFileName === this.currentRmdFileName) return;
         this.prevRmdName = this.currentRmdFileName;
         LoadingScreen.render();
