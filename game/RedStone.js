@@ -8,6 +8,7 @@ import { fetchBinaryFile } from "../utils";
 import { DATA_DIR } from "./Config";
 import BufferReader from "../utils/BufferReader";
 import MonsterSource from "./models/MonsterSource";
+import Skill2 from "./models/Skill2";
 
 class RedStone {
 
@@ -45,6 +46,9 @@ class RedStone {
 
         // load monsters
         await MonsterSource.loadAllMonsters();
+
+        // load skills
+        await Skill2.loadAllSkill2();
 
         // check save data
 
