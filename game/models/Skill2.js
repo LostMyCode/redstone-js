@@ -195,6 +195,11 @@ class Skill2 {
                 skill.requiredSkills[r_skillIndex] = r_skillSlv;
             }
 
+            skillReader.offset = 1328;
+            skill.castSound = skillReader.readString(32);
+            skill.actSound = skillReader.readString(32);
+            skill.hitSound = skillReader.readString(32);
+
             skillReader.offset = 0x6EC;
             skill.skillDesc = skillReader.readString(skillReader.buffer.byteLength - 0x6EC, "sjis");
 
