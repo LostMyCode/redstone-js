@@ -735,7 +735,11 @@ class GameMap {
             });
             sprite.on("mouseout", () => {
                 sprite.isHovering = false;
+                if (RedStone.player.targetActor) RedStone.player.targetActor = null;
                 if (dir !== "NPC") sprite.guageSprite = null;
+            });
+            sprite.on("mousedown", () => {
+                RedStone.player.targetActor = { actor, group, sprite };
             });
 
             // this.shadowSprites.push(shadowSprite);

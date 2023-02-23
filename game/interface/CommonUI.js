@@ -18,6 +18,7 @@ class CommonUI {
         this.shopIconBrightTexture = this.shopIcon.getPixiTexture(0);
         // this.interface2 = await loadTexture(`${INTERFACE_DIR}/interface2.sd`);
         this.nameBar = await loadTexture(`${INTERFACE_DIR}/name_bar.sd`);
+        this.hitText = await loadTexture(`${INTERFACE_DIR}/hitText.sd`);
     }
 
     async init() {
