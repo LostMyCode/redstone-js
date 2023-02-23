@@ -113,6 +113,59 @@ class BufferReader {
         this.decodeKey = generateScenarioDecodeKey(rawKey);
 
     }
+
+    /**
+     * @param {typeof TYPE_DEF} type 
+     */
+    readByType = (type) => {
+        switch (type) {
+            case TYPE_DEF.UINT8:
+                return this.readUInt8();
+
+            case TYPE_DEF.UINT16:
+                return this.readUInt16LE();
+
+            case TYPE_DEF.UINT32:
+                return this.readUInt32LE();
+
+            default:
+                throw new Error("Unsupported read type", type);
+        }
+    }
+
+    readStruct = (structTypeDef, extractTarget) => {
+        Object.keys(structTypeDef).forEach(fieldName => {
+            const typeDef = structTypeDef[fieldName];
+            if (typeDef instanceof Array) {
+                if (typeDef[0] === TYPE_DEF.SKIP) {
+                    this.offset += typeDef.length;
+                    extractTarget[fieldName] = null;
+                    return;
+                }
+                if (typeDef[0] === TYPE_DEF.CHAR) {
+                    extractTarget[fieldName] = this.readString(typeDef.length);
+                } else {
+                    const aData = [];
+                    typeDef.forEach(_typeDef => {
+                        const data = this.readByType(_typeDef, this);
+                        aData.push(data);
+                    });
+                    extractTarget[fieldName] = aData;
+                }
+            } else {
+                const data = this.readByType(typeDef, this);
+                extractTarget[fieldName] = data;
+            }
+        });
+    }
+}
+
+export const TYPE_DEF = {
+    UINT8: 0,
+    UINT16: 1,
+    UINT32: 2,
+    CHAR: 3,
+    SKIP: 0xFF,
 }
 
 if (module.exports) {
