@@ -8,6 +8,7 @@ import { fetchBinaryFile } from "../utils";
 import { DATA_DIR } from "./Config";
 import BufferReader from "../utils/BufferReader";
 import MonsterSource from "./models/MonsterSource";
+import EffectDataManager from "./EffectDataManager";
 
 class RedStone {
 
@@ -50,6 +51,9 @@ class RedStone {
 
         // load common resources
         await RedStone.gameMap.loadCommon();
+
+        // load effects
+        await EffectDataManager.init();
 
         // load player
 
