@@ -173,7 +173,7 @@ const ClientSaveImageDataTypeDef = {
 }
 
 const EffectDataInfoTypeDef = {
-    m_strImageName: (new Array(32)).fill(TYPE_DEF.SKIP), // (new Array(32)).fill(TYPE_DEF.CHAR)
+    m_strImageName: (new Array(32)).fill(TYPE_DEF.SKIP), // (new Array(32)).fill(TYPE_DEF.CHAR_EUC_KR)
     m_strImageFileName: (new Array(64)).fill(TYPE_DEF.CHAR),
     m_wType: TYPE_DEF.UINT16
 }

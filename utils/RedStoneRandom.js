@@ -1,4 +1,4 @@
-import Encoding from 'encoding-japanese';
+import iconv from "iconv-lite";
 
 const aucDataTable =
     [0xAF, 0x7E, 0xF5, 0xE7, 0xDD, 0xF9, 0xBE, 0xEE, 0xED, 0xBE, 0xCF, 0xBE, 0x9F, 0xBB, 0x7B, 0xE7
@@ -60,12 +60,7 @@ export const decodeScenarioBuffer = (data, decodeKey) => {
 }
 
 export const sjisByteToString = (sjisByteArray) => {
-    var unicodeArray = Encoding.convert(sjisByteArray, {
-        to: 'UNICODE',
-        from: 'SJIS'
-    });
-    var str = Encoding.codeToString(unicodeArray); // 文字コード値の配列から文字列に変換
-    return str;
+    return iconv.decode(Buffer.from(sjisByteArray), "Shift_JIS");
 }
 
 export const getRGBA15bit = (colorData1, colorData2, isUseOpacity) => {

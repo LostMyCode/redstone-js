@@ -1,5 +1,4 @@
-// const Encoding = require('encoding-japanese');
-import Encoding from "encoding-japanese";
+import iconv from "iconv-lite";
 
 class BufferReader {
     /**
@@ -94,13 +93,13 @@ class BufferReader {
             if (byte === 0) break;
             arr.push(byte);
         }
-        if (encoding === "sjis") {
-            var unicodeArray = Encoding.convert(arr, {
-                to: 'UNICODE',
-                from: 'SJIS'
-            });
-            var str = Encoding.codeToString(unicodeArray); // 文字コード値の配列から文字列に変換
-            return str;
+        if (encoding) {
+            if (["sjis", "SJIS", "Shift_JIS"].includes(encoding)) {
+                return iconv.decode(Buffer.from(arr), "Shift_JIS");
+            }
+            else if (["kr", "EUC-KR", "KR", "KOR"].includes(encoding)) {
+                return iconv.decode(Buffer.from(arr), "EUC-KR");
+            }
         }
         return Buffer.from(arr).toString();
     }
@@ -144,6 +143,8 @@ class BufferReader {
                 }
                 if (typeDef[0] === TYPE_DEF.CHAR) {
                     extractTarget[fieldName] = this.readString(typeDef.length);
+                } else if (typeDef[0] === TYPE_DEF.CHAR_EUC_KR) {
+                    extractTarget[fieldName] = this.readString(typeDef.length, "kr");
                 } else {
                     const aData = [];
                     typeDef.forEach(_typeDef => {
@@ -165,6 +166,7 @@ export const TYPE_DEF = {
     UINT16: 1,
     UINT32: 2,
     CHAR: 3,
+    CHAR_EUC_KR: 4,
     SKIP: 0xFF,
 }
 
