@@ -246,19 +246,6 @@ class GameMap {
             }
         });
 
-        // sort object sub containers
-        const sortedKeys = Object.keys(this.objectSubContainers).sort((a, b) => {
-            const [aBlockX, aBlockY] = a.split("-").map(Number);
-            const [bBlockX, bBlockY] = b.split("-").map(Number);
-
-            return (aBlockY * CONTAINER_SPLIT_BLOCK_SIZE + aBlockX) - (bBlockY * CONTAINER_SPLIT_BLOCK_SIZE + bBlockX);
-        });
-        const subContainers = this.objectSubContainers;
-        this.objectSubContainers = {};
-        sortedKeys.forEach(key => {
-            this.objectSubContainers[key] = subContainers[key];
-        });
-
         this.renderPortals();
         this.renderActors();
 
