@@ -58,6 +58,8 @@ class GameMap {
         this.actorContainer = new PIXI.Container();
         this.foremostContainer = new PIXI.Container();
 
+        this.graphics = new PIXI.Graphics();
+
         /**
          * @type {{[key: String]: PIXI.Container}}
          */
@@ -102,6 +104,7 @@ class GameMap {
         this.portalContainer.removeChildren();
         this.actorContainer.removeChildren();
         this.foremostContainer.removeChildren();
+        this.graphics.clear();
 
         RedStone.mainCanvas.mainContainer.removeChild(
             this.objectContainer,
@@ -109,7 +112,8 @@ class GameMap {
             this.shadowContainer,
             this.portalContainer,
             this.actorContainer,
-            this.foremostContainer
+            this.foremostContainer,
+            this.graphics
         );
 
         this.tileSubContainers = {};
@@ -250,6 +254,7 @@ class GameMap {
         RedStone.mainCanvas.mainContainer.addChild(this.actorContainer);
         RedStone.mainCanvas.mainContainer.addChild(this.objectContainer);
         RedStone.mainCanvas.mainContainer.addChild(this.foremostContainer);
+        RedStone.mainCanvas.mainContainer.addChild(this.graphics);
 
         if (!this.onceRendered) {
             this.onceRendered = true;
@@ -355,8 +360,8 @@ class GameMap {
 
             if (typeof sprite.currentFrame === "number") {
                 sprite.position.set(
-                    sprite.baseX - sprite.shape.left[sprite.startFrameIndex + sprite.currentFrame],
-                    sprite.baseY - sprite.shape.top[sprite.startFrameIndex + sprite.currentFrame]
+                    sprite.baseX - sprite.shape.left[sprite.startFrameIndex + sprite.currentFrame] * sprite.scale.x,
+                    sprite.baseY - sprite.shape.height[sprite.startFrameIndex + sprite.currentFrame] * sprite.scale.y
                 );
             }
 
@@ -650,13 +655,15 @@ class GameMap {
                 pixiShadowTextures.push(shadowTex);
             }
 
-            const x = actor.point.x - texture.shape.body.left[targetFrame];
-            const y = actor.point.y - texture.shape.body.top[targetFrame] - TILE_HEIGHT / 2;
+            const scaleX = group.scale.width / 100;
+            const scaleY = group.scale.height / 100;
+            const x = actor.point.x - texture.shape.body.left[targetFrame] * scaleX;
+            const y = actor.point.y - texture.shape.body.height[targetFrame] * scaleY;
 
             // const sprite = new PIXI.Sprite(pixiTexture);
             const sprite = new PIXI.AnimatedSprite(pixiTextures);
             sprite.position.set(x, y);
-            sprite.scale.set(group.scale.width / 100, group.scale.height / 100);
+            sprite.scale.set(scaleX, scaleY);
             sprite.animationSpeed = 0.1;
             sprite.startFrameIndex = targetFrame;
             sprite.shape = texture.shape.body;
@@ -664,12 +671,12 @@ class GameMap {
             sprite.baseY = actor.point.y;
             sprite.play();
 
-            const shadowX = actor.point.x - texture.shape.shadow.left[targetFrame];
-            const shadowY = actor.point.y - texture.shape.shadow.top[targetFrame] - TILE_HEIGHT / 2;
+            const shadowX = actor.point.x - texture.shape.shadow.left[targetFrame] * scaleX;
+            const shadowY = actor.point.y - texture.shape.shadow.height[targetFrame] * scaleY;
 
             const shadowSprite = new PIXI.AnimatedSprite(pixiShadowTextures);
             shadowSprite.position.set(shadowX, shadowY);
-            shadowSprite.scale.set(group.scale.width / 100, group.scale.height / 100);
+            shadowSprite.scale.set(scaleX, scaleY);
             shadowSprite.animationSpeed = 0.1;
             shadowSprite.startFrameIndex = targetFrame;
             shadowSprite.shape = texture.shape.shadow;
@@ -679,7 +686,7 @@ class GameMap {
 
             const guageTexture = PIXI.Texture.from(CommonUI.getGuage(dir === "NPC" ? "npc" : "enemy", actor.name));
             const guageSprite = new PIXI.Sprite(guageTexture);
-            guageSprite.position.set(actor.point.x - guageSprite.width / 2, y - 15);
+            guageSprite.position.set(actor.point.x - guageSprite.width / 2, y - 20);
 
             if (dir === "NPC") { // set cool time if target is NPC (to be natural)
                 sprite.loop = false;
@@ -705,6 +712,17 @@ class GameMap {
                 if (dir !== "NPC") sprite.guageSprite = null;
             });
 
+            this.graphics.lineStyle(3, 0x000000);
+            // this.graphics.drawRect(
+            //     actor.point.x - texture.shape.body.left[targetFrame],
+            //     actor.point.y - texture.shape.body.height[targetFrame],
+            //     texture.shape.body.width[targetFrame],
+            //     texture.shape.body.height[targetFrame]
+            // );
+
+            this.graphics.lineStyle(3, 0xeb4034);
+            this.graphics.drawCircle(actor.point.x, actor.point.y, 10);
+
             // this.shadowSprites.push(shadowSprite);
             this.actorSprites.push(shadowSprite); // temp
             this.actorSprites.push(sprite);
@@ -719,10 +737,10 @@ class GameMap {
         const brightSprite = new PIXI.Sprite(CommonUI.shopIconBrightTexture);
         const sprite = new PIXI.Sprite(iconTexture);
         sprite.anchor.set(0.5, 0.5);
-        sprite.position.set(actor.point.x, actor.point.y - actorSprite.height - 20);
+        sprite.position.set(actor.point.x, actor.point.y - actorSprite.height - 60);
         brightSprite.anchor.set(0.5, 0.5);
         brightSprite.blendMode = PIXI.BLEND_MODES.ADD;
-        brightSprite.position.set(actor.point.x, actor.point.y - actorSprite.height - 20);
+        brightSprite.position.set(actor.point.x, actor.point.y - actorSprite.height - 60);
         // this.actorSprites.push(brightSprite);
         // this.actorSprites.push(sprite);
         actorSprite.headIconSpriteSet = [brightSprite, sprite];
