@@ -5,7 +5,7 @@ import Listener from "./Listener";
 import Player from "./Player";
 import CommonUI from "./interface/CommonUI";
 import { fetchBinaryFile } from "../utils";
-import { DATA_DIR } from "./Config";
+import { DATA_DIR, SAVE_PLAYER_LOCATION } from "./Config";
 import BufferReader from "../utils/BufferReader";
 import MonsterSource from "./models/MonsterSource";
 import EffectDataManager from "./EffectDataManager";
@@ -35,7 +35,6 @@ class RedStone {
     static lastLocation;
 
     static async init() {
-        RedStone.lastLocation = this.loadPlayerLocation();
         RedStone.mainCanvas = new MainCanvas();
         RedStone.gameMap = new GameMap();
         RedStone.player = new Player();
@@ -66,11 +65,14 @@ class RedStone {
         // init map
         await RedStone.gameMap.init();
 
-        // set player position
-        if (this.lastLocation?.position) {
-            const { x, y } = this.lastLocation?.position;
-            this.player.setPosition(x, y);
-            Camera.setPosition(x, y);
+        if (SAVE_PLAYER_LOCATION) {
+            RedStone.lastLocation = this.loadPlayerLocation();
+            // set player position
+            if (this.lastLocation?.position) {
+                const { x, y } = this.lastLocation?.position;
+                this.player.setPosition(x, y);
+                Camera.setPosition(x, y);
+            }
         }
 
         // water mark click event
@@ -81,7 +83,9 @@ class RedStone {
         // save player location before unload
         window.addEventListener("beforeunload", (e) => {
             e.preventDefault();
-            this.savePlayerLocation();
+            if (SAVE_PLAYER_LOCATION) {
+                this.savePlayerLocation();
+            }
         });
 
         LoadingScreen.destroy();
