@@ -798,6 +798,51 @@ class GameMap {
         RedStone.player.render();
         LoadingScreen.destroy();
     }
+
+    getBlock(x, y) {
+        const blocks = this.map.tileData3;
+        if (blocks.length <= y * this.map.size.width + x) {
+            return 1;
+        }
+        return blocks[y * this.map.size.width + x];
+    }
+
+    isBlockedWay(ax, ay, bx, by) {
+        const x0 = Math.min(ax, bx);
+        const x1 = Math.max(ax, bx);
+        const y0 = Math.min(ay, by);
+        const y1 = Math.max(ay, by);
+
+        if (bx - ax > by - ay) {
+            for (let x = x0; x < x1; x++) {
+                const block = this.getBlock(
+                    Math.round(x / 64),
+                    Math.round(lerp(x0, y0, x1, y1, x) / 32)
+                );
+                if (block !== 0) {
+                    console.log("code1", block)
+                    return true;
+                }
+            }
+        } else {
+            for (let y = y0; y < y1; y++) {
+                const block = this.getBlock(
+                    Math.round(lerp(y0, x0, y1, x1, y) / 64),
+                    Math.round(y / 32)
+                );
+                if (block !== 0) {
+                    console.log("code2", block)
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+}
+
+const lerp = (x00, y00, x11, y11, x) => {
+    return y00 + (y11 - y00) * (x - x00) / (x11 - x00);
 }
 
 export default GameMap;

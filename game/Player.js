@@ -109,8 +109,26 @@ class Player {
             const targetY = Listener.mouseY - innerHeight / 2 + Camera.y;
             const angle = Math.atan2(targetY - this.y, targetX - this.x);
 
-            const moveX = Math.min(40, 40 * Math.cos(angle));
-            const moveY = Math.min(40, 40 * Math.sin(angle));
+            let moveX = Math.min(40, 40 * Math.cos(angle));
+            let moveY = Math.min(40, 40 * Math.sin(angle));
+
+            // if (RedStone.gameMap.isBlockedWay(
+            //     Math.round(this.x / TILE_WIDTH),            // startX
+            //     Math.round(this.y / TILE_HEIGHT),           // startY
+            //     Math.round((this.x + moveX) / TILE_WIDTH),  // goalX
+            //     Math.round((this.y + moveY) / TILE_HEIGHT)  // goalY
+            // )) {
+            //     return;
+            // }
+            const block1 = RedStone.gameMap.getBlock(Math.round((this.x + moveX) / TILE_WIDTH), Math.round(Math.round(this.y) / TILE_HEIGHT));
+            const block2 = RedStone.gameMap.getBlock(Math.round((this.x) / TILE_WIDTH), Math.round(Math.round(this.y + moveY) / TILE_HEIGHT));
+
+            if (block1 !== 0) {
+                moveX = 0;
+            }
+            if (block2 !== 0) {
+                moveY = 0;
+            }
 
             this.oldX = this.x;
             this.oldY = this.y;
