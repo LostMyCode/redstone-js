@@ -76,7 +76,7 @@ class MainCanvas {
         this.mainContainer.position.set(window.innerWidth / 2 - Camera.x, window.innerHeight / 2 - Camera.y);
         // this.rootContainer.scale.set(1);
         RedStone.gameMap.render();
-        RedStone.player.render();
+        // RedStone.player.render();
 
         this.renderer.render(this.rootContainer);
 

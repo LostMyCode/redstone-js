@@ -64,11 +64,6 @@ class GameMap {
         this.tileSubContainers = {};
 
         /**
-         * @type {{[key: String]: PIXI.Container}}
-         */
-        this.objectSubContainers = {};
-
-        /**
          * @type {PIXI.Sprite[]}
          */
         this.objectSprites = [];
@@ -118,7 +113,6 @@ class GameMap {
         );
 
         this.tileSubContainers = {};
-        this.objectSubContainers = {};
         this.objectSprites = [];
         this.shadowSprites = [];
         this.positionSpecifiedObjectSprites = [];
@@ -303,25 +297,27 @@ class GameMap {
             this.tileContainer.addChild(tc);
         });
 
-        Object.keys(this.objectSubContainers).forEach((key, idx) => {
-            const [blockX, blockY] = key.split("-").map(Number);
-            const x = blockX * TILE_WIDTH * CONTAINER_SPLIT_BLOCK_SIZE;
-            const y = blockY * TILE_HEIGHT * CONTAINER_SPLIT_BLOCK_SIZE;
-
-            const tc = this.objectSubContainers[key];
-            tc.position.set(x, y);
-            const bounds = tc.getBounds()
+        let playerAdded = false;
+        const playerTileY = Math.round(RedStone.player.y / TILE_HEIGHT);
+        this.objectSprites.forEach(sprite => {
+            const bounds = sprite.getBounds();
 
             if (!Camera.isRectInView({
-                top: bounds.top, left: bounds.left,
+                top: bounds.top,
+                left: bounds.left,
                 width: bounds.width,
                 height: bounds.height
             })) {
                 return;
             }
 
-            // tc.cacheAsBitmap = true;
-            this.objectContainer.addChild(tc);
+            if (!playerAdded && sprite.blockY > playerTileY) {
+                RedStone.player.render();
+                this.objectContainer.addChild(RedStone.player.container);
+                playerAdded = true;
+            }
+
+            this.objectContainer.addChild(sprite);
         });
 
         this.shadowSprites.forEach(sprite => {
@@ -406,23 +402,6 @@ class GameMap {
         this.tileSubContainers[chunkName].addChild(sprite);
     }
 
-    addObjectSpriteToSubContainer(sprite, blockX, blockY) {
-        const chunkX = ~~(blockX / CONTAINER_SPLIT_BLOCK_SIZE);
-        const chunkY = ~~(blockY / CONTAINER_SPLIT_BLOCK_SIZE);
-        const chunkName = `${chunkX}-${chunkY}`;
-
-        sprite.position.x -= chunkX * CONTAINER_SPLIT_BLOCK_SIZE * TILE_WIDTH;
-        sprite.position.y -= chunkY * CONTAINER_SPLIT_BLOCK_SIZE * TILE_HEIGHT;
-
-        const targetSubContainer = this.objectSubContainers[chunkName] || new PIXI.Container();
-        this.objectSubContainers[chunkName] = targetSubContainer;
-        targetSubContainer.addChild(sprite);
-        targetSubContainer.cTop = Math.min(targetSubContainer.cTop, sprite.position.y);
-        targetSubContainer.cLeft = Math.min(targetSubContainer.cLeft, sprite.position.x);
-        targetSubContainer.cRight = Math.max(targetSubContainer.cRight, sprite.position.x + sprite.width);
-        targetSubContainer.cBottom = Math.max(targetSubContainer.cBottom, sprite.position.y + sprite.height);
-    }
-
     renderObject(code, blockX, blockY) {
         // TODO: sort objects and shadows
 
@@ -454,8 +433,9 @@ class GameMap {
         const pixiTexture = texture.getPixiTexture(0);
         const sprite = new PIXI.Sprite(pixiTexture);
         sprite.position.set(x, y);
-        // this.objectSprites.push(sprite);
-        this.addObjectSpriteToSubContainer(sprite, blockX, blockY);
+        sprite.blockX = blockX;
+        sprite.blockY = blockY;
+        this.objectSprites.push(sprite);
 
         // animated objects (rso)
         if (!isBuilding && animationObjectTexIds[mapsetName]?.rso?.includes(objectInfo.textureId)) {
@@ -468,9 +448,10 @@ class GameMap {
             const sprite = new PIXI.AnimatedSprite(pixiTextures);
             sprite.position.set(x, y);
             sprite.animationSpeed = 0.1;
+            sprite.blockX = blockX;
+            sprite.blockY = blockY;
             sprite.play();
-            // this.objectSprites.push(sprite);
-            this.addObjectSpriteToSubContainer(sprite, blockX, blockY);
+            this.objectSprites.push(sprite);
         }
 
         // shadow
@@ -498,8 +479,7 @@ class GameMap {
 
             const sprite = new PIXI.Sprite(pixiTexture);
             sprite.position.set(x, y);
-            // this.objectSprites.push(sprite);
-            this.addObjectSpriteToSubContainer(sprite, blockX, blockY);
+            this.objectSprites.push(sprite);
 
             // animated objects (rfo)
             if (animationObjectTexIds[mapsetName]?.rfo?.includes(textureId)) {
@@ -513,8 +493,7 @@ class GameMap {
                 sprite.position.set(x, y);
                 sprite.animationSpeed = 0.1;
                 sprite.play();
-                // this.objectSprites.push(sprite);
-                this.addObjectSpriteToSubContainer(sprite, blockX, blockY);
+                this.objectSprites.push(sprite);
             }
         });
 
@@ -528,9 +507,10 @@ class GameMap {
 
                 const sprite = new PIXI.Sprite(pixiTexture);
                 sprite.position.set(x, y);
+                sprite.blockX = blockX;
+                sprite.blockY = blockY;
 
-                // this.objectSprites.push(sprite);
-                this.addObjectSpriteToSubContainer(sprite, blockX, blockY);
+                this.objectSprites.push(sprite);
 
                 if (texture.isExistShadow) {
                     const pixiTexture = texture.getPixiTexture(frameIndex, "shadow");
