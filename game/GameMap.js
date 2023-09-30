@@ -712,7 +712,7 @@ class GameMap {
                 if (dir !== "NPC") sprite.guageSprite = null;
             });
 
-            this.graphics.lineStyle(3, 0x000000);
+            // this.graphics.lineStyle(3, 0x000000);
             // this.graphics.drawRect(
             //     actor.point.x - texture.shape.body.left[targetFrame],
             //     actor.point.y - texture.shape.body.height[targetFrame],
@@ -720,8 +720,8 @@ class GameMap {
             //     texture.shape.body.height[targetFrame]
             // );
 
-            this.graphics.lineStyle(3, 0xeb4034);
-            this.graphics.drawCircle(actor.point.x, actor.point.y, 10);
+            // this.graphics.lineStyle(3, 0xeb4034);
+            // this.graphics.drawCircle(actor.point.x, actor.point.y, 10);
 
             // this.shadowSprites.push(shadowSprite);
             this.actorSprites.push(shadowSprite); // temp
