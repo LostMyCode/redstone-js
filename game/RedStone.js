@@ -62,11 +62,13 @@ class RedStone {
 
         // load player
 
+        // load player location
+        RedStone.lastLocation = this.loadPlayerLocation();
+        
         // init map
         await RedStone.gameMap.init();
 
         if (SAVE_PLAYER_LOCATION) {
-            RedStone.lastLocation = this.loadPlayerLocation();
             // set player position
             if (this.lastLocation?.position) {
                 const { x, y } = this.lastLocation?.position;
