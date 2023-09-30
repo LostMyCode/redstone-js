@@ -176,7 +176,7 @@ class GameMap {
     }
 
     async init() {
-        if (!this.map) await this.loadMap();
+        if (!this.map) await this.loadMap(RedStone.lastLocation?.map);
         const map = this.map;
         const mapsetName = this.map.getMapsetName();
 
