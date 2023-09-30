@@ -5,10 +5,11 @@ import Listener from "./Listener";
 import Player from "./Player";
 import CommonUI from "./interface/CommonUI";
 import { fetchBinaryFile } from "../utils";
-import { DATA_DIR } from "./Config";
+import { DATA_DIR, SAVE_PLAYER_LOCATION } from "./Config";
 import BufferReader from "../utils/BufferReader";
 import MonsterSource from "./models/MonsterSource";
 import EffectDataManager from "./EffectDataManager";
+import Camera from "./Camera";
 
 class RedStone {
 
@@ -28,6 +29,10 @@ class RedStone {
      * @type {{[index: Number]: {size: [Number, Number], type: Number, name: String, fileName: String}}}
      */
     static mapList = {};
+    /**
+     * @type {object}
+     */
+    static lastLocation;
 
     static async init() {
         RedStone.mainCanvas = new MainCanvas();
@@ -60,9 +65,27 @@ class RedStone {
         // init map
         await RedStone.gameMap.init();
 
+        if (SAVE_PLAYER_LOCATION) {
+            RedStone.lastLocation = this.loadPlayerLocation();
+            // set player position
+            if (this.lastLocation?.position) {
+                const { x, y } = this.lastLocation?.position;
+                this.player.setPosition(x, y);
+                Camera.setPosition(x, y);
+            }
+        }
+
         // water mark click event
         document.querySelector(".water-mark").addEventListener("click", () => {
             location.href = "https://github.com/LostMyCode/redstone-js";
+        });
+
+        // save player location before unload
+        window.addEventListener("beforeunload", (e) => {
+            e.preventDefault();
+            if (SAVE_PLAYER_LOCATION) {
+                this.savePlayerLocation();
+            }
         });
 
         LoadingScreen.destroy();
@@ -93,6 +116,20 @@ class RedStone {
     static loadMap(rmdFileName) {
         if (!this.initialized) return;
         this.gameMap.moveField(rmdFileName);
+    }
+
+    static savePlayerLocation() {
+        const lastLocation = {
+            map: RedStone.gameMap.currentRmdFileName,
+            position: { x: RedStone.player.x, y: RedStone.player.y }
+        }
+        localStorage.setItem("LastLocation", JSON.stringify(lastLocation));
+    }
+
+    static loadPlayerLocation() {
+        const lastLocation = localStorage.getItem("LastLocation");
+        if (lastLocation) return JSON.parse(lastLocation);
+        return null;
     }
 }
 
