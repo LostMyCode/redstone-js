@@ -43,6 +43,14 @@ const animationObjectTexIds = {
 
 const CONTAINER_SPLIT_BLOCK_SIZE = 10;
 
+PIXI.BitmapFont.from("TitleFont", {
+    fill: "#f5b042",
+    fontSize: 12
+}, {
+    chars: '(0123456789),',
+    resolution: devicePixelRatio
+});
+
 class GameMap {
     constructor() {
         /**
@@ -207,6 +215,8 @@ class GameMap {
 
             const sprite = new PIXI.Sprite(pixiTexture);
             sprite.position.set(x, y);
+            sprite.blockX = Math.round(obj.point.x / TILE_WIDTH);
+            sprite.blockY = Math.round(obj.point.y / TILE_HEIGHT);
 
             // this.positionSpecifiedObjectContainer.addChild(sprite);
             this.positionSpecifiedObjectSprites.push(sprite);
@@ -222,6 +232,8 @@ class GameMap {
                 const sprite = new PIXI.AnimatedSprite(pixiTextures);
                 sprite.position.set(x, y);
                 sprite.animationSpeed = 0.1;
+                sprite.blockX = Math.round(obj.point.x / TILE_WIDTH);
+                sprite.blockY = Math.round(obj.point.y / TILE_HEIGHT);
                 sprite.play();
                 // this.objectSprites.push(sprite);
                 this.positionSpecifiedObjectSprites.push(sprite);
@@ -239,6 +251,13 @@ class GameMap {
                 // this.shadowContainer.addChild(sprite);
                 this.shadowSprites.push(sprite);
             }
+
+            this.graphics.lineStyle(1, 0x42f575);
+            this.graphics.drawCircle(
+                obj.point.x,
+                obj.point.y,
+                10
+            );
         });
 
         this.renderPortals();
@@ -324,6 +343,11 @@ class GameMap {
             if (sprite.isActorSprite) {
                 actorSpritesInView.push(sprite);
             }
+
+            const text = new PIXI.BitmapText(`(${sprite.blockX}, ${sprite.blockY})`, { fontName: "TitleFont" });
+            text.x = sprite.blockX * TILE_WIDTH;
+            text.y = sprite.blockY * TILE_HEIGHT;
+            this.foremostContainer.addChild(text);
 
             this.objectContainer.addChild(sprite);
         });
@@ -435,13 +459,13 @@ class GameMap {
         sprite.blockY = blockY;
         this.objectSprites.push(sprite);
 
-        // this.graphics.lineStyle(1, 0xf5b042);
-        // this.graphics.drawRect(
-        //     blockX * TILE_WIDTH,
-        //     blockY * TILE_HEIGHT,
-        //     TILE_WIDTH,
-        //     TILE_HEIGHT
-        // );
+        this.graphics.lineStyle(1, 0xf5b042);
+        this.graphics.drawRect(
+            blockX * TILE_WIDTH,
+            blockY * TILE_HEIGHT,
+            TILE_WIDTH,
+            TILE_HEIGHT
+        );
 
         // animated objects (rso)
         if (!isBuilding && animationObjectTexIds[mapsetName]?.rso?.includes(objectInfo.textureId)) {
@@ -485,6 +509,8 @@ class GameMap {
 
             const sprite = new PIXI.Sprite(pixiTexture);
             sprite.position.set(x, y);
+            sprite.blockX = blockX;
+            sprite.blockY = blockY;
             this.objectSprites.push(sprite);
 
             // animated objects (rfo)
@@ -496,6 +522,8 @@ class GameMap {
                 const x = blockCenterX - texture.shape.body.left[1];
                 const y = blockCenterY - texture.shape.body.top[1];
                 const sprite = new PIXI.AnimatedSprite(pixiTextures);
+                sprite.blockX = blockX;
+                sprite.blockY = blockY;
                 sprite.position.set(x, y);
                 sprite.animationSpeed = 0.1;
                 sprite.play();
@@ -686,6 +714,8 @@ class GameMap {
             shadowSprite.shape = texture.shape.shadow;
             shadowSprite.baseX = actor.point.x;
             shadowSprite.baseY = actor.point.y;
+            shadowSprite.blockX = Math.round(actor.point.x / TILE_WIDTH);
+            shadowSprite.blockY = Math.round(actor.point.y / TILE_HEIGHT);
             shadowSprite.play();
 
             const guageTexture = PIXI.Texture.from(CommonUI.getGuage(dir === "NPC" ? "npc" : "enemy", actor.name));
@@ -724,8 +754,8 @@ class GameMap {
             //     texture.shape.body.height[targetFrame]
             // );
 
-            // this.graphics.lineStyle(3, 0xeb4034);
-            // this.graphics.drawCircle(actor.point.x, actor.point.y, 10);
+            this.graphics.lineStyle(3, 0xeb4034);
+            this.graphics.drawCircle(actor.point.x, actor.point.y, 10);
 
             // this.shadowSprites.push(shadowSprite);
             this.actorSprites.push(shadowSprite); // temp
