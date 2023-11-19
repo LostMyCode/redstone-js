@@ -51,6 +51,14 @@ PIXI.BitmapFont.from("TitleFont", {
     resolution: devicePixelRatio
 });
 
+PIXI.BitmapFont.from("ActorPosFont", {
+    fill: "#eb4034",
+    fontSize: 12
+}, {
+    chars: '(0123456789),',
+    resolution: devicePixelRatio
+});
+
 class GameMap {
     constructor() {
         /**
@@ -215,8 +223,8 @@ class GameMap {
 
             const sprite = new PIXI.Sprite(pixiTexture);
             sprite.position.set(x, y);
-            sprite.blockX = Math.round(obj.point.x / TILE_WIDTH);
-            sprite.blockY = Math.round(obj.point.y / TILE_HEIGHT);
+            sprite.blockX = Math.floor(obj.point.x / TILE_WIDTH);
+            sprite.blockY = Math.floor(obj.point.y / TILE_HEIGHT);
 
             // this.positionSpecifiedObjectContainer.addChild(sprite);
             this.positionSpecifiedObjectSprites.push(sprite);
@@ -232,8 +240,8 @@ class GameMap {
                 const sprite = new PIXI.AnimatedSprite(pixiTextures);
                 sprite.position.set(x, y);
                 sprite.animationSpeed = 0.1;
-                sprite.blockX = Math.round(obj.point.x / TILE_WIDTH);
-                sprite.blockY = Math.round(obj.point.y / TILE_HEIGHT);
+                sprite.blockX = Math.floor(obj.point.x / TILE_WIDTH);
+                sprite.blockY = Math.floor(obj.point.y / TILE_HEIGHT);
                 sprite.play();
                 // this.objectSprites.push(sprite);
                 this.positionSpecifiedObjectSprites.push(sprite);
@@ -317,7 +325,7 @@ class GameMap {
         });
 
         let playerAdded = false;
-        const playerTileY = Math.round(RedStone.player.y / TILE_HEIGHT);
+        const playerTileY = Math.floor(RedStone.player.y / TILE_HEIGHT);
         const _sprites = [...this.objectSprites, ...this.actorSprites].sort((a, b) => {
             return a.blockY - b.blockY;
         });
@@ -344,13 +352,21 @@ class GameMap {
                 actorSpritesInView.push(sprite);
             }
 
-            const text = new PIXI.BitmapText(`(${sprite.blockX}, ${sprite.blockY})`, { fontName: "TitleFont" });
+            const text = new PIXI.BitmapText(`(${sprite.blockX}, ${sprite.blockY})`, {
+                fontName: sprite.isActorSprite ? "ActorPosFont" : "TitleFont"
+            });
             text.x = sprite.blockX * TILE_WIDTH;
             text.y = sprite.blockY * TILE_HEIGHT;
             this.foremostContainer.addChild(text);
 
             this.objectContainer.addChild(sprite);
         });
+
+        if (!playerAdded) {
+            RedStone.player.render();
+            this.objectContainer.addChild(RedStone.player.container);
+            playerAdded = true;
+        }
 
         this.shadowSprites.forEach(sprite => {
             const { x, y, width, height } = sprite;
@@ -698,8 +714,8 @@ class GameMap {
             sprite.shape = texture.shape.body;
             sprite.baseX = actor.point.x;
             sprite.baseY = actor.point.y;
-            sprite.blockX = Math.round(actor.point.x / TILE_WIDTH);
-            sprite.blockY = Math.round(actor.point.y / TILE_HEIGHT);
+            sprite.blockX = Math.floor(actor.point.x / TILE_WIDTH);
+            sprite.blockY = Math.floor(actor.point.y / TILE_HEIGHT);
             sprite.isActorSprite = true;
             sprite.play();
 
@@ -714,8 +730,8 @@ class GameMap {
             shadowSprite.shape = texture.shape.shadow;
             shadowSprite.baseX = actor.point.x;
             shadowSprite.baseY = actor.point.y;
-            shadowSprite.blockX = Math.round(actor.point.x / TILE_WIDTH);
-            shadowSprite.blockY = Math.round(actor.point.y / TILE_HEIGHT);
+            shadowSprite.blockX = Math.floor(actor.point.x / TILE_WIDTH);
+            shadowSprite.blockY = Math.floor(actor.point.y / TILE_HEIGHT);
             shadowSprite.play();
 
             const guageTexture = PIXI.Texture.from(CommonUI.getGuage(dir === "NPC" ? "npc" : "enemy", actor.name));
