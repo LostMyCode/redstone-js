@@ -12,3 +12,4 @@ export const Y_BOUND_OFFSET = 32;
 
 export const ENABLE_PERFORMANCE_MONITOR = false;
 export const SAVE_PLAYER_LOCATION = true;
+export const ENABLE_DRAW_MAP_DEBUG = false;

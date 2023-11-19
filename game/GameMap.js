@@ -6,7 +6,7 @@ import BufferReader from "../utils/BufferReader";
 import Map from "./models/Map";
 import Camera from "./Camera";
 import LoadingScreen from "./interface/LoadingScreen";
-import { DATA_DIR, INTERFACE_DIR, MAPSET_DIR, RMD_DIR, TILE_HEIGHT, TILE_WIDTH } from "./Config";
+import { DATA_DIR, ENABLE_DRAW_MAP_DEBUG, INTERFACE_DIR, MAPSET_DIR, RMD_DIR, TILE_HEIGHT, TILE_WIDTH } from "./Config";
 import RedStone from "./RedStone";
 import { ActorImage, CType, MonsterType } from "./models/Actor";
 import CommonUI from "./interface/CommonUI";
@@ -43,7 +43,7 @@ const animationObjectTexIds = {
 
 const CONTAINER_SPLIT_BLOCK_SIZE = 10;
 
-PIXI.BitmapFont.from("TitleFont", {
+ENABLE_DRAW_MAP_DEBUG && PIXI.BitmapFont.from("TitleFont", {
     fill: "#f5b042",
     fontSize: 12
 }, {
@@ -51,7 +51,7 @@ PIXI.BitmapFont.from("TitleFont", {
     resolution: devicePixelRatio
 });
 
-PIXI.BitmapFont.from("ActorPosFont", {
+ENABLE_DRAW_MAP_DEBUG && PIXI.BitmapFont.from("ActorPosFont", {
     fill: "#eb4034",
     fontSize: 12
 }, {
@@ -260,12 +260,14 @@ class GameMap {
                 this.shadowSprites.push(sprite);
             }
 
-            this.graphics.lineStyle(1, 0x42f575);
-            this.graphics.drawCircle(
-                obj.point.x,
-                obj.point.y,
-                10
-            );
+            if (ENABLE_DRAW_MAP_DEBUG) {
+                this.graphics.lineStyle(1, 0x42f575);
+                this.graphics.drawCircle(
+                    obj.point.x,
+                    obj.point.y,
+                    10
+                );
+            }
         });
 
         this.renderPortals();
@@ -352,12 +354,14 @@ class GameMap {
                 actorSpritesInView.push(sprite);
             }
 
-            const text = new PIXI.BitmapText(`(${sprite.blockX}, ${sprite.blockY})`, {
-                fontName: sprite.isActorSprite ? "ActorPosFont" : "TitleFont"
-            });
-            text.x = sprite.blockX * TILE_WIDTH;
-            text.y = sprite.blockY * TILE_HEIGHT;
-            this.foremostContainer.addChild(text);
+            if (ENABLE_DRAW_MAP_DEBUG) {
+                const text = new PIXI.BitmapText(`(${sprite.blockX}, ${sprite.blockY})`, {
+                    fontName: sprite.isActorSprite ? "ActorPosFont" : "TitleFont"
+                });
+                text.x = sprite.blockX * TILE_WIDTH;
+                text.y = sprite.blockY * TILE_HEIGHT;
+                this.foremostContainer.addChild(text);
+            }
 
             this.objectContainer.addChild(sprite);
         });
@@ -475,13 +479,15 @@ class GameMap {
         sprite.blockY = blockY;
         this.objectSprites.push(sprite);
 
-        this.graphics.lineStyle(1, 0xf5b042);
-        this.graphics.drawRect(
-            blockX * TILE_WIDTH,
-            blockY * TILE_HEIGHT,
-            TILE_WIDTH,
-            TILE_HEIGHT
-        );
+        if (ENABLE_DRAW_MAP_DEBUG) {
+            this.graphics.lineStyle(1, 0xf5b042);
+            this.graphics.drawRect(
+                blockX * TILE_WIDTH,
+                blockY * TILE_HEIGHT,
+                TILE_WIDTH,
+                TILE_HEIGHT
+            );
+        }
 
         // animated objects (rso)
         if (!isBuilding && animationObjectTexIds[mapsetName]?.rso?.includes(objectInfo.textureId)) {
@@ -762,16 +768,10 @@ class GameMap {
                 if (dir !== "NPC") sprite.guageSprite = null;
             });
 
-            // this.graphics.lineStyle(3, 0x000000);
-            // this.graphics.drawRect(
-            //     actor.point.x - texture.shape.body.left[targetFrame],
-            //     actor.point.y - texture.shape.body.height[targetFrame],
-            //     texture.shape.body.width[targetFrame],
-            //     texture.shape.body.height[targetFrame]
-            // );
-
-            this.graphics.lineStyle(3, 0xeb4034);
-            this.graphics.drawCircle(actor.point.x, actor.point.y, 10);
+            if (ENABLE_DRAW_MAP_DEBUG) {
+                this.graphics.lineStyle(3, 0xeb4034);
+                this.graphics.drawCircle(actor.point.x, actor.point.y, 10);
+            }
 
             // this.shadowSprites.push(shadowSprite);
             this.actorSprites.push(shadowSprite); // temp
