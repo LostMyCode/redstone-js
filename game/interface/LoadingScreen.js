@@ -1,8 +1,7 @@
 import * as PIXI from "pixi.js";
 import { loadTexture } from "../../utils";
 import RedStone from "../RedStone";
-
-const INTERFACE_DIR = "https://sigr.io/redstone/Interface";
+import { INTERFACE_DIR } from "../Config";
 
 class LoadingScreen {
     constructor() {
