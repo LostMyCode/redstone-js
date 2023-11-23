@@ -54,7 +54,7 @@ export default class BgmPlayer {
         const fader = setInterval(() => {
             this.audio.volume = Math.max(0, this.audio.volume - 0.05);
             if (this.audio.volume === 0) {
-                _play();
+                setTimeout(_play, 1000);
                 clearInterval(fader);
             }
         }, 50);
