@@ -43,10 +43,21 @@ export default class BgmPlayer {
         if (!SettingsManager.get("bgm")) {
             return;
         }
-        const fileName = BGM_SET[index - 1];
-        this.audio.src = `${BGM_DIR}/${fileName}`;
-        this.audio.volume = SettingsManager.get("volume") / 100;
-        this.audio.play();
+
+        const _play = () => {
+            const fileName = BGM_SET[index - 1];
+            this.audio.src = `${BGM_DIR}/${fileName}`;
+            this.audio.volume = SettingsManager.get("volume") / 100;
+            this.audio.play();
+        }
+
+        const fader = setInterval(() => {
+            this.audio.volume = Math.max(0, this.audio.volume - 0.05);
+            if (this.audio.volume === 0) {
+                _play();
+                clearInterval(fader);
+            }
+        }, 50);
     }
 
     pause() {
