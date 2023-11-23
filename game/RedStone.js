@@ -10,6 +10,8 @@ import BufferReader from "../utils/BufferReader";
 import MonsterSource from "./models/MonsterSource";
 import EffectDataManager from "./EffectDataManager";
 import Camera from "./Camera";
+import BgmPlayer from "./BgmPlayer";
+import SoundManager from "./SoundManager";
 
 class RedStone {
 
@@ -36,6 +38,7 @@ class RedStone {
 
     static async init() {
         RedStone.mainCanvas = new MainCanvas();
+        RedStone.bgmPlayer = new BgmPlayer();
         RedStone.gameMap = new GameMap();
         RedStone.player = new Player();
 
@@ -59,6 +62,9 @@ class RedStone {
 
         // load effects
         await EffectDataManager.init();
+
+        // load bgm map
+        await SoundManager.init();
 
         // load player
 

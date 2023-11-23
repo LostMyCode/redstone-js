@@ -2,6 +2,7 @@ export const DATA_DIR = "https://static.sigr.io/redstone";
 export const MAPSET_DIR = "https://static.sigr.io/redstone/Mapset";
 export const INTERFACE_DIR = "https://static.sigr.io/redstone/Interface";
 export const RMD_DIR = "https://static.sigr.io/redstone/Scenario";
+export const BGM_DIR = "https://static.sigr.io/redstone/Bgm";
 
 export const TILE_WIDTH = 64;
 export const TILE_HEIGHT = 32;
