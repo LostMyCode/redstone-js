@@ -4,15 +4,19 @@ import Modal from "./Modal";
 export const ModalContext = React.createContext();
 
 const ModalProvider = ({ children }) => {
+    const [options, setOptions] = useState({});
     const [modalContent, setModalContent] = useState();
     const value = useMemo(() => ({
         close: () => setModalContent(),
-        open: setModalContent
+        open: (content, options = {}) => {
+            setOptions(options);
+            setModalContent(content);
+        }
     }), []);
 
     return (
         <ModalContext.Provider value={value}>
-            {modalContent ? <Modal onClose={value.close}>{modalContent}</Modal> : null}
+            {modalContent ? <Modal onClose={value.close} title={options.title}>{modalContent}</Modal> : null}
             {children}
         </ModalContext.Provider>
     )

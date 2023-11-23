@@ -43,7 +43,7 @@ class MapListPanel extends React.Component {
         e.stopPropagation();
 
         const { open, close } = this.context;
-        open(<SettingsPanel onClose={() => close()} />);
+        open(<SettingsPanel onClose={() => close()} />, { title: "Settings" });
     }
 
     render() {

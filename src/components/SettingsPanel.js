@@ -11,7 +11,6 @@ export default function SettingsPanel(props) {
 
     return (
         <div>
-            <h2>Settings</h2>
             <div className="flex" style={{ gap: 5, margin: "10px 0" }}>
                 <input type="checkbox" name="bgm" checked={value.bgm} onChange={(e) => {
                     const { name, checked } = e.target;
