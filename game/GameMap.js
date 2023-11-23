@@ -293,7 +293,7 @@ class GameMap {
             const mapIndex = parseInt(this.currentRmdFileName.match(/\[(\d+)\]/)[1]);
             const bgmIndex = SoundManager.bgmMap[mapIndex];
             RedStone.bgmPlayer.play(bgmIndex);
-        } catch(e) {};
+        } catch (e) { };
     }
 
     render() {

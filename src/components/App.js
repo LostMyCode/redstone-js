@@ -1,10 +1,11 @@
 import React from 'react';
 import DisplayLog from './DisplayLog';
-import MapListPanel from './MapListPanel';
+import TopRightContent from './TopRightContent';
+import ModalProvider from './ModalProvider';
 
 export const App = () => (
-    <>
+    <ModalProvider>
         <DisplayLog />
-        <MapListPanel />
-    </>
+        <TopRightContent />
+    </ModalProvider>
 );

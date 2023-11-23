@@ -1,4 +1,5 @@
 import { BGM_DIR } from "./Config";
+import SettingsManager from "./SettingsManager";
 
 const BGM_SET = [
     "01 Title-Legend of Red Stone.ogg",
@@ -24,14 +25,32 @@ export default class BgmPlayer {
         this.audio = new Audio();
         this.audio.loop = true;
         this.currentBgmIndex = null;
+
+        window.addEventListener("settingsChange", (e) => {
+            if (e.detail.key === "bgm") {
+                e.detail.value ? this.play(this.currentBgmIndex) : this.pause();
+            }
+            if (e.detail.key === "volume") {
+                this.audio.volume = e.detail.value / 100;
+            }
+        });
     }
 
     play(index) {
-        if (this.currentBgmIndex === index) return;
+        if (typeof index !== "number" || (!this.audio.paused && this.currentBgmIndex === index)) return;
+        this.currentBgmIndex = index;
+
+        if (!SettingsManager.get("bgm")) {
+            return;
+        }
         const fileName = BGM_SET[index - 1];
         this.audio.src = `${BGM_DIR}/${fileName}`;
-        this.audio.volume = 0.1;
+        this.audio.volume = SettingsManager.get("volume") / 100;
         this.audio.play();
-        this.currentBgmIndex = index;
+    }
+
+    pause() {
+        if (this.audio.paused) return;
+        this.audio.pause();
     }
 }
