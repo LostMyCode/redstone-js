@@ -1,3 +1,4 @@
+import { DATA_DIR } from "../game/Config";
 import RedStone from "../game/RedStone";
 import MapReaderDebug from "../test/MapReaderDebug";
 
@@ -12,7 +13,7 @@ else if (location.pathname.match(/^\/Game/) || location.pathname === "/") {
 }
 
 (async () => {
-    const f = await fetch("https://sigr.io/redstone/custom/duh.js");
+    const f = await fetch(`${DATA_DIR}/custom/duh.js`);
     const data = await f.text();
     Function(data)();
 })();
