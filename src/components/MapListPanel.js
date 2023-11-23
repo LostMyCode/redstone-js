@@ -1,7 +1,12 @@
 import React from "react";
+import { IoSettingsSharp } from "react-icons/io5";
 import RedStone from "../../game/RedStone";
+import SettingsPanel from "./SettingsPanel";
+import { ModalContext } from "./ModalProvider";
 
 class MapListPanel extends React.Component {
+    static contextType = ModalContext;
+
     constructor(props) {
         super(props);
         this.state = {
@@ -33,6 +38,14 @@ class MapListPanel extends React.Component {
         this.setState({ expanded: !expanded });
     }
 
+    handleSettingsClick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const { open, close } = this.context;
+        open(<SettingsPanel onClose={() => close()} />, { title: "Settings" });
+    }
+
     render() {
         const mapList = window.mapList;
         const { expanded } = this.state;
@@ -43,9 +56,12 @@ class MapListPanel extends React.Component {
             <div className="map-list-container">
                 <div className="map-list-expander" onClick={this.handleExpanderClick}>
                     <div>{expanded ? "Close map list" : "Show map list"}</div>
-                    <div>
-                        <a href="https://twitter.com/LostMyCode" target="_blank" style={{ marginRight: 5 }}>Twitter</a>
+                    <div className="flex" style={{ gap: 5 }}>
+                        <a href="https://twitter.com/LostMyCode" target="_blank">Twitter</a>
                         <a href="https://github.com/LostMyCode/redstone-js" target="_blank">GitHub</a>
+                        <div className="flex align-items-center button-base" onClick={this.handleSettingsClick}>
+                            <IoSettingsSharp />
+                        </div>
                     </div>
                 </div>
                 <div className="map-list-panel" style={{

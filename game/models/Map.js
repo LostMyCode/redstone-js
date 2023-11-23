@@ -3,9 +3,6 @@ import { decodeScenarioBuffer, getKeyByValue, sjisByteToString } from "../../uti
 import { MapActorGroup, MapActorSingle } from "./Actor";
 import Event from "./Event";
 
-// from Basic.cs model
-const MagicStructSize = 12; // last is short Dark
-
 export const MapType = {
     Dungeon: 1,
     Village: 2,
@@ -85,22 +82,21 @@ class Map {
         console.log("File:", scenarioInfo);
 
         const fieldAreaOffset = br.readInt32LE();
-        // const mapHeader = br.readStructUInt8(4 + 0x40 + 4 + 1 + 1 + 4 + 4 + 0x3A + 4 + MagicStructSize + MagicStructSize + 0x1C);
         this.size.width = br.readUInt32LE();
         this.size.height = br.readUInt32LE();
 
         this.name = br.readString(0x40, "sjis");;
         this.mapsetId = br.readUInt32LE();
         console.log("Mapset ID", this.mapsetId);
-        this.typeAndFlags = br.readUInt8();
-        br.readUInt8();
-        br.readUInt32LE();
-        br.readUInt32LE();
-        const all255 = br.readStructUInt8(0x3A);
-        const mapHeader = br.readStructUInt8(4 + MagicStructSize + MagicStructSize + 0x1C);
+        const baseInfoBf1 = br.readUInt32LE();
+        this.fieldType = (baseInfoBf1 & 0x0000000F) >>> 0;
+        this.lastSaveIP = br.readUInt32LE();
+        this.bgmIndex = br.readStructUInt16LE(30)[0];
+        this.linkSecretDungeon = br.readUInt16LE();
+        const baseInfoBf2 = br.readUInt16LE();
+        br.readStructUInt16LE(6); // magic element resistances
+        br.readStructUInt16LE(20); // monster resistances
         this.scenarioVersion = Number(scenarioInfo.substring(24, 24 + 4));
-        // console.log("check rest of mapHeader ", mapHeader);
-        // console.log("check all 255", all255);
         console.log("Map Name:", this.name);
         console.log("Map Size:", this.size);
 
@@ -135,7 +131,6 @@ class Map {
         for (let i = 0; i < doorListLen; i++) {
             doorList.push(br.readUInt64LE());
         }
-        console.log("check dorrlist", doorList);
 
         const blocks = br.readStructUInt8(this.size.width * this.size.height);
         for (let i = 0; i < this.size.height; i++) {
@@ -405,7 +400,7 @@ class BuildingInfo {
 
         const parts = br.readStructUInt8(42);
         const partsReader = new BufferReader(Buffer.from(parts));
-        
+
         // 42 bytes
         for (let i = 0; i < 21; i++) {
             const textureId = partsReader.readUInt16LE();

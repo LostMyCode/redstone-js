@@ -13,6 +13,7 @@ import CommonUI from "./interface/CommonUI";
 import Listener from "./Listener";
 import { getDistance } from "../utils/RedStoneRandom";
 import MonsterSource from "./models/MonsterSource";
+import SoundManager from "./SoundManager";
 
 const getTextureFileName = (textureId, extension = "rso") => {
     if (!extension) throw new Error("[Error] Invalid file extension");
@@ -287,6 +288,12 @@ class GameMap {
 
         this.initialized = true;
         window.dispatchEvent(new CustomEvent("displayLogUpdate", { detail: { key: "map-name", value: this.map.name } }));
+
+        try {
+            const mapIndex = parseInt(this.currentRmdFileName.match(/\[(\d+)\]/)[1]);
+            const bgmIndex = SoundManager.bgmMap[mapIndex];
+            RedStone.bgmPlayer.play(bgmIndex);
+        } catch (e) { };
     }
 
     render() {
