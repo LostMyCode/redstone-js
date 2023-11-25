@@ -20,6 +20,20 @@ class MapListPanel extends React.Component {
         }
     }
 
+    componentDidUpdate(prevProps, prevState) {
+        const expanded = this.state.expanded;
+        if (expanded !== prevState.expanded) {
+            RedStone.mapListExpanded = expanded;
+            const minimap = document.getElementById("minimap");
+            if (minimap) {
+                clearTimeout(this.toggleMinimapTimeout);
+                this.toggleMinimapTimeout = setTimeout(() => {
+                    minimap.style.display = !expanded ? "block" : "none";
+                }, !expanded ? 500 : 0);
+            }
+        }
+    }
+
     componentWillUnmount() {
         window.removeEventListener("mapListLoaded", this.handleMapListLoad);
     }
@@ -35,12 +49,6 @@ class MapListPanel extends React.Component {
 
     handleExpanderClick = (e) => {
         const { expanded } = this.state;
-        const minimap = document.getElementById("minimap");
-        if (minimap) {
-            setTimeout(() => {
-                minimap.style.display = expanded ? "block" : "none";
-            }, expanded ? 500 : 0);
-        }
         this.setState({ expanded: !expanded });
     }
 

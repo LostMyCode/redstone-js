@@ -40,6 +40,10 @@ class RedStone {
      * @type {object}
      */
     static lastLocation;
+    /**
+     * @type {boolean}
+     */
+    static mapListExpanded = false;
 
     static async init() {
         RedStone.mainCanvas = new MainCanvas();

@@ -51,7 +51,9 @@ export default class Minimap {
         this.container.addChild(this.sprite);
         this.container.addChild(this.graphics);
         this.rootContainer.addChild(this.container);
-        this.canvas.style.display = "block";
+        if (!RedStone.mapListExpanded) {
+            this.canvas.style.display = "block";
+        }
         this.initialized = true;
     }
 
