@@ -102,8 +102,8 @@ class Player {
 
             if (positionUpdated) {
                 if (SettingsManager.get("collisionDetection")) {
-                    const block1 = RedStone.gameMap.getBlock(Math.floor(Math.round(this.x + moveX) / TILE_WIDTH), Math.floor(Math.round(this.y) / TILE_HEIGHT));
-                    const block2 = RedStone.gameMap.getBlock(Math.floor(Math.round(this.x) / TILE_WIDTH), Math.floor(Math.round(this.y + moveY) / TILE_HEIGHT));
+                    const block1 = RedStone.gameMap.getBlock(Math.floor(Math.round(this.x + moveX) / TILE_WIDTH), Math.floor(Math.round(this.y) / TILE_HEIGHT) + 1);
+                    const block2 = RedStone.gameMap.getBlock(Math.floor(Math.round(this.x) / TILE_WIDTH), Math.floor(Math.round(this.y + moveY) / TILE_HEIGHT) + 1);
                     if (block1 !== 0) {
                         moveX = 0;
                     }
@@ -130,8 +130,8 @@ class Player {
             moveY = Math.min(20, 20 * Math.sin(angle));
 
             if (SettingsManager.get("collisionDetection")) {
-                const block1 = RedStone.gameMap.getBlock(Math.floor(Math.round(this.x + moveX) / TILE_WIDTH), Math.floor(Math.round(this.y) / TILE_HEIGHT));
-                const block2 = RedStone.gameMap.getBlock(Math.floor(Math.round(this.x) / TILE_WIDTH), Math.floor(Math.round(this.y + moveY) / TILE_HEIGHT));
+                const block1 = RedStone.gameMap.getBlock(Math.floor(Math.round(this.x + moveX) / TILE_WIDTH), Math.floor(Math.round(this.y) / TILE_HEIGHT) + 1);
+                const block2 = RedStone.gameMap.getBlock(Math.floor(Math.round(this.x) / TILE_WIDTH), Math.floor(Math.round(this.y + moveY) / TILE_HEIGHT) + 1);
 
                 if (block1 !== 0) {
                     moveX = 0;
