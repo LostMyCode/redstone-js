@@ -3,6 +3,7 @@ import { IoSettingsSharp } from "react-icons/io5";
 import RedStone from "../../game/RedStone";
 import SettingsPanel from "./SettingsPanel";
 import { ModalContext } from "./ModalProvider";
+import SettingsManager from "../../game/SettingsManager";
 
 class MapListPanel extends React.Component {
     static contextType = ModalContext;
@@ -25,7 +26,7 @@ class MapListPanel extends React.Component {
         if (expanded !== prevState.expanded) {
             RedStone.mapListExpanded = expanded;
             const minimap = document.getElementById("minimap");
-            if (minimap) {
+            if (SettingsManager.get("showMinimap") && minimap) {
                 clearTimeout(this.toggleMinimapTimeout);
                 this.toggleMinimapTimeout = setTimeout(() => {
                     minimap.style.display = !expanded ? "block" : "none";

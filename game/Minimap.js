@@ -3,6 +3,7 @@ import TgaLoader from "tga-js";
 import RedStone from "./RedStone";
 import { fetchBinaryFile } from "../utils";
 import { MINIMAP_DIR, TILE_HEIGHT, TILE_WIDTH } from "./Config";
+import SettingsManager from "./SettingsManager";
 
 export default class Minimap {
     constructor() {
@@ -29,6 +30,12 @@ export default class Minimap {
         this.canvas.style.right = "10px";
         this.canvas.style.display = "none";
         this.canvas.style.border = "1px solid #fff";
+
+        window.addEventListener("settingsChange", (e) => {
+            if (e.detail.key === "showMinimap") {
+                e.detail.value ? this.init() : this.reset();
+            }
+        });
     }
 
     reset() {
@@ -40,6 +47,8 @@ export default class Minimap {
     }
 
     async init() {
+        if (!SettingsManager.get("showMinimap")) return;
+        
         const buffer = await fetchBinaryFile(`${MINIMAP_DIR}/${RedStone.gameMap.currentRmdFileName}.tga`);
         this.tga.load(new Uint8Array(buffer));
         this.renderer.resize(

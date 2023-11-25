@@ -2,7 +2,8 @@ export default new class SettingsManager {
     constructor() {
         this.settings = {
             bgm: false,
-            volume: 30
+            volume: 30,
+            showMinimap: true,
         }
     }
 
