@@ -292,10 +292,11 @@ class AreaInfo {
         this.rightDownPos = { x: baseReader.readUInt32LE(), y: baseReader.readUInt32LE() };
         this.objectInfo = baseReader.readUInt16LE(); // ObjectType
         this.subObjectInfo = baseReader.readUInt16LE();
-        this.unknown_0 = baseReader.readUInt16LE();
-        this.unknown_1 = baseReader.readUInt16LE();
-        // console.log("check area pos", this.leftUpPos, this.rightDownPos);
-        // console.log("areainfo object", this.objectInfo, this.subObjectInfo);
+        this.bGate = baseReader.readUInt8();
+        const flags = baseReader.readUInt8();
+        this.gateDirect = (flags & 0b00000111);
+        this.gateShape = (flags >> 3) & 0b00011111;
+        this.moveGate = baseReader.readUInt16LE();
 
         const EVENT_OBJECT = 12;
         const code = this.objectInfo === EVENT_OBJECT ? "sjis" : "EUC-KR";
@@ -323,7 +324,6 @@ class AreaInfo {
             let readCount = br.readInt32LE() + 1;
             if (readCount + br.offset > br.buffer.byteLength - 1) readCount = br.buffer.byteLength - br.offset;
             this.moveToFileName = br.readString(readCount);
-            console.log("movetoFileName", this.moveToFileName, this.subObjectInfo);
             br.offset = returnPosition;
         }
     }

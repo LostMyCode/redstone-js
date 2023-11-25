@@ -4671,6 +4671,11 @@ terser@^5.10.0, terser@^5.14.1:
     commander "^2.20.0"
     source-map-support "~0.5.20"
 
+tga-js@^1.1.1:
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/tga-js/-/tga-js-1.1.1.tgz#4b2f329f2e693117cb8ccf25dcf7723f4779d333"
+  integrity sha512-2EcbDHfFCggAt0DLjUwZzKaQGaCmcQZBQrYscVnWjxzl+2Q1PFp1ABsO2UVevF1pTi2t9mmWkzPaQqUeJA+mhA==
+
 thunky@^1.0.2:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/thunky/-/thunky-1.1.0.tgz#5abaf714a9405db0504732bbccd2cedd9ef9537d"

@@ -23,6 +23,14 @@ export default function SettingsPanel(props) {
                 <input type="range" id="volume" name="volume" min="0" max="100" value={value.volume} onChange={onChange} />
                 <label htmlFor="volume">Volume [{value.volume}]</label>
             </div>
+            <div className="flex" style={{ gap: 5, margin: "10px 0" }}>
+                <input type="checkbox" name="showMinimap" checked={value.showMinimap} onChange={(e) => {
+                    const { name, checked } = e.target;
+                    setValue(_value => Object.assign({}, _value, { [name]: checked }));
+                    SettingsManager.set(name, checked);
+                }} />
+                <label htmlFor="showMinimap">Show minimap</label>
+            </div>
         </div>
     )
 }
