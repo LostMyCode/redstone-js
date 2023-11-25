@@ -6,13 +6,14 @@ import BufferReader from "../utils/BufferReader";
 import Map from "./models/Map";
 import Camera from "./Camera";
 import LoadingScreen from "./interface/LoadingScreen";
-import { DATA_DIR, INTERFACE_DIR, MAPSET_DIR, RMD_DIR, TILE_HEIGHT, TILE_WIDTH } from "./Config";
+import { DATA_DIR, ENABLE_DRAW_MAP_DEBUG, INTERFACE_DIR, MAPSET_DIR, RMD_DIR, TILE_HEIGHT, TILE_WIDTH } from "./Config";
 import RedStone from "./RedStone";
 import { ActorImage, CType, MonsterType } from "./models/Actor";
 import CommonUI from "./interface/CommonUI";
 import Listener from "./Listener";
 import { getDistance } from "../utils/RedStoneRandom";
 import MonsterSource from "./models/MonsterSource";
+import SoundManager from "./SoundManager";
 
 const getTextureFileName = (textureId, extension = "rso") => {
     if (!extension) throw new Error("[Error] Invalid file extension");
@@ -43,6 +44,22 @@ const animationObjectTexIds = {
 
 const CONTAINER_SPLIT_BLOCK_SIZE = 10;
 
+ENABLE_DRAW_MAP_DEBUG && PIXI.BitmapFont.from("TitleFont", {
+    fill: "#f5b042",
+    fontSize: 12
+}, {
+    chars: '(0123456789),',
+    resolution: devicePixelRatio
+});
+
+ENABLE_DRAW_MAP_DEBUG && PIXI.BitmapFont.from("ActorPosFont", {
+    fill: "#eb4034",
+    fontSize: 12
+}, {
+    chars: '(0123456789),',
+    resolution: devicePixelRatio
+});
+
 class GameMap {
     constructor() {
         /**
@@ -55,18 +72,14 @@ class GameMap {
         this.positionSpecifiedObjectContainer = new PIXI.Container();
         this.shadowContainer = new PIXI.Container();
         this.portalContainer = new PIXI.Container();
-        this.actorContainer = new PIXI.Container();
         this.foremostContainer = new PIXI.Container();
+
+        this.graphics = new PIXI.Graphics();
 
         /**
          * @type {{[key: String]: PIXI.Container}}
          */
         this.tileSubContainers = {};
-
-        /**
-         * @type {{[key: String]: PIXI.Container}}
-         */
-        this.objectSubContainers = {};
 
         /**
          * @type {PIXI.Sprite[]}
@@ -105,20 +118,19 @@ class GameMap {
         this.positionSpecifiedObjectContainer.removeChildren();
         this.shadowContainer.removeChildren();
         this.portalContainer.removeChildren();
-        this.actorContainer.removeChildren();
         this.foremostContainer.removeChildren();
+        this.graphics.clear();
 
         RedStone.mainCanvas.mainContainer.removeChild(
             this.objectContainer,
             this.positionSpecifiedObjectContainer,
             this.shadowContainer,
             this.portalContainer,
-            this.actorContainer,
-            this.foremostContainer
+            this.foremostContainer,
+            this.graphics
         );
 
         this.tileSubContainers = {};
-        this.objectSubContainers = {};
         this.objectSprites = [];
         this.shadowSprites = [];
         this.positionSpecifiedObjectSprites = [];
@@ -212,6 +224,8 @@ class GameMap {
 
             const sprite = new PIXI.Sprite(pixiTexture);
             sprite.position.set(x, y);
+            sprite.blockX = Math.floor(obj.point.x / TILE_WIDTH);
+            sprite.blockY = Math.floor(obj.point.y / TILE_HEIGHT);
 
             // this.positionSpecifiedObjectContainer.addChild(sprite);
             this.positionSpecifiedObjectSprites.push(sprite);
@@ -227,6 +241,8 @@ class GameMap {
                 const sprite = new PIXI.AnimatedSprite(pixiTextures);
                 sprite.position.set(x, y);
                 sprite.animationSpeed = 0.1;
+                sprite.blockX = Math.floor(obj.point.x / TILE_WIDTH);
+                sprite.blockY = Math.floor(obj.point.y / TILE_HEIGHT);
                 sprite.play();
                 // this.objectSprites.push(sprite);
                 this.positionSpecifiedObjectSprites.push(sprite);
@@ -244,19 +260,15 @@ class GameMap {
                 // this.shadowContainer.addChild(sprite);
                 this.shadowSprites.push(sprite);
             }
-        });
 
-        // sort object sub containers
-        const sortedKeys = Object.keys(this.objectSubContainers).sort((a, b) => {
-            const [aBlockX, aBlockY] = a.split("-").map(Number);
-            const [bBlockX, bBlockY] = b.split("-").map(Number);
-
-            return (aBlockY * CONTAINER_SPLIT_BLOCK_SIZE + aBlockX) - (bBlockY * CONTAINER_SPLIT_BLOCK_SIZE + bBlockX);
-        });
-        const subContainers = this.objectSubContainers;
-        this.objectSubContainers = {};
-        sortedKeys.forEach(key => {
-            this.objectSubContainers[key] = subContainers[key];
+            if (ENABLE_DRAW_MAP_DEBUG) {
+                this.graphics.lineStyle(1, 0x42f575);
+                this.graphics.drawCircle(
+                    obj.point.x,
+                    obj.point.y,
+                    10
+                );
+            }
         });
 
         this.renderPortals();
@@ -266,9 +278,9 @@ class GameMap {
         RedStone.mainCanvas.mainContainer.addChild(this.portalContainer);
         RedStone.mainCanvas.mainContainer.addChild(this.positionSpecifiedObjectContainer);
         RedStone.mainCanvas.mainContainer.addChild(this.shadowContainer);
-        RedStone.mainCanvas.mainContainer.addChild(this.actorContainer);
         RedStone.mainCanvas.mainContainer.addChild(this.objectContainer);
         RedStone.mainCanvas.mainContainer.addChild(this.foremostContainer);
+        RedStone.mainCanvas.mainContainer.addChild(this.graphics);
 
         if (!this.onceRendered) {
             this.onceRendered = true;
@@ -276,6 +288,12 @@ class GameMap {
 
         this.initialized = true;
         window.dispatchEvent(new CustomEvent("displayLogUpdate", { detail: { key: "map-name", value: this.map.name } }));
+
+        try {
+            const mapIndex = parseInt(this.currentRmdFileName.match(/\[(\d+)\]/)[1]);
+            const bgmIndex = SoundManager.bgmMap[mapIndex];
+            RedStone.bgmPlayer.play(bgmIndex);
+        } catch (e) { };
     }
 
     render() {
@@ -296,7 +314,6 @@ class GameMap {
         this.objectContainer.removeChildren();
         this.shadowContainer.removeChildren();
         this.positionSpecifiedObjectContainer.removeChildren();
-        this.actorContainer.removeChildren();
         this.foremostContainer.removeChildren();
 
         Object.keys(this.tileSubContainers).forEach((key, idx) => {
@@ -316,26 +333,51 @@ class GameMap {
             this.tileContainer.addChild(tc);
         });
 
-        Object.keys(this.objectSubContainers).forEach((key, idx) => {
-            const [blockX, blockY] = key.split("-").map(Number);
-            const x = blockX * TILE_WIDTH * CONTAINER_SPLIT_BLOCK_SIZE;
-            const y = blockY * TILE_HEIGHT * CONTAINER_SPLIT_BLOCK_SIZE;
-
-            const tc = this.objectSubContainers[key];
-            tc.position.set(x, y);
-            const bounds = tc.getBounds()
+        let playerAdded = false;
+        const playerTileY = Math.floor(RedStone.player.y / TILE_HEIGHT);
+        const _sprites = [...this.objectSprites, ...this.actorSprites].sort((a, b) => {
+            return a.blockY - b.blockY;
+        });
+        const actorSpritesInView = [];
+        _sprites.forEach(sprite => {
+            const bounds = sprite.getBounds();
 
             if (!Camera.isRectInView({
-                top: bounds.top, left: bounds.left,
+                top: bounds.top,
+                left: bounds.left,
                 width: bounds.width,
                 height: bounds.height
             })) {
                 return;
             }
 
-            // tc.cacheAsBitmap = true;
-            this.objectContainer.addChild(tc);
+            if (!playerAdded && sprite.blockY > playerTileY) {
+                RedStone.player.render();
+                this.objectContainer.addChild(RedStone.player.container);
+                playerAdded = true;
+            }
+
+            if (sprite.isActorSprite) {
+                actorSpritesInView.push(sprite);
+            }
+
+            if (ENABLE_DRAW_MAP_DEBUG) {
+                const text = new PIXI.BitmapText(`(${sprite.blockX}, ${sprite.blockY})`, {
+                    fontName: sprite.isActorSprite ? "ActorPosFont" : "TitleFont"
+                });
+                text.x = sprite.blockX * TILE_WIDTH;
+                text.y = sprite.blockY * TILE_HEIGHT;
+                this.foremostContainer.addChild(text);
+            }
+
+            this.objectContainer.addChild(sprite);
         });
+
+        if (!playerAdded) {
+            RedStone.player.render();
+            this.objectContainer.addChild(RedStone.player.container);
+            playerAdded = true;
+        }
 
         this.shadowSprites.forEach(sprite => {
             const { x, y, width, height } = sprite;
@@ -361,19 +403,11 @@ class GameMap {
             this.positionSpecifiedObjectContainer.addChild(sprite);
         });
 
-        this.actorSprites.forEach(sprite => {
-            const { x, y, width, height } = sprite;
-
-            if (!Camera.isRectInView({
-                top: y, left: x, width, height
-            })) {
-                return;
-            }
-
+        actorSpritesInView.forEach(sprite => {
             if (typeof sprite.currentFrame === "number") {
                 sprite.position.set(
-                    sprite.baseX - sprite.shape.left[sprite.startFrameIndex + sprite.currentFrame],
-                    sprite.baseY - sprite.shape.top[sprite.startFrameIndex + sprite.currentFrame]
+                    sprite.baseX - sprite.shape.left[sprite.startFrameIndex + sprite.currentFrame] * sprite.scale.x,
+                    sprite.baseY - sprite.shape.height[sprite.startFrameIndex + sprite.currentFrame] * sprite.scale.y
                 );
             }
 
@@ -384,8 +418,6 @@ class GameMap {
                 this.foremostContainer.addChild(...sprite.headIconSpriteSet);
             }
 
-            this.actorContainer.addChild(sprite);
-
             if (sprite.isHovering) {
                 const texture = typeof sprite.currentFrame === "number" ? sprite.textures[sprite.currentFrame] : sprite.texture;
                 const hoverSprite = new PIXI.Sprite(texture);
@@ -394,7 +426,7 @@ class GameMap {
                 hoverSprite.animationSpeed = sprite.animationSpeed;
                 hoverSprite.blendMode = PIXI.BLEND_MODES.ADD;
                 hoverSprite.alpha = 0.5;
-                this.actorContainer.addChild(hoverSprite);
+                this.foremostContainer.addChild(hoverSprite);
             }
         });
 
@@ -417,23 +449,6 @@ class GameMap {
 
         this.tileSubContainers[chunkName] = this.tileSubContainers[chunkName] || new PIXI.Container();
         this.tileSubContainers[chunkName].addChild(sprite);
-    }
-
-    addObjectSpriteToSubContainer(sprite, blockX, blockY) {
-        const chunkX = ~~(blockX / CONTAINER_SPLIT_BLOCK_SIZE);
-        const chunkY = ~~(blockY / CONTAINER_SPLIT_BLOCK_SIZE);
-        const chunkName = `${chunkX}-${chunkY}`;
-
-        sprite.position.x -= chunkX * CONTAINER_SPLIT_BLOCK_SIZE * TILE_WIDTH;
-        sprite.position.y -= chunkY * CONTAINER_SPLIT_BLOCK_SIZE * TILE_HEIGHT;
-
-        const targetSubContainer = this.objectSubContainers[chunkName] || new PIXI.Container();
-        this.objectSubContainers[chunkName] = targetSubContainer;
-        targetSubContainer.addChild(sprite);
-        targetSubContainer.cTop = Math.min(targetSubContainer.cTop, sprite.position.y);
-        targetSubContainer.cLeft = Math.min(targetSubContainer.cLeft, sprite.position.x);
-        targetSubContainer.cRight = Math.max(targetSubContainer.cRight, sprite.position.x + sprite.width);
-        targetSubContainer.cBottom = Math.max(targetSubContainer.cBottom, sprite.position.y + sprite.height);
     }
 
     renderObject(code, blockX, blockY) {
@@ -467,8 +482,19 @@ class GameMap {
         const pixiTexture = texture.getPixiTexture(0);
         const sprite = new PIXI.Sprite(pixiTexture);
         sprite.position.set(x, y);
-        // this.objectSprites.push(sprite);
-        this.addObjectSpriteToSubContainer(sprite, blockX, blockY);
+        sprite.blockX = blockX;
+        sprite.blockY = blockY;
+        this.objectSprites.push(sprite);
+
+        if (ENABLE_DRAW_MAP_DEBUG) {
+            this.graphics.lineStyle(1, 0xf5b042);
+            this.graphics.drawRect(
+                blockX * TILE_WIDTH,
+                blockY * TILE_HEIGHT,
+                TILE_WIDTH,
+                TILE_HEIGHT
+            );
+        }
 
         // animated objects (rso)
         if (!isBuilding && animationObjectTexIds[mapsetName]?.rso?.includes(objectInfo.textureId)) {
@@ -481,9 +507,10 @@ class GameMap {
             const sprite = new PIXI.AnimatedSprite(pixiTextures);
             sprite.position.set(x, y);
             sprite.animationSpeed = 0.1;
+            sprite.blockX = blockX;
+            sprite.blockY = blockY;
             sprite.play();
-            // this.objectSprites.push(sprite);
-            this.addObjectSpriteToSubContainer(sprite, blockX, blockY);
+            this.objectSprites.push(sprite);
         }
 
         // shadow
@@ -511,8 +538,9 @@ class GameMap {
 
             const sprite = new PIXI.Sprite(pixiTexture);
             sprite.position.set(x, y);
-            // this.objectSprites.push(sprite);
-            this.addObjectSpriteToSubContainer(sprite, blockX, blockY);
+            sprite.blockX = blockX;
+            sprite.blockY = blockY;
+            this.objectSprites.push(sprite);
 
             // animated objects (rfo)
             if (animationObjectTexIds[mapsetName]?.rfo?.includes(textureId)) {
@@ -523,11 +551,12 @@ class GameMap {
                 const x = blockCenterX - texture.shape.body.left[1];
                 const y = blockCenterY - texture.shape.body.top[1];
                 const sprite = new PIXI.AnimatedSprite(pixiTextures);
+                sprite.blockX = blockX;
+                sprite.blockY = blockY;
                 sprite.position.set(x, y);
                 sprite.animationSpeed = 0.1;
                 sprite.play();
-                // this.objectSprites.push(sprite);
-                this.addObjectSpriteToSubContainer(sprite, blockX, blockY);
+                this.objectSprites.push(sprite);
             }
         });
 
@@ -541,9 +570,10 @@ class GameMap {
 
                 const sprite = new PIXI.Sprite(pixiTexture);
                 sprite.position.set(x, y);
+                sprite.blockX = blockX;
+                sprite.blockY = blockY;
 
-                // this.objectSprites.push(sprite);
-                this.addObjectSpriteToSubContainer(sprite, blockX, blockY);
+                this.objectSprites.push(sprite);
 
                 if (texture.isExistShadow) {
                     const pixiTexture = texture.getPixiTexture(frameIndex, "shadow");
@@ -683,36 +713,43 @@ class GameMap {
                 pixiShadowTextures.push(shadowTex);
             }
 
-            const x = actor.point.x - texture.shape.body.left[targetFrame];
-            const y = actor.point.y - texture.shape.body.top[targetFrame] - TILE_HEIGHT / 2;
+            const scaleX = group.scale.width / 100;
+            const scaleY = group.scale.height / 100;
+            const x = actor.point.x - texture.shape.body.left[targetFrame] * scaleX;
+            const y = actor.point.y - texture.shape.body.height[targetFrame] * scaleY;
 
             // const sprite = new PIXI.Sprite(pixiTexture);
             const sprite = new PIXI.AnimatedSprite(pixiTextures);
             sprite.position.set(x, y);
-            sprite.scale.set(group.scale.width / 100, group.scale.height / 100);
+            sprite.scale.set(scaleX, scaleY);
             sprite.animationSpeed = 0.1;
             sprite.startFrameIndex = targetFrame;
             sprite.shape = texture.shape.body;
             sprite.baseX = actor.point.x;
             sprite.baseY = actor.point.y;
+            sprite.blockX = Math.floor(actor.point.x / TILE_WIDTH);
+            sprite.blockY = Math.floor(actor.point.y / TILE_HEIGHT);
+            sprite.isActorSprite = true;
             sprite.play();
 
-            const shadowX = actor.point.x - texture.shape.shadow.left[targetFrame];
-            const shadowY = actor.point.y - texture.shape.shadow.top[targetFrame] - TILE_HEIGHT / 2;
+            const shadowX = actor.point.x - texture.shape.shadow.left[targetFrame] * scaleX;
+            const shadowY = actor.point.y - texture.shape.shadow.height[targetFrame] * scaleY;
 
             const shadowSprite = new PIXI.AnimatedSprite(pixiShadowTextures);
             shadowSprite.position.set(shadowX, shadowY);
-            shadowSprite.scale.set(group.scale.width / 100, group.scale.height / 100);
+            shadowSprite.scale.set(scaleX, scaleY);
             shadowSprite.animationSpeed = 0.1;
             shadowSprite.startFrameIndex = targetFrame;
             shadowSprite.shape = texture.shape.shadow;
             shadowSprite.baseX = actor.point.x;
             shadowSprite.baseY = actor.point.y;
+            shadowSprite.blockX = Math.floor(actor.point.x / TILE_WIDTH);
+            shadowSprite.blockY = Math.floor(actor.point.y / TILE_HEIGHT);
             shadowSprite.play();
 
             const guageTexture = PIXI.Texture.from(CommonUI.getGuage(dir === "NPC" ? "npc" : "enemy", actor.name));
             const guageSprite = new PIXI.Sprite(guageTexture);
-            guageSprite.position.set(actor.point.x - guageSprite.width / 2, y - 15);
+            guageSprite.position.set(actor.point.x - guageSprite.width / 2, y - 20);
 
             if (dir === "NPC") { // set cool time if target is NPC (to be natural)
                 sprite.loop = false;
@@ -738,6 +775,11 @@ class GameMap {
                 if (dir !== "NPC") sprite.guageSprite = null;
             });
 
+            if (ENABLE_DRAW_MAP_DEBUG) {
+                this.graphics.lineStyle(3, 0xeb4034);
+                this.graphics.drawCircle(actor.point.x, actor.point.y, 10);
+            }
+
             // this.shadowSprites.push(shadowSprite);
             this.actorSprites.push(shadowSprite); // temp
             this.actorSprites.push(sprite);
@@ -752,10 +794,10 @@ class GameMap {
         const brightSprite = new PIXI.Sprite(CommonUI.shopIconBrightTexture);
         const sprite = new PIXI.Sprite(iconTexture);
         sprite.anchor.set(0.5, 0.5);
-        sprite.position.set(actor.point.x, actor.point.y - actorSprite.height - 20);
+        sprite.position.set(actor.point.x, actor.point.y - actorSprite.height - 60);
         brightSprite.anchor.set(0.5, 0.5);
         brightSprite.blendMode = PIXI.BLEND_MODES.ADD;
-        brightSprite.position.set(actor.point.x, actor.point.y - actorSprite.height - 20);
+        brightSprite.position.set(actor.point.x, actor.point.y - actorSprite.height - 60);
         // this.actorSprites.push(brightSprite);
         // this.actorSprites.push(sprite);
         actorSprite.headIconSpriteSet = [brightSprite, sprite];
@@ -790,12 +832,14 @@ class GameMap {
         if (rmdFileName === this.currentRmdFileName) return;
         this.prevRmdName = this.currentRmdFileName;
         LoadingScreen.render();
+        RedStone.miniMap.reset();
         this.reset();
         await this.loadMap(rmdFileName);
         await this.init();
         RedStone.mainCanvas.mainContainer.removeChild(RedStone.player.container);
         RedStone.player.reset();
         RedStone.player.render();
+        RedStone.miniMap.init();
         LoadingScreen.destroy();
     }
 

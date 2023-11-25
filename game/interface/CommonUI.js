@@ -3,6 +3,7 @@ import * as PIXI from "pixi.js";
 import { loadTexture } from "../../utils";
 import { INTERFACE_DIR } from "../Config";
 import { CType, MapActorSingle } from "../models/Actor";
+import { ObjectType } from "../models/Map";
 
 const shopIconTextures = {};
 
@@ -18,6 +19,7 @@ class CommonUI {
         this.shopIconBrightTexture = this.shopIcon.getPixiTexture(0);
         // this.interface2 = await loadTexture(`${INTERFACE_DIR}/interface2.sd`);
         this.nameBar = await loadTexture(`${INTERFACE_DIR}/name_bar.sd`);
+        this.minimapAnim = await loadTexture(`${INTERFACE_DIR}/etc_anm.sad`);
     }
 
     async init() {
@@ -139,6 +141,81 @@ class CommonUI {
         shopIconTextures[index] = this.shopIcon.getPixiTexture(index);
 
         return shopIconTextures[index];
+    }
+
+    getMinimapIcon(areaInfo) {
+        let index;
+        let frames;
+        let isAnim = true;
+        let scale = 1;
+
+        switch (areaInfo.objectInfo) {
+            case ObjectType.WarpPortal:
+                switch (areaInfo.gateShape) {
+                    case 0:
+                        index = 15;
+                        frames = 10;
+                        break;
+
+                    case 1:
+                        index = 35;
+                        frames = 10;
+                        break;
+
+                    // 2 or 5 is highly invisible warp?
+
+                    case 4: // warp to somewhere on the same map
+                        index = 95;
+                        frames = 1;
+                        isAnim = false;
+                        break;
+
+                    case 8:
+                        index = 116;
+                        frames = 10;
+                        scale = 0.7
+                        break;
+
+                    case 9:
+                        index = 106;
+                        frames = 10;
+                        scale = 0.8;
+                        break;
+
+                    case 10:
+                        index = 96;
+                        frames = 10;
+                        scale = 0.8;
+                        break;
+                }
+                break;
+
+            case ObjectType.HuntingArea:
+                index = 126;
+                frames = 9;
+                break;
+
+            default:
+                break;
+        }
+
+        if (typeof index !== "number") return null;
+
+        if (isAnim) {
+            const pixiTextures = [];
+            for (let i = 0; i < frames; i++) {
+                pixiTextures.push(this.minimapAnim.getPixiTexture(index + i));
+            }
+            pixiTextures.push(...([].concat(pixiTextures).reverse()));
+            const sprite = new PIXI.AnimatedSprite(pixiTextures);
+            sprite.scale.set(scale, scale);
+            sprite.animationSpeed = 0.2;
+            sprite.play();
+            return sprite;
+        }
+
+        const sprite = new PIXI.Sprite(this.minimapAnim.getPixiTexture(index));
+        return sprite;
     }
 }
 

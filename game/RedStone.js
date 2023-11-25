@@ -10,6 +10,9 @@ import BufferReader from "../utils/BufferReader";
 import MonsterSource from "./models/MonsterSource";
 import EffectDataManager from "./EffectDataManager";
 import Camera from "./Camera";
+import BgmPlayer from "./BgmPlayer";
+import SoundManager from "./SoundManager";
+import Minimap from "./Minimap";
 
 class RedStone {
 
@@ -22,6 +25,10 @@ class RedStone {
      */
     static gameMap;
     /**
+     * @type {Minimap}
+     */
+    static miniMap;
+    /**
      * @type {Player}
      */
     static player;
@@ -33,9 +40,15 @@ class RedStone {
      * @type {object}
      */
     static lastLocation;
+    /**
+     * @type {boolean}
+     */
+    static mapListExpanded = false;
 
     static async init() {
         RedStone.mainCanvas = new MainCanvas();
+        RedStone.bgmPlayer = new BgmPlayer();
+        RedStone.miniMap = new Minimap();
         RedStone.gameMap = new GameMap();
         RedStone.player = new Player();
 
@@ -60,13 +73,21 @@ class RedStone {
         // load effects
         await EffectDataManager.init();
 
+        // load bgm map
+        await SoundManager.init();
+
         // load player
 
+        // load player location
+        RedStone.lastLocation = this.loadPlayerLocation();
+        
         // init map
         await RedStone.gameMap.init();
 
+        // init minimap
+        await RedStone.miniMap.init();
+
         if (SAVE_PLAYER_LOCATION) {
-            RedStone.lastLocation = this.loadPlayerLocation();
             // set player position
             if (this.lastLocation?.position) {
                 const { x, y } = this.lastLocation?.position;
