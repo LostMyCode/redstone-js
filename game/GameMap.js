@@ -1,6 +1,6 @@
 import * as PIXI from "pixi.js";
 
-import RedStoneMap, { Mapset, ObjectType, portalTextureInfo } from "./models/Map";
+import RedStoneMap, { Mapset, ObjectType } from "./models/Map";
 import { fetchBinaryFile, loadTexture, loadZippedTextures } from "../utils";
 import BufferReader from "../utils/BufferReader";
 import Map from "./models/Map";
@@ -302,7 +302,12 @@ class GameMap {
         const startTime = performance.now();
 
         if (this.selectedPortal) {
-            if (getDistance(RedStone.player, this.selectedPortal.sprite) < 100) {
+            const portalSprite = this.selectedPortal.sprite
+            const portalPoint = {
+                x: portalSprite.x + portalSprite.width / 2,
+                y: portalSprite.y + portalSprite.height / 2
+            };
+            if (getDistance(RedStone.player, portalPoint) < 70) {
                 console.log("portal gate", this.selectedPortal.area.moveToFileName);
                 this.moveField(this.selectedPortal.area.moveToFileName);
                 this.selectedPortal = null;
@@ -591,61 +596,36 @@ class GameMap {
     }
 
     renderPortals() {
-        const defaultTexture = this.portalTexture.getPixiTexture(12);
-
         this.map.areaInfos.forEach(area => {
             if (!area.moveToFileName) return;
             if (area.objectInfo !== ObjectType.WarpPortal) return;
 
             const centerPos = area.centerPos;
-            let pixiTexture = defaultTexture;
-            // it is better way to load all rmd and check MapType of map beyond the gate
-            // check the filename instead as its easier
-            const isGateOrDungeon = area.moveToFileName.match(/G\d+|_D\d+|T\d+\.|M\d+\.|S\d+\./);
-            const isInDoor = this.currentRmdFileName.match(/_A\d+\.|_B\d+\.|_W\d+\.|_I\d+\./);
-            if (
-                // mapBeyondTheGate.typeAndFlags !== MapType.Shop
-                // area.subObjectInfo === 13 || area.subObjectInfo === 21
-                isGateOrDungeon && !isInDoor
-            ) {
-                const isNearLeftBorder = centerPos.x < 500;
-                const isNearTopBorder = centerPos.y < 500;
-                const isNearRightBorder = 64 * this.map.size.width - centerPos.x < 500;
-                const isNearBottomBorder = 32 * this.map.size.height - centerPos.y < 500;
+            let sprite;
 
-                let portalLocationStr = "";
-                if (isNearTopBorder) {
-                    portalLocationStr += "top";
-                }
-                else if (isNearBottomBorder) {
-                    portalLocationStr += "bottom";
-                }
-                if (isNearLeftBorder) {
-                    portalLocationStr += portalLocationStr.length ? "Left" : "left";
-                }
-                else if (isNearRightBorder) {
-                    portalLocationStr += portalLocationStr.length ? "Right" : "right";
-                }
-                else {
-                    // idk how to relate portal to its texture...
-                    portalLocationStr = "top";
-                }
-                const key = portalLocationStr + "Gate";
-                const index = Object.values(portalTextureInfo).indexOf(portalTextureInfo[key]);
-                const offset = index * 6;
-                pixiTexture = this.portalTexture.getPixiTexture(offset);
+            if (area.gateShape === 1) { // door
+                const textures = Array(6).fill(null).map((v, i) => this.portalTexture.getPixiTexture(i));
+                sprite = new PIXI.AnimatedSprite(textures);
+            }
+            else if (area.gateShape === 4) {
+                const index = 109;
+                const textures = Array(6).fill(null).map((v, i) => this.portalTexture.getPixiTexture(index + i));
+                sprite = new PIXI.AnimatedSprite(textures);
             }
             else {
-                const index = Object.values(portalTextureInfo).indexOf(portalTextureInfo.door);
+                const index = area.gateDirect + 2;
                 const offset = index * 6;
-                pixiTexture = this.portalTexture.getPixiTexture(offset);
+                const textures = Array(6).fill(null).map((v, i) => this.portalTexture.getPixiTexture(offset + i));
+                sprite = new PIXI.AnimatedSprite(textures);
             }
-            const x = centerPos.x - pixiTexture.width / 2;
-            const y = centerPos.y - pixiTexture.height / 2;
 
-            const sprite = new PIXI.Sprite(pixiTexture);
+            const x = centerPos.x - sprite.width / 2;
+            const y = centerPos.y - sprite.height / 2;
+
             sprite.position.set(x, y);
             sprite.interactive = true;
+            sprite.animationSpeed = 0.3;
+            sprite.play();
             sprite.on("mouseenter", () => {
                 sprite.isHovering = true;
 
