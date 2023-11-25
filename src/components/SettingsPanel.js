@@ -31,6 +31,14 @@ export default function SettingsPanel(props) {
                 }} />
                 <label htmlFor="showMinimap">Show minimap</label>
             </div>
+            <div className="flex" style={{ gap: 5, margin: "10px 0" }}>
+                <input type="checkbox" name="collisionDetection" checked={value.collisionDetection} onChange={(e) => {
+                    const { name, checked } = e.target;
+                    setValue(_value => Object.assign({}, _value, { [name]: checked }));
+                    SettingsManager.set(name, checked);
+                }} />
+                <label htmlFor="collisionDetection">Enable obstacle collision check</label>
+            </div>
         </div>
     )
 }
