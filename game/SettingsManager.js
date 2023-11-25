@@ -4,6 +4,7 @@ export default new class SettingsManager {
             bgm: false,
             volume: 30,
             showMinimap: true,
+            collisionDetection: true,
         }
     }
 
