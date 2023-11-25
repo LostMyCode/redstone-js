@@ -60,7 +60,7 @@ class Player {
     async init() {
         await this.load();
 
-        const moveAmount = 30;
+        const moveAmount = 15;
         setInterval(() => {
             if (!RedStone.gameMap.initialized) {
                 window.dispatchEvent(new CustomEvent("displayLogUpdate", { detail: { key: "player-pos", value: null } }));
@@ -70,27 +70,29 @@ class Player {
             window.dispatchEvent(new CustomEvent("displayLogUpdate", { detail: { key: "player-pos", value: `Player Position: (${Math.round(this.x / TILE_WIDTH)}, ${Math.round(this.y / TILE_HEIGHT)})` } }));
 
             let positionUpdated = false;
+            let moveX = 0;
+            let moveY = 0;
 
             if (Listener.pressingKeys.size) {
                 Listener.pressingKeys.forEach(key => {
                     switch (key) {
                         case "w":
-                            this.y -= moveAmount;
+                            moveY -= moveAmount;
                             positionUpdated = true;
                             break;
 
                         case "d":
-                            this.x += moveAmount;
+                            moveX += moveAmount;
                             positionUpdated = true;
                             break;
 
                         case "s":
-                            this.y += moveAmount;
+                            moveY += moveAmount;
                             positionUpdated = true;
                             break;
 
                         case "a":
-                            this.x -= moveAmount;
+                            moveX -= moveAmount;
                             positionUpdated = true;
                             break;
                     }
@@ -98,6 +100,18 @@ class Player {
             }
 
             if (positionUpdated) {
+                const block1 = RedStone.gameMap.getBlock(Math.floor(Math.round(this.x + moveX) / TILE_WIDTH), Math.floor(Math.round(this.y) / TILE_HEIGHT));
+                const block2 = RedStone.gameMap.getBlock(Math.floor(Math.round(this.x) / TILE_WIDTH), Math.floor(Math.round(this.y + moveY) / TILE_HEIGHT));
+                if (block1 !== 0) {
+                    moveX = 0;
+                }
+                if (block2 !== 0) {
+                    moveY = 0;
+                }
+                this.oldX = this.x;
+                this.oldY = this.y;
+                this.x += moveX;
+                this.y += moveY;
                 Camera.x = this.x;
                 Camera.y = this.y;
                 return;
@@ -109,19 +123,11 @@ class Player {
             const targetY = Listener.mouseY - innerHeight / 2 + Camera.y;
             const angle = Math.atan2(targetY - this.y, targetX - this.x);
 
-            let moveX = Math.min(40, 40 * Math.cos(angle));
-            let moveY = Math.min(40, 40 * Math.sin(angle));
+            moveX = Math.min(20, 20 * Math.cos(angle));
+            moveY = Math.min(20, 20 * Math.sin(angle));
 
-            // if (RedStone.gameMap.isBlockedWay(
-            //     Math.round(this.x / TILE_WIDTH),            // startX
-            //     Math.round(this.y / TILE_HEIGHT),           // startY
-            //     Math.round((this.x + moveX) / TILE_WIDTH),  // goalX
-            //     Math.round((this.y + moveY) / TILE_HEIGHT)  // goalY
-            // )) {
-            //     return;
-            // }
-            const block1 = RedStone.gameMap.getBlock(Math.round((this.x + moveX) / TILE_WIDTH), Math.round(Math.round(this.y) / TILE_HEIGHT));
-            const block2 = RedStone.gameMap.getBlock(Math.round((this.x) / TILE_WIDTH), Math.round(Math.round(this.y + moveY) / TILE_HEIGHT));
+            const block1 = RedStone.gameMap.getBlock(Math.floor(Math.round(this.x + moveX) / TILE_WIDTH), Math.floor(Math.round(this.y) / TILE_HEIGHT));
+            const block2 = RedStone.gameMap.getBlock(Math.floor(Math.round(this.x) / TILE_WIDTH), Math.floor(Math.round(this.y + moveY) / TILE_HEIGHT));
 
             if (block1 !== 0) {
                 moveX = 0;
@@ -137,7 +143,7 @@ class Player {
 
             Camera.x = this.x;
             Camera.y = this.y;
-        }, 40);
+        }, 20);
 
         this.initialized = true;
     }
