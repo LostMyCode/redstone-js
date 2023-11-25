@@ -4,6 +4,8 @@ import RedStone from "./RedStone";
 import { fetchBinaryFile } from "../utils";
 import { MINIMAP_DIR, TILE_HEIGHT, TILE_WIDTH } from "./Config";
 import SettingsManager from "./SettingsManager";
+import CommonUI from "./interface/CommonUI";
+import { ObjectType } from "./models/Map";
 
 export default class Minimap {
     constructor() {
@@ -48,7 +50,7 @@ export default class Minimap {
 
     async init() {
         if (!SettingsManager.get("showMinimap")) return;
-        
+
         const buffer = await fetchBinaryFile(`${MINIMAP_DIR}/${RedStone.gameMap.currentRmdFileName}.tga`);
         this.tga.load(new Uint8Array(buffer));
         this.renderer.resize(
@@ -58,6 +60,18 @@ export default class Minimap {
         this.texture = await PIXI.Texture.fromURL(this.tga.getDataURL("image/png"));
         this.sprite = new PIXI.Sprite(this.texture);
         this.container.addChild(this.sprite);
+
+        RedStone.gameMap.map.areaInfos.forEach(areaInfo => {
+            if (![ObjectType.WarpPortal, ObjectType.HuntingArea].includes(areaInfo.objectInfo)) return;
+            const sprite = CommonUI.getMinimapIcon(areaInfo);
+            if (!sprite) return;
+            const centerPos = areaInfo.centerPos;
+            const xRatio = centerPos.x / (RedStone.gameMap.map.size.width * TILE_WIDTH);
+            const yRatio = centerPos.y / (RedStone.gameMap.map.size.height * TILE_HEIGHT);
+            sprite.position.set(this.sprite.width * xRatio - sprite.width / 2, this.sprite.height * yRatio - sprite.height / 2);
+            this.container.addChild(sprite);
+        });
+
         this.container.addChild(this.graphics);
         this.rootContainer.addChild(this.container);
         if (!RedStone.mapListExpanded) {
