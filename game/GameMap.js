@@ -832,12 +832,14 @@ class GameMap {
         if (rmdFileName === this.currentRmdFileName) return;
         this.prevRmdName = this.currentRmdFileName;
         LoadingScreen.render();
+        RedStone.miniMap.reset();
         this.reset();
         await this.loadMap(rmdFileName);
         await this.init();
         RedStone.mainCanvas.mainContainer.removeChild(RedStone.player.container);
         RedStone.player.reset();
         RedStone.player.render();
+        RedStone.miniMap.init();
         LoadingScreen.destroy();
     }
 }

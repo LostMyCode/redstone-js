@@ -35,6 +35,12 @@ class MapListPanel extends React.Component {
 
     handleExpanderClick = (e) => {
         const { expanded } = this.state;
+        const minimap = document.getElementById("minimap");
+        if (minimap) {
+            setTimeout(() => {
+                minimap.style.display = expanded ? "block" : "none";
+            }, expanded ? 500 : 0);
+        }
         this.setState({ expanded: !expanded });
     }
 
