@@ -73,8 +73,8 @@ export default new class Camera {
      */
     isRectInView(rect) {
         const view = this.viewBoundingRect;
-        const right = rect.left + rect.width;
-        const bottom = rect.top + rect.height;
+        const right = rect.right || rect.left + rect.width;
+        const bottom = rect.bottom || rect.top + rect.height;
 
         const a = { x1: rect.left, y1: rect.top, x2: right, y2: bottom };
         const b = { x1: view.left, y1: view.top, x2: view.right, y2: view.bottom };

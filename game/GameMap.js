@@ -89,11 +89,6 @@ class GameMap {
         /**
          * @type {PIXI.Sprite[]}
          */
-        this.shadowSprites = [];
-
-        /**
-         * @type {PIXI.Sprite[]}
-         */
         this.positionSpecifiedObjectSprites = [];
 
         /**
@@ -132,7 +127,6 @@ class GameMap {
 
         this.tileSubContainers = {};
         this.objectSprites = [];
-        this.shadowSprites = [];
         this.positionSpecifiedObjectSprites = [];
         this.actorSprites = [];
 
@@ -244,7 +238,6 @@ class GameMap {
                 sprite.blockX = Math.floor(obj.point.x / TILE_WIDTH);
                 sprite.blockY = Math.floor(obj.point.y / TILE_HEIGHT);
                 sprite.play();
-                // this.objectSprites.push(sprite);
                 this.positionSpecifiedObjectSprites.push(sprite);
             }
 
@@ -254,11 +247,10 @@ class GameMap {
                 const x = obj.point.x - texture.shape.shadow.left[0];
                 const y = obj.point.y - texture.shape.shadow.top[0];
 
-                const sprite = new PIXI.Sprite(pixiTexture);
-                sprite.position.set(x, y);
+                const shadowSprite = new PIXI.Sprite(pixiTexture);
+                shadowSprite.position.set(x, y);
 
-                // this.shadowContainer.addChild(sprite);
-                this.shadowSprites.push(sprite);
+                sprite.shadowSprite = shadowSprite;
             }
 
             if (ENABLE_DRAW_MAP_DEBUG) {
@@ -345,14 +337,18 @@ class GameMap {
         });
         const actorSpritesInView = [];
         _sprites.forEach(sprite => {
-            const bounds = sprite.getBounds();
+            let bounds = sprite.getBounds();
+            if (sprite.shadowSprite) {
+                let _bounds = sprite.shadowSprite.getBounds();
+                let mergedBounds = {};
+                mergedBounds.top = Math.min(bounds.top, _bounds.top);
+                mergedBounds.left = Math.min(bounds.left, _bounds.left);
+                mergedBounds.bottom = Math.max(bounds.bottom, _bounds.bottom);
+                mergedBounds.right = Math.max(bounds.right, _bounds.right);
+                bounds = mergedBounds;
+            }
 
-            if (!Camera.isRectInView({
-                top: bounds.top,
-                left: bounds.left,
-                width: bounds.width,
-                height: bounds.height
-            })) {
+            if (!Camera.isRectInView(bounds)) {
                 return;
             }
 
@@ -363,7 +359,11 @@ class GameMap {
             }
 
             if (sprite.isActorSprite) {
-                actorSpritesInView.push(sprite);
+                actorSpritesInView.push(sprite, sprite.shadowSprite);
+            }
+
+            if (sprite.shadowSprite) {
+                (sprite.isBuilding ? this.shadowContainer : this.objectContainer).addChild(sprite.shadowSprite);
             }
 
             if (ENABLE_DRAW_MAP_DEBUG) {
@@ -384,18 +384,6 @@ class GameMap {
             playerAdded = true;
         }
 
-        this.shadowSprites.forEach(sprite => {
-            const { x, y, width, height } = sprite;
-
-            if (!Camera.isRectInView({
-                top: y, left: x, width, height
-            })) {
-                return;
-            }
-
-            this.shadowContainer.addChild(sprite);
-        });
-
         this.positionSpecifiedObjectSprites.forEach(sprite => {
             const { x, y, width, height } = sprite;
 
@@ -406,13 +394,19 @@ class GameMap {
             }
 
             this.positionSpecifiedObjectContainer.addChild(sprite);
+            if (sprite.shadowSprite) {
+                this.positionSpecifiedObjectContainer.addChild(sprite.shadowSprite);
+            }
         });
 
         actorSpritesInView.forEach(sprite => {
             if (typeof sprite.currentFrame === "number") {
+                const index = sprite.startFrameIndex + sprite.currentFrame;
+                let heightOffset = sprite.shape.height[sprite.startFrameIndex]
+                heightOffset -= sprite.shape.top[sprite.startFrameIndex]
                 sprite.position.set(
-                    sprite.baseX - sprite.shape.left[sprite.startFrameIndex + sprite.currentFrame] * sprite.scale.x,
-                    sprite.baseY - sprite.shape.height[sprite.startFrameIndex + sprite.currentFrame] * sprite.scale.y
+                    sprite.baseX - sprite.shape.left[index] * sprite.scale.x,
+                    sprite.baseY - (sprite.shape.top[index] + heightOffset) * sprite.scale.y
                 );
             }
 
@@ -489,6 +483,7 @@ class GameMap {
         sprite.position.set(x, y);
         sprite.blockX = blockX;
         sprite.blockY = blockY;
+        sprite.isBuilding = true;
         this.objectSprites.push(sprite);
 
         if (ENABLE_DRAW_MAP_DEBUG) {
@@ -525,10 +520,10 @@ class GameMap {
             const x = blockCenterX - texture.shape.shadow.left[0];
             const y = blockCenterY - texture.shape.shadow.top[0];
 
-            const sprite = new PIXI.Sprite(pixiTexture);
-            sprite.position.set(x, y);
+            const shadowSprite = new PIXI.Sprite(pixiTexture);
+            shadowSprite.position.set(x, y);
 
-            this.shadowSprites.push(sprite);
+            sprite.shadowSprite = shadowSprite;
         }
 
         // render sub objects
@@ -577,6 +572,7 @@ class GameMap {
                 sprite.position.set(x, y);
                 sprite.blockX = blockX;
                 sprite.blockY = blockY;
+                sprite.isBuilding = true;
 
                 this.objectSprites.push(sprite);
 
@@ -586,10 +582,10 @@ class GameMap {
                     const x = blockCenterX - texture.shape.shadow.left[frameIndex];
                     const y = blockCenterY - texture.shape.shadow.top[frameIndex];
 
-                    const sprite = new PIXI.Sprite(pixiTexture);
-                    sprite.position.set(x, y);
+                    const shadowSprite = new PIXI.Sprite(pixiTexture);
+                    shadowSprite.position.set(x, y);
 
-                    this.shadowSprites.push(sprite);
+                    sprite.shadowSprite = shadowSprite;
                 }
             });
         }
@@ -702,7 +698,7 @@ class GameMap {
             const sprite = new PIXI.AnimatedSprite(pixiTextures);
             sprite.position.set(x, y);
             sprite.scale.set(scaleX, scaleY);
-            sprite.animationSpeed = 0.1;
+            sprite.animationSpeed = 0.13;
             sprite.startFrameIndex = targetFrame;
             sprite.shape = texture.shape.body;
             sprite.baseX = actor.point.x;
@@ -718,14 +714,16 @@ class GameMap {
             const shadowSprite = new PIXI.AnimatedSprite(pixiShadowTextures);
             shadowSprite.position.set(shadowX, shadowY);
             shadowSprite.scale.set(scaleX, scaleY);
-            shadowSprite.animationSpeed = 0.1;
+            shadowSprite.animationSpeed = 0.13;
             shadowSprite.startFrameIndex = targetFrame;
             shadowSprite.shape = texture.shape.shadow;
             shadowSprite.baseX = actor.point.x;
             shadowSprite.baseY = actor.point.y;
             shadowSprite.blockX = Math.floor(actor.point.x / TILE_WIDTH);
             shadowSprite.blockY = Math.floor(actor.point.y / TILE_HEIGHT);
+            shadowSprite.isShadow = true;
             shadowSprite.play();
+            sprite.shadowSprite = shadowSprite;
 
             const guageTexture = PIXI.Texture.from(CommonUI.getGuage(dir === "NPC" ? "npc" : "enemy", actor.name));
             const guageSprite = new PIXI.Sprite(guageTexture);
@@ -760,8 +758,6 @@ class GameMap {
                 this.graphics.drawCircle(actor.point.x, actor.point.y, 10);
             }
 
-            // this.shadowSprites.push(shadowSprite);
-            this.actorSprites.push(shadowSprite); // temp
             this.actorSprites.push(sprite);
         });
     }
