@@ -45,6 +45,7 @@ class Player {
 
         this.container = new PIXI.Container();
         this.initialized = false;
+        this.lastUpdate = performance.now();
 
         this.init();
         Camera.setPosition(this.x, this.y);
@@ -69,6 +70,8 @@ class Player {
             }
 
             window.dispatchEvent(new CustomEvent("displayLogUpdate", { detail: { key: "player-pos", value: `Player Position: (${Math.round(this.x / TILE_WIDTH)}, ${Math.round(this.y / TILE_HEIGHT)})` } }));
+
+            if (Listener.isMouseDown) return;
 
             let positionUpdated = false;
             let moveX = 0;
@@ -119,35 +122,6 @@ class Player {
                 Camera.y = this.y;
                 return;
             }
-
-            if (!Listener.isMouseDown) return;
-
-            const targetX = Listener.mouseX - innerWidth / 2 + Camera.x;
-            const targetY = Listener.mouseY - innerHeight / 2 + Camera.y;
-            const angle = Math.atan2(targetY - this.y, targetX - this.x);
-
-            moveX = Math.min(20, 20 * Math.cos(angle));
-            moveY = Math.min(20, 20 * Math.sin(angle));
-
-            if (SettingsManager.get("collisionDetection")) {
-                const block1 = RedStone.gameMap.getBlock(Math.floor(Math.round(this.x + moveX) / TILE_WIDTH), Math.floor(Math.round(this.y) / TILE_HEIGHT) + 1);
-                const block2 = RedStone.gameMap.getBlock(Math.floor(Math.round(this.x) / TILE_WIDTH), Math.floor(Math.round(this.y + moveY) / TILE_HEIGHT) + 1);
-
-                if (block1 !== 0) {
-                    moveX = 0;
-                }
-                if (block2 !== 0) {
-                    moveY = 0;
-                }
-            }
-
-            this.oldX = this.x;
-            this.oldY = this.y;
-            this.x += moveX;
-            this.y += moveY;
-
-            Camera.x = this.x;
-            Camera.y = this.y;
         }, 20);
 
         this.initialized = true;
@@ -222,6 +196,48 @@ class Player {
         if (!direction.length) return this.action = "stand";
 
         this.direction = direction.join("-");
+    }
+
+    updateMovement() {
+        if (!RedStone.gameMap.onceRendered) return;
+        const now = performance.now();
+        const delta = now - this.lastUpdate;
+        this.lastUpdate = now;
+        if (delta > 500) return;
+
+        if (!Listener.isMouseDown) return;
+
+        let moveX = 0;
+        let moveY = 0;
+
+        const targetX = Listener.mouseX - innerWidth / 2 + Camera.x;
+        const targetY = Listener.mouseY - innerHeight / 2 + Camera.y;
+        const angle = Math.atan2(targetY - this.y, targetX - this.x);
+
+        moveX = Math.min(delta, delta * Math.cos(angle));
+        moveY = Math.min(delta, delta * Math.sin(angle));
+
+        if (SettingsManager.get("collisionDetection")) {
+            const block1 = RedStone.gameMap.getBlock(Math.floor(Math.round(this.x + moveX) / TILE_WIDTH), Math.floor(Math.round(this.y) / TILE_HEIGHT) + 1);
+            const block2 = RedStone.gameMap.getBlock(Math.floor(Math.round(this.x) / TILE_WIDTH), Math.floor(Math.round(this.y + moveY) / TILE_HEIGHT) + 1);
+
+            if (block1 !== 0) {
+                moveX = 0;
+            }
+            if (block2 !== 0) {
+                moveY = 0;
+            }
+        }
+
+        if (!moveX && !moveY) return;
+
+        this.oldX = this.x;
+        this.oldY = this.y;
+        this.x += moveX;
+        this.y += moveY;
+
+        Camera.x = this.x;
+        Camera.y = this.y;
     }
 
     render() {

@@ -71,21 +71,13 @@ class MainCanvas {
     }
 
     render() {
-        const startTime = performance.now();
-
         this.mainContainer.position.set(window.innerWidth / 2 - Camera.x, window.innerHeight / 2 - Camera.y);
-        // this.rootContainer.scale.set(1);
         RedStone.gameMap.render();
         RedStone.miniMap.render();
+        RedStone.player.updateMovement();
         // RedStone.player.render();
 
         this.renderer.render(this.rootContainer);
-
-        const endTime = performance.now();
-
-        // if (renderTimes.length < 1000) {
-        //     renderTimes.push(endTime - startTime);
-        // }
     }
 }
 
