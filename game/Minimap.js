@@ -89,9 +89,11 @@ export default class Minimap {
         const yRatio = RedStone.player.y / (RedStone.gameMap.map.size.height * TILE_HEIGHT);
         const x = this.sprite.width * xRatio
         const y = this.sprite.height * yRatio
+        const canvasWidth = this.canvas.width / (window.devicePixelRatio || 1);
+        const canvasHeight = this.canvas.height / (window.devicePixelRatio || 1);
 
-        const conX = - Math.min(Math.max(0, x - this.canvas.width / 2), this.sprite.width - this.canvas.width);
-        const conY = - Math.min(Math.max(0, y - this.canvas.height / 2), this.sprite.height - this.canvas.height);
+        const conX = - Math.min(Math.max(0, x - canvasWidth / 2), this.sprite.width - canvasWidth);
+        const conY = - Math.min(Math.max(0, y - canvasHeight / 2), this.sprite.height - canvasHeight);
 
         this.container.position.set(conX, conY);
 
