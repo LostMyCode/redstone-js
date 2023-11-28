@@ -25,6 +25,7 @@ export default class BgmPlayer {
         this.audio = new Audio();
         this.audio.loop = true;
         this.currentBgmIndex = null;
+        this.oncePlayed = false;
 
         window.addEventListener("settingsChange", (e) => {
             if (e.detail.key === "bgm") {
@@ -48,13 +49,21 @@ export default class BgmPlayer {
             const fileName = BGM_SET[index - 1];
             this.audio.src = `${BGM_DIR}/${fileName}`;
             this.audio.volume = SettingsManager.get("volume") / 100;
-            this.audio.play();
+            this.audio.play()
+                .then(() => {
+                    this.oncePlayed = true;
+                })
+                .catch(e => {
+                    if (e.name === "NotAllowedError") {
+                        window.addEventListener("click", () => !this.oncePlayed && _play(), { once: true });
+                    }
+                });
         }
 
         const fader = setInterval(() => {
             this.audio.volume = Math.max(0, this.audio.volume - 0.05);
             if (this.audio.volume === 0) {
-                setTimeout(_play, 1000);
+                setTimeout(_play, this.oncePlayed ? 1000 : 0);
                 clearInterval(fader);
             }
         }, 50);
