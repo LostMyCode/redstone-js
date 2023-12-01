@@ -38,6 +38,12 @@ export default class BgmPlayer {
     }
 
     play(index) {
+        const replaceBgm = [2, 6, 0, 4, 3, 5, 7, 1, 8];
+
+        if (BGM_SET[index - 1] === undefined) {
+            index = replaceBgm[index];
+        }
+
         if (typeof index !== "number" || (!this.audio.paused && this.currentBgmIndex === index)) return;
         this.currentBgmIndex = index;
 
