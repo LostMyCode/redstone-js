@@ -86,6 +86,8 @@ export const ImageManager = new class ImageManager {
 
         this.effects[137] = loadAnimation(await fetchBinaryFile(`${DATA_DIR}/Effects/${EffectDataManager.aInfo[137].m_strImageFileName}`));
 
+        this.effects[279] = loadAnimation(await fetchBinaryFile(`${DATA_DIR}/Effects/shoot_dagger.sad`));
+        
         // this.sprHitText.load(new BufferReader(await fetchBinaryFile(`${INTERFACE_DIR}/hitText.sd`)));
     }
 

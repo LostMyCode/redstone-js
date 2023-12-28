@@ -237,24 +237,20 @@ export default class ActiveSkill {
         if (this.skill.shootImage === 0xffff) return;
         // console.log("put special missile");
 
-        const missile = EffectDataManager.aInfo[this.skill.shootImage];
         /**
          * @type {WrappedAnim}
          */
-        const missileAnim = RedStone.player.shootDagger; // temp
-        // console.log("check missile", missile, missileAnim);
+        const missileAnim = ImageManager.effects[this.skill.shootImage];
 
         if (this.getIsMagicMissile()) {
             //
         } else {
             const x = this.pos.x; // getScaledXPos(pos.x)
             const y = this.pos.y; // getScaledYPos(pos.y)
-            // missileAnim.putReg(x, y, this.anm, this.direct, this.frame,)
             missileAnim.putPixiSprite(RedStone.gameMap.foremostContainer,
                 "body",
                 x, y, this.anm, this.direct, this.frame
             )
-            // console.log(x, y, this.anm, this.direct, this.frame);
         }
 
         switch (this.skill.afterImageType) {

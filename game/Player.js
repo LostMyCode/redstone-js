@@ -50,13 +50,6 @@ class Player {
 
         // custom
         this.guildIconTexture = await PIXI.Texture.fromURL(`${DATA_DIR}/custom/rs_guild_icon.png`);
-
-        // skill hit effect (temp)
-        this.hitEffect = await loadTexture(`${DATA_DIR}/Effects/hit_basic.sad`);
-
-        // dagger (temp)
-        this.shootDagger = loadAnimation(await fetchBinaryFile(`${DATA_DIR}/Effects/shoot_dagger.sad`));
-        ImageManager.effects[279] = this.shootDagger;
     }
 
     async init() {
@@ -360,33 +353,6 @@ class Player {
             sprite.position.set(this.guageSprite.x - 32, this.guageSprite.y - (32 - this.guageSprite.height) / 2);
             this.container.addChild(sprite);
         }
-    }
-
-    addHitEffect(frameOffset = 0) {
-        const textures = (new Array(5)).fill(null).map((v, i) => this.hitEffect.getPixiTexture(i + frameOffset));
-        const hitEffectSprite = new AnimatedSprite(textures);
-        hitEffectSprite.animationSpeed = 0.4;
-        hitEffectSprite.loop = false;
-        hitEffectSprite.blendMode = PIXI.BLEND_MODES.ADD;
-        hitEffectSprite.position.set(
-            this.battleTarget.x + this.battleTarget.width / 2 - this.hitEffect.shape.body.left[frameOffset],
-            this.battleTarget.y - 32 - this.hitEffect.shape.body.top[frameOffset]
-        );
-        hitEffectSprite.onFrameChange = (currentFrame) => {
-            if (!this.battleTarget) return;
-            hitEffectSprite.position.set(
-                this.battleTarget.x + this.battleTarget.width / 2 - this.hitEffect.shape.body.left[frameOffset + currentFrame],
-                this.battleTarget.y - 32 - this.hitEffect.shape.body.top[frameOffset + currentFrame]
-            );
-        }
-        hitEffectSprite.onComplete = () => {
-            const idx = this.effectSprites.indexOf(hitEffectSprite);
-            this.effectSprites.splice(idx, 1);
-            hitEffectSprite.destroy();
-        }
-        hitEffectSprite.play();
-        this.effectSprites = this.effectSprites || [];
-        this.effectSprites.push(hitEffectSprite);
     }
 
     /**
