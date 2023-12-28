@@ -182,24 +182,4 @@ export default class WrappedAnim extends Anim {
 
         return sprite;
     }
-
-    putPixiSprite_Reg(container, x, y, anm, direct, frame, xRate = 100, yRate = 100) {
-        if (anm >= this.anmCount || anm <  0) return;
-        if (direct >= this.anmData[anm].directCount) return;
-        if (frame >= this.anmData[anm].frameCount) return;
-
-        const flipped = true; // temp
-        const index = this.anmData[anm].getSprite(direct, frame, this.isFlip);
-        const alpha = this.anmData[anm].alpha;
-
-        y -= this.posRefit.y;
-        x -= this.posRefit.x;
-
-        if (this.anmData[anm].isRefitFrame) {
-            x -= this.anmData[anm].pos[direct * this.anmData[anm].frameCount + frame].x;
-            y -= this.anmData[anm].pos[direct * this.anmData[anm].frameCount + frame].y;
-        }
-
-        //
-    }
 }
