@@ -1,30 +1,23 @@
 import * as PIXI from "pixi.js";
+import { AnimatedSprite } from "pixi.js";
 
-import { loadTexture } from "../utils";
-import { angle, direction, getAngle, getDirection, getDirectionString } from "../utils/RedStoneRandom";
+import { fetchBinaryFile, loadAnimation, loadTexture } from "../utils";
+import { getAngle, getDirection, getDirectionString, getDistance } from "../utils/RedStoneRandom";
 import Camera from "./Camera";
 import { DATA_DIR, TILE_HEIGHT, TILE_WIDTH, X_BOUND_OFFSET, Y_BOUND_OFFSET } from "./Config";
 import CommonUI from "./interface/CommonUI";
 import Listener from "./Listener";
+import Skill2 from "./models/Skill2";
 import RedStone from "./RedStone";
 import SettingsManager from "./SettingsManager";
+import Actor from "./actor/Actor";
+import { ACT_READY, ACT_RUN } from "./ActionH";
+import ActorManager from "./actor/ActorManager";
+import { ImageManager } from "./ImageData";
 
-// Rogue03.sad
 const directionFrameOrder = ["up", "up-right", "right", "down-right", "down", "down-left", "left", "up-left"];
-const actionData = [
-    {
-        name: "walk",
-        frameCount: 12,
-    },
-    {
-        name: "run",
-        frameCount: 8
-    },
-    {
-        name: "stand",
-        frameCount: 12
-    }
-]
+
+const dJOB_ROGUE = 6;
 
 class Player {
     constructor() {
@@ -52,15 +45,23 @@ class Player {
     }
 
     async load() {
-        this.playerTexture = await loadTexture(`${DATA_DIR}/Heros/Rogue03.sad`);
-        this.rebirthTexture = await loadTexture(`${DATA_DIR}/Effects/rebirth01.sad`);
+        const heroAnimBuf = await fetchBinaryFile(`${DATA_DIR}/Heros/Rogue01.sad`);
+        RedStone.anims.Rogue01 = loadAnimation(heroAnimBuf);
 
         // custom
         this.guildIconTexture = await PIXI.Texture.fromURL(`${DATA_DIR}/custom/rs_guild_icon.png`);
+
+        // skill hit effect (temp)
+        this.hitEffect = await loadTexture(`${DATA_DIR}/Effects/hit_basic.sad`);
+
+        // dagger (temp)
+        this.shootDagger = loadAnimation(await fetchBinaryFile(`${DATA_DIR}/Effects/shoot_dagger.sad`));
+        ImageManager.effects[279] = this.shootDagger;
     }
 
     async init() {
         await this.load();
+        this.reset();
 
         const moveAmount = 15;
         setInterval(() => {
@@ -120,6 +121,8 @@ class Player {
                 this.y += moveY;
                 Camera.x = this.x;
                 Camera.y = this.y;
+                this.battleTarget = null;
+                this.usingSkill = null;
                 return;
             }
         }, 20);
@@ -164,15 +167,31 @@ class Player {
 
     reset() {
         this.onceRendered = false;
-        this.playerBodySprite = null;
-        this.playerShadowSprite = null;
+
+        this.actor = new Actor();
+        this.actor.pos.set(this.x, this.y);
+        this.actor.job = dJOB_ROGUE;
+        this.actor.anm = 2;
+        this.actor.direct = directionFrameOrder.indexOf(this.direction);
+        this.actor.name = "MyPlayer (200)";
+        this.actor.serial = 123123;
+        this.actor._isMonster_tmp = false;
+        this.actor.pixiSprite = new PIXI.Sprite();
+
+        RedStone.actors.push(this.actor);
     }
 
-    updateDirectionAndAction() {
+    update() {
+        if (!this.initialized) return;
+
+        let newAction = this.action
+        let newDirection = this.direction;
+
         const has = value => Listener.pressingKeys.has(value);
 
-        if (has("w") && has("s") || has("a") && has("d")) {
-            this.action = "stand";
+        if (has("w") && has("s") || has("a") && has("d")) { // invalid key combinations
+            newAction = "stand";
+            this.setAnimation(newAction, newDirection);
             return;
         }
 
@@ -183,19 +202,44 @@ class Player {
         if (has("a")) direction.push("left");
         else if (has("d")) direction.push("right");
 
-        this.action = "run";
+        if (direction.length) {
+            newAction = "run";
+            newDirection = direction.join("-");
 
-        if (!direction.length) {
-            if (Listener.isMouseDown) {
-                const agl = getAngle({ x: this.oldX, y: this.oldY }, this);
-                const dir = getDirection(agl);
-                direction.push(...getDirectionString(dir).split("-"));
+            this.actor.anm = ACT_RUN;
+        }
+        else if (Listener.isMouseDown && !this.usingSkill) {
+            const agl = getAngle({ x: this.oldX, y: this.oldY }, this);
+            const dir = getDirection(agl);
+            newDirection = getDirectionString(dir);
+            newAction = "run";
+
+            this.actor.anm = ACT_RUN;
+        }
+        else if (this.usingSkill && this.battleTarget) {
+            const targetSprite = this.battleTarget.pixiSprite;
+            const agl = getAngle(this, {
+                x: targetSprite.x + targetSprite.width / 2,
+                y: targetSprite.y + targetSprite.height / 2,
+            });
+            const dir = getDirection(agl);
+            newDirection = getDirectionString(dir);
+            newAction = "attack";
+
+            if (this.battleTarget.isDeath()) {
+                this.actor.setAnm(ACT_READY);
             }
         }
+        else {
+            newAction = "stand";
 
-        if (!direction.length) return this.action = "stand";
+            this.actor.anm = ACT_READY;
+        }
 
-        this.direction = direction.join("-");
+        this.actor.direct = directionFrameOrder.indexOf(newDirection);
+        this.actor.pos.set(this.x, this.y);
+
+        this.direction = newDirection;
     }
 
     updateMovement() {
@@ -205,7 +249,32 @@ class Player {
         this.lastUpdate = now;
         if (delta > 500) return;
 
-        if (!Listener.isMouseDown) return;
+        if (!Listener.isMouseDown) {
+            this.targetActor = null;
+            return;
+        }
+        if (ActorManager.focusActor_tmp && !this.targetActor) {
+            this.targetActor = ActorManager.focusActor_tmp;
+        }
+        if (this.battleTarget && this.battleTarget.isDeath()) {
+            this.battleTarget = null
+        }
+
+        if (this.targetActor && this.targetActor._isMonster_tmp) {
+            const sprite = this.targetActor.pixiSprite;
+            const distance = getDistance(this, {
+                x: sprite.x + sprite.width / 2,
+                y: sprite.y + sprite.height / 2,
+            });
+            if (distance <= 400 && this.battleTarget !== this.targetActor) {
+                this.useSkillToTarget(null, this.targetActor);
+                return;
+            }
+            if (this.battleTarget) return;
+        } else if (this.battleTarget || this.usingSkill) {
+            this.battleTarget = null;
+            this.usingSkill = null;
+        }
 
         let moveX = 0;
         let moveY = 0;
@@ -238,83 +307,17 @@ class Player {
 
         Camera.x = this.x;
         Camera.y = this.y;
+
+        this.actor.pos.set(this.x, this.y);
     }
 
     render() {
         if (!this.initialized) return;
         if (!RedStone.gameMap.onceRendered) return;
 
-        const lastAction = this.action;
-        const lastDirection = this.direction;
-        const { x, y } = this;
-
-        this.updateDirectionAndAction();
-
-        if (lastAction === this.action && lastDirection === this.direction) {
-            if (this.playerBodySprite) {
-                const currentFrame = this.playerBodySprite.currentFrame;
-                this.playerBodySprite.position.set(
-                    x - this.playerTexture.shape.body.left[this.lastActionStartOffset + currentFrame],
-                    y - this.playerTexture.shape.body.top[this.lastActionStartOffset + currentFrame]
-                );
-                this.playerShadowSprite.position.set(
-                    x - this.playerTexture.shape.shadow.left[this.lastActionStartOffset + currentFrame],
-                    y - this.playerTexture.shape.shadow.top[this.lastActionStartOffset + currentFrame]
-                )
-                this.renderGuage();
-                this.renderGuildIcon_test();
-                return;
-            }
-            // this.renderEffects();
-        }
+        this.update();
 
         this.container.removeChildren();
-        // this.rebirthSprite = null;
-        // this.renderEffects();
-
-        let offset = 0;
-        let targetActionFrameCount;
-
-        for (let i = 0; i < actionData.length; i++) {
-            const frameCount = actionData[i].frameCount
-            if (this.action === actionData[i].name) {
-                offset += directionFrameOrder.indexOf(this.direction) * frameCount;
-                targetActionFrameCount = frameCount;
-                break;
-            }
-            offset += frameCount * directionFrameOrder.length;
-        }
-
-        const bodyTextures = [];
-        const shadowTextures = [];
-        for (let i = 0; i < targetActionFrameCount; i++) {
-            const body = this.playerTexture.getPixiTexture(offset + i);
-            bodyTextures.push(body);
-            const shadow = this.playerTexture.getPixiTexture(offset + i, "shadow");
-            shadowTextures.push(shadow);
-        }
-
-        const shadowSprite = new PIXI.AnimatedSprite(shadowTextures);
-        shadowSprite.animationSpeed = 0.2;
-        shadowSprite.position.set(
-            x - this.playerTexture.shape.shadow.left[offset + shadowSprite.currentFrame],
-            y - this.playerTexture.shape.shadow.top[offset + shadowSprite.currentFrame]
-        )
-        shadowSprite.play();
-        this.playerShadowSprite = shadowSprite;
-        this.container.addChild(shadowSprite);
-
-        const bodySprite = new PIXI.AnimatedSprite(bodyTextures);
-        bodySprite.animationSpeed = 0.2;
-        bodySprite.position.set(
-            x - this.playerTexture.shape.body.left[offset + bodySprite.currentFrame],
-            y - this.playerTexture.shape.body.top[offset + bodySprite.currentFrame]
-        );
-        bodySprite.play();
-        this.playerBodySprite = bodySprite;
-        this.container.addChild(bodySprite);
-
-        this.lastActionStartOffset = offset;
 
         this.renderGuage();
         this.renderGuildIcon_test();
@@ -325,43 +328,14 @@ class Player {
         }
     }
 
-    renderEffects() {
-        const { x, y } = this;
-
-        if (this.rebirthSprite) {
-            const currentFrame = this.rebirthSprite.currentFrame;
-            this.rebirthSprite.position.set(
-                x - this.rebirthTexture.shape.body.left[currentFrame],
-                y - this.rebirthTexture.shape.body.top[currentFrame] + 25
-            );
-            return;
-        }
-
-        const rebirthTextures = [];
-        for (let i = 0; i < this.rebirthTexture.frameCount; i++) {
-            const texture = this.rebirthTexture.getPixiTexture(i);
-            rebirthTextures.push(texture);
-        }
-        const rebirthSprite = new PIXI.AnimatedSprite(rebirthTextures);
-        rebirthSprite.animationSpeed = 0.3;
-        rebirthSprite.position.set(
-            x - this.rebirthTexture.shape.body.left[0],
-            y - this.rebirthTexture.shape.body.top[0] + 25
-        );
-        rebirthSprite.blendMode = PIXI.BLEND_MODES.ADD;
-        rebirthSprite.play();
-        this.rebirthSprite = rebirthSprite;
-        this.container.addChild(rebirthSprite);
-    }
-
     renderGuage() {
-        this.guageTexture = this.guageTexture || PIXI.Texture.from(CommonUI.getGuage("myPlayer", "MyPlayer (200)"));
+        this.guageTexture = this.guageTexture || CommonUI.getGuage("myPlayer", "MyPlayer (200)");
         const texture = this.guageTexture;
         /**
          * @type {PIXI.Sprite}
          */
         const sprite = this.guageSprite || new PIXI.Sprite(texture);
-        sprite.position.set(this.x - sprite.width / 2, this.y - 65);
+        sprite.position.set(this.x - sprite.width / 2, this.y - 90);
 
         if (!this.guageSprite) {
             this.container.addChild(sprite);
@@ -386,6 +360,55 @@ class Player {
             sprite.position.set(this.guageSprite.x - 32, this.guageSprite.y - (32 - this.guageSprite.height) / 2);
             this.container.addChild(sprite);
         }
+    }
+
+    addHitEffect(frameOffset = 0) {
+        const textures = (new Array(5)).fill(null).map((v, i) => this.hitEffect.getPixiTexture(i + frameOffset));
+        const hitEffectSprite = new AnimatedSprite(textures);
+        hitEffectSprite.animationSpeed = 0.4;
+        hitEffectSprite.loop = false;
+        hitEffectSprite.blendMode = PIXI.BLEND_MODES.ADD;
+        hitEffectSprite.position.set(
+            this.battleTarget.x + this.battleTarget.width / 2 - this.hitEffect.shape.body.left[frameOffset],
+            this.battleTarget.y - 32 - this.hitEffect.shape.body.top[frameOffset]
+        );
+        hitEffectSprite.onFrameChange = (currentFrame) => {
+            if (!this.battleTarget) return;
+            hitEffectSprite.position.set(
+                this.battleTarget.x + this.battleTarget.width / 2 - this.hitEffect.shape.body.left[frameOffset + currentFrame],
+                this.battleTarget.y - 32 - this.hitEffect.shape.body.top[frameOffset + currentFrame]
+            );
+        }
+        hitEffectSprite.onComplete = () => {
+            const idx = this.effectSprites.indexOf(hitEffectSprite);
+            this.effectSprites.splice(idx, 1);
+            hitEffectSprite.destroy();
+        }
+        hitEffectSprite.play();
+        this.effectSprites = this.effectSprites || [];
+        this.effectSprites.push(hitEffectSprite);
+    }
+
+    /**
+     * @param {Skill2} skill
+     */
+    useSkillToTarget(skill, target) {
+        if (!skill) {
+            skill = Skill2.allSkills.find(s => s.name === "ダブルスローイング") // skill 152
+        }
+
+        this.battleTarget = target;
+        this.usingSkill = skill;
+
+        this.actor.attackToActorByContinuousAttack({
+            skill: this.usingSkill.serial,
+            level: 0,
+            target: this.battleTarget,
+            attackCount: 7,
+            fps: 10,
+        });
+
+        console.log("check skill", skill);
     }
 }
 

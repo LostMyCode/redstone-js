@@ -143,4 +143,8 @@ export const getDirectionString = (directionNum) => {
 
 export const getDistance = (p1, p2) => {
     return Math.hypot(p2.x - p1.x, p2.y - p1.y);
-} 
+}
+
+export function getRandomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}

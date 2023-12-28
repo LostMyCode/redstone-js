@@ -1,7 +1,7 @@
 import * as PIXI from "pixi.js";
 
 import RedStoneMap, { Mapset, ObjectType } from "./models/Map";
-import { fetchBinaryFile, loadTexture, loadZippedTextures } from "../utils";
+import { fetchBinaryFile, loadAnimation, loadTexture, loadZippedTextures } from "../utils";
 import BufferReader from "../utils/BufferReader";
 import Map from "./models/Map";
 import Camera from "./Camera";
@@ -14,6 +14,8 @@ import Listener from "./Listener";
 import { getDistance } from "../utils/RedStoneRandom";
 import MonsterSource from "./models/MonsterSource";
 import SoundManager from "./SoundManager";
+import Actor from "./actor/Actor";
+import ActorManager from "./actor/ActorManager";
 
 const getTextureFileName = (textureId, extension = "rso") => {
     if (!extension) throw new Error("[Error] Invalid file extension");
@@ -96,8 +98,6 @@ class GameMap {
          */
         this.actorSprites = [];
 
-        this.actorTextures = {};
-
         window.addEventListener("mouseup", () => {
             if (this.selectedPortal) {
                 this.selectedPortal = null;
@@ -116,6 +116,8 @@ class GameMap {
         this.foremostContainer.removeChildren();
         this.graphics.clear();
 
+        RedStone.player.reset();
+
         RedStone.mainCanvas.mainContainer.removeChild(
             this.objectContainer,
             this.positionSpecifiedObjectContainer,
@@ -124,6 +126,8 @@ class GameMap {
             this.foremostContainer,
             this.graphics
         );
+
+        RedStone.actors = [];
 
         this.tileSubContainers = {};
         this.objectSprites = [];
@@ -158,11 +162,11 @@ class GameMap {
         this.objectTextures = await loadZippedTextures(`${MAPSET_DIR}/${mapsetName}/${mapsetName}_Objects.zip`);
         this.buildingTextures = Object.keys(this.map.buildingInfos).length ? await loadZippedTextures(`${MAPSET_DIR}/${mapsetName}/${mapsetName}_Buildings.zip`) : null;
 
-        // load actor textures
+        const fetched = {};
+
+        // load actors
         for (let actor of this.map.actorSingles) {
             const group = this.map.actorGroups[actor.internalID];
-            if (this.actorTextures[group.job]) continue;
-
             const isMonster = [CType.Monster, CType.QuestMonster].includes(actor.charType);
             let actorTextureName;
 
@@ -178,8 +182,46 @@ class GameMap {
 
             const dir = isMonster ? "monsters" : "NPC";
             const fileName = actorTextureName + ".sad";
-            const texture = await loadTexture(`${DATA_DIR}/${dir}/${fileName}`);
-            this.actorTextures[group.job] = texture;
+            const buffer = fetched[group.job] || (fetched[group.job] = await fetchBinaryFile(`${DATA_DIR}/${dir}/${fileName}`));
+            const anim = RedStone.anims[actorTextureName] || loadAnimation(buffer);
+
+            const _actor = new Actor();
+            const actorDirect = actor.direct === 8 ? ~~(Math.random() * 8) : actor.direct;
+
+            _actor.pos.set(actor.point.x, actor.point.y);
+            _actor.direct = actorDirect;
+            _actor.horizonScale = group.scale.width;
+            _actor.verticalScale = group.scale.height;
+            _actor.actorSingle = actor;
+            _actor.anm = 2;
+            _actor.job = group.job;
+            _actor.name = actor.name;
+            _actor.body = isMonster ? MonsterSource.allMonsters[group.job].textureId : group.job; // temp
+            _actor.actorKind = actor.charType;
+            _actor._isMonster_tmp = isMonster;
+            _actor.pixiSprite = new PIXI.Sprite();
+
+            const sprite = _actor.pixiSprite
+
+            sprite.interactive = true;
+            sprite.on("mouseover", () => {
+                if (_actor.isDeath()) return;
+                ActorManager.focusActor_tmp = _actor;
+            });
+            sprite.on("mouseout", () => {
+                // if (_actor.isDeath()) return;
+                ActorManager.focusActor_tmp = null;
+            });
+            sprite.on("mousedown", () => {
+                if (_actor.isDeath()) return;
+                ActorManager.lockedTarget_tmp = _actor;
+            });
+
+            RedStone.actors.push(_actor);
+
+            if (RedStone.anims[actorTextureName]) continue;
+
+            RedStone.anims[actorTextureName] = anim;
         }
     }
 
@@ -264,7 +306,13 @@ class GameMap {
         });
 
         this.renderPortals();
-        this.renderActors();
+        
+        this.map.actorSingles.forEach(async actor => {
+            if (ENABLE_DRAW_MAP_DEBUG) {
+                this.graphics.lineStyle(3, 0xeb4034);
+                this.graphics.drawCircle(actor.point.x, actor.point.y, 10);
+            }
+        });
 
         RedStone.mainCanvas.mainContainer.addChild(this.tileContainer);
         RedStone.mainCanvas.mainContainer.addChild(this.portalContainer);
@@ -330,9 +378,21 @@ class GameMap {
             this.tileContainer.addChild(tc);
         });
 
-        let playerAdded = false;
-        const playerTileY = Math.floor(RedStone.player.y / TILE_HEIGHT);
-        const _sprites = [...this.objectSprites, ...this.actorSprites].sort((a, b) => {
+        RedStone.player.render();
+        // TODO: fix this bad implementation
+        const actorSprites = RedStone.actors.map(actor => {
+            // const sprite = actor.getBody().createPixiSprite("body", actor.pos.x, actor.pos.y, actor.anm, actor.direct, actor.frame);
+            // sprite.shadowSprite = actor.getBody().createPixiSprite("shadow", actor.pos.x, actor.pos.y, actor.anm, actor.direct, actor.frame);
+            const sprite = actor.pixiSprite;
+            actor.getBody().updatePixiSprite(sprite, "body", actor.pos.x, actor.pos.y, actor.anm, actor.direct, actor.frame);
+            sprite.shadowSprite = actor.getBody().createPixiSprite("shadow", actor.pos.x, actor.pos.y, actor.anm, actor.direct, actor.frame);
+            sprite.isActorSprite = true;
+            sprite.blockX = actor.pos.x / TILE_WIDTH;
+            sprite.blockY = actor.pos.y / TILE_HEIGHT;
+            sprite.actor = actor;
+            return sprite;
+        });
+        const _sprites = [...this.objectSprites, ...actorSprites].sort((a, b) => {
             return a.blockY - b.blockY;
         });
         const actorSpritesInView = [];
@@ -352,14 +412,9 @@ class GameMap {
                 return;
             }
 
-            if (!playerAdded && sprite.blockY > playerTileY) {
-                RedStone.player.render();
-                this.objectContainer.addChild(RedStone.player.container);
-                playerAdded = true;
-            }
-
             if (sprite.isActorSprite) {
                 actorSpritesInView.push(sprite, sprite.shadowSprite);
+                sprite.actor.put();
             }
 
             if (sprite.shadowSprite) {
@@ -378,12 +433,6 @@ class GameMap {
             this.objectContainer.addChild(sprite);
         });
 
-        if (!playerAdded) {
-            RedStone.player.render();
-            this.objectContainer.addChild(RedStone.player.container);
-            playerAdded = true;
-        }
-
         this.positionSpecifiedObjectSprites.forEach(sprite => {
             const { x, y, width, height } = sprite;
 
@@ -400,34 +449,22 @@ class GameMap {
         });
 
         actorSpritesInView.forEach(sprite => {
-            if (typeof sprite.currentFrame === "number") {
-                const index = sprite.startFrameIndex + sprite.currentFrame;
-                let heightOffset = sprite.shape.height[sprite.startFrameIndex]
-                heightOffset -= sprite.shape.top[sprite.startFrameIndex]
-                sprite.position.set(
-                    sprite.baseX - sprite.shape.left[index] * sprite.scale.x,
-                    sprite.baseY - (sprite.shape.top[index] + heightOffset) * sprite.scale.y
-                );
-            }
-
             if (sprite.guageSprite) {
                 this.foremostContainer.addChild(sprite.guageSprite);
             }
             if (sprite.headIconSpriteSet) {
                 this.foremostContainer.addChild(...sprite.headIconSpriteSet);
             }
-
-            if (sprite.isHovering) {
-                const texture = typeof sprite.currentFrame === "number" ? sprite.textures[sprite.currentFrame] : sprite.texture;
-                const hoverSprite = new PIXI.Sprite(texture);
-                hoverSprite.position.set(sprite.position._x, sprite.position._y);
-                hoverSprite.scale.set(sprite.scale._x, sprite.scale._y);
-                hoverSprite.animationSpeed = sprite.animationSpeed;
-                hoverSprite.blendMode = PIXI.BLEND_MODES.ADD;
-                hoverSprite.alpha = 0.5;
-                this.foremostContainer.addChild(hoverSprite);
-            }
         });
+
+        if (ActorManager.focusActor_tmp) {
+            // add hover sprite
+            const actor = ActorManager.focusActor_tmp;
+            const sprite = actor.getBody().createPixiSprite("body", actor.pos.x, actor.pos.y, actor.anm, actor.direct, actor.frame);
+            sprite.blendMode = PIXI.BLEND_MODES.ADD;
+            sprite.alpha = 0.5;
+            this.foremostContainer.addChild(sprite);
+        }
 
         const endTime = performance.now();
         // window.redgemDebugLog.push({ type: "GameMap Render Time", time: endTime - startTime });
@@ -636,147 +673,6 @@ class GameMap {
 
             this.portalContainer.addChild(sprite);
         });
-    }
-
-    renderActors() {
-        this.map.actorSingles.forEach(async actor => {
-            const group = this.map.actorGroups[actor.internalID];
-            const texture = this.actorTextures[group.job];
-
-            if (!texture) return;
-            if (!texture.actions || !texture.actions.length) return; // not supported yet (e.g. ギルディル川　沼地洞窟　Ｂ１ "TongueEye.sad")
-
-            let dir;
-            switch (actor.charType) {
-                case CType.Monster:
-                case CType.QuestMonster:
-                    dir = "monsters";
-                    ActorImage[group.job] + ".sad";
-                    break;
-
-                default:
-                    dir = "NPC";
-                    ActorImage[group.job] + ".sad";
-                    break;
-            }
-
-            const action = texture.actions.find(a => a.name.match(/^02/));
-            const startFrameIndex = action.startFrameIndex;
-            let frameCount;
-            let nextFrameIndex;
-
-            if (action.index === texture.actions.length - 1) {
-                // theres no next action
-                nextFrameIndex = texture.frameCount;
-            } else {
-                const nextAction = texture.actions[texture.actions.indexOf(action) + 1];
-                nextFrameIndex = nextAction.startFrameIndex;
-            }
-
-            frameCount = (nextFrameIndex - startFrameIndex) / 8;
-            if (frameCount === 0) return;
-
-            const actorDirect = actor.direct === 8 ? ~~(Math.random() * 8) : actor.direct;
-            const targetFrame = startFrameIndex + actorDirect * frameCount;
-
-            const pixiTextures = [];
-            const pixiShadowTextures = [];
-
-            for (let i = 0; i < frameCount; i++) {
-                const tex = texture.getPixiTexture(targetFrame + i);
-                pixiTextures.push(tex);
-                const shadowTex = texture.getPixiTexture(targetFrame + i, "shadow");
-                pixiShadowTextures.push(shadowTex);
-            }
-
-            const scaleX = group.scale.width / 100;
-            const scaleY = group.scale.height / 100;
-            const x = actor.point.x - texture.shape.body.left[targetFrame] * scaleX;
-            const y = actor.point.y - texture.shape.body.height[targetFrame] * scaleY;
-
-            // const sprite = new PIXI.Sprite(pixiTexture);
-            const sprite = new PIXI.AnimatedSprite(pixiTextures);
-            sprite.position.set(x, y);
-            sprite.scale.set(scaleX, scaleY);
-            sprite.animationSpeed = 0.13;
-            sprite.startFrameIndex = targetFrame;
-            sprite.shape = texture.shape.body;
-            sprite.baseX = actor.point.x;
-            sprite.baseY = actor.point.y;
-            sprite.blockX = Math.floor(actor.point.x / TILE_WIDTH);
-            sprite.blockY = Math.floor(actor.point.y / TILE_HEIGHT);
-            sprite.isActorSprite = true;
-            sprite.play();
-
-            const shadowX = actor.point.x - texture.shape.shadow.left[targetFrame] * scaleX;
-            const shadowY = actor.point.y - texture.shape.shadow.height[targetFrame] * scaleY;
-
-            const shadowSprite = new PIXI.AnimatedSprite(pixiShadowTextures);
-            shadowSprite.position.set(shadowX, shadowY);
-            shadowSprite.scale.set(scaleX, scaleY);
-            shadowSprite.animationSpeed = 0.13;
-            shadowSprite.startFrameIndex = targetFrame;
-            shadowSprite.shape = texture.shape.shadow;
-            shadowSprite.baseX = actor.point.x;
-            shadowSprite.baseY = actor.point.y;
-            shadowSprite.blockX = Math.floor(actor.point.x / TILE_WIDTH);
-            shadowSprite.blockY = Math.floor(actor.point.y / TILE_HEIGHT);
-            shadowSprite.isShadow = true;
-            shadowSprite.play();
-            sprite.shadowSprite = shadowSprite;
-
-            const guageTexture = PIXI.Texture.from(CommonUI.getGuage(dir === "NPC" ? "npc" : "enemy", actor.name));
-            const guageSprite = new PIXI.Sprite(guageTexture);
-            guageSprite.position.set(actor.point.x - guageSprite.width / 2, y - 20);
-
-            if (dir === "NPC") { // set cool time if target is NPC (to be natural)
-                sprite.loop = false;
-                shadowSprite.loop = false;
-                const onComplete = () => {
-                    setTimeout(() => {
-                        sprite.gotoAndPlay(0);
-                        shadowSprite.gotoAndPlay(0);
-                    }, 5000 * ~~(Math.random() * 3));
-                };
-                sprite.onComplete = onComplete;
-                sprite.guageSprite = guageSprite;
-                this.renderHeadIcon(actor, sprite);
-            }
-
-            sprite.interactive = true;
-            sprite.on("mouseover", () => {
-                sprite.isHovering = true;
-                if (dir !== "NPC") sprite.guageSprite = guageSprite;
-            });
-            sprite.on("mouseout", () => {
-                sprite.isHovering = false;
-                if (dir !== "NPC") sprite.guageSprite = null;
-            });
-
-            if (ENABLE_DRAW_MAP_DEBUG) {
-                this.graphics.lineStyle(3, 0xeb4034);
-                this.graphics.drawCircle(actor.point.x, actor.point.y, 10);
-            }
-
-            this.actorSprites.push(sprite);
-        });
-    }
-
-    renderHeadIcon(actor, actorSprite) {
-        const iconTexture = CommonUI.getActorHeadIcon(actor);
-
-        if (!iconTexture) return;
-
-        const brightSprite = new PIXI.Sprite(CommonUI.shopIconBrightTexture);
-        const sprite = new PIXI.Sprite(iconTexture);
-        sprite.anchor.set(0.5, 0.5);
-        sprite.position.set(actor.point.x, actor.point.y - actorSprite.height - 60);
-        brightSprite.anchor.set(0.5, 0.5);
-        brightSprite.blendMode = PIXI.BLEND_MODES.ADD;
-        brightSprite.position.set(actor.point.x, actor.point.y - actorSprite.height - 60);
-        // this.actorSprites.push(brightSprite);
-        // this.actorSprites.push(sprite);
-        actorSprite.headIconSpriteSet = [brightSprite, sprite];
     }
 
     initPosition() {

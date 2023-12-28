@@ -95,6 +95,18 @@ class CanvasManager {
             pixelData[i] = 0;
         }
     }
+
+    cloneCanvas() {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        const image = this.context.getImageData(0, 0, this.width, this.height);
+
+        canvas.width = this.width;
+        canvas.height = this.height;
+
+        ctx.putImageData(image, 0, 0);
+        return canvas;
+    }
 }
 
 export default CanvasManager;

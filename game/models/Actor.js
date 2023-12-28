@@ -406,6 +406,10 @@ export class MapActorSingle {
             }
         }
     }
+
+    get isMonster() {
+        return [CType.Monster, CType.QuestMonster].includes(this.charType);
+    }
 }
 
 export class MapActorGroup {

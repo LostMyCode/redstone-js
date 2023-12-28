@@ -1,5 +1,7 @@
+import WrappedAnim from "../engine/WrappedAnim";
 import { DATA_DIR } from "../game/Config";
 import Texture, { ZippedTextures } from "../game/models/Texture";
+import BufferReader from "./BufferReader";
 
 export const fetchBinaryFile = async (path) => {
     const f = await fetch(path);
@@ -46,6 +48,12 @@ export const loadTexture = async (path) => {
     const texture = new Texture(path.split("/").pop(), buf);
     console.log("[Texture] Loaded", path.replace(DATA_DIR + "/", ""));
     return texture;
+}
+
+export const loadAnimation = buffer => {
+    const anim = new WrappedAnim();
+    anim.load(new BufferReader(buffer), false);
+    return anim;
 }
 
 export const loadZippedTextures = async (path) => {

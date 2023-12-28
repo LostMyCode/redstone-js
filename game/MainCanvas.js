@@ -4,6 +4,8 @@ import Stats from "stats.js";
 import Camera from "./Camera";
 import { ENABLE_PERFORMANCE_MONITOR } from "./Config";
 import RedStone from "./RedStone";
+import SkillManager from "./skill/SkillManager";
+import ActorManager from "./actor/ActorManager";
 
 const renderTimes = [];
 
@@ -56,24 +58,34 @@ class MainCanvas {
 
             ticker.add((delta) => {
                 stats.begin();
-                this.render();
+                this.render(delta);
                 stats.end();
             });
         } else {
             ticker.add((delta) => {
-                this.render();
+                this.render(delta);
             });
         }
 
+        this.lastRenderTime = performance.now();
         ticker.start();
 
         this.rootContainer.addChild(this.mainContainer);
     }
 
-    render() {
+    render(delta) {
+        const now = performance.now();
+        delta = now - this.lastRenderTime;
+        this.currentDelta = delta;
+        this.lastRenderTime = now;
+
         this.mainContainer.position.set(window.innerWidth / 2 - Camera.x, window.innerHeight / 2 - Camera.y);
         RedStone.gameMap.render();
         RedStone.miniMap.render();
+        RedStone.player.update();
+        ActorManager.update(delta);
+        SkillManager.update();
+        SkillManager.draw();
         RedStone.player.updateMovement();
         // RedStone.player.render();
 
