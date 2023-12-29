@@ -63,37 +63,35 @@ class Player {
 
             window.dispatchEvent(new CustomEvent("displayLogUpdate", { detail: { key: "player-pos", value: `Player Position: (${Math.round(this.x / TILE_WIDTH)}, ${Math.round(this.y / TILE_HEIGHT)})` } }));
 
-            if (Listener.isMouseDown) return;
+            if (Listener.isMouseDown || Listener.pressingKeys.size === 0) return;
 
             let positionUpdated = false;
             let moveX = 0;
             let moveY = 0;
 
-            if (Listener.pressingKeys.size) {
-                Listener.pressingKeys.forEach(key => {
-                    switch (key) {
-                        case "w":
-                            moveY -= moveAmount;
-                            positionUpdated = true;
-                            break;
+            Listener.pressingKeys.forEach(key => {
+                switch (key) {
+                    case "w":
+                        moveY -= moveAmount;
+                        positionUpdated = true;
+                        break;
 
-                        case "d":
-                            moveX += moveAmount;
-                            positionUpdated = true;
-                            break;
+                    case "d":
+                        moveX += moveAmount;
+                        positionUpdated = true;
+                        break;
 
-                        case "s":
-                            moveY += moveAmount;
-                            positionUpdated = true;
-                            break;
+                    case "s":
+                        moveY += moveAmount;
+                        positionUpdated = true;
+                        break;
 
-                        case "a":
-                            moveX -= moveAmount;
-                            positionUpdated = true;
-                            break;
-                    }
-                });
-            }
+                    case "a":
+                        moveX -= moveAmount;
+                        positionUpdated = true;
+                        break;
+                }
+            });
 
             if (positionUpdated) {
                 if (SettingsManager.get("collisionDetection")) {
