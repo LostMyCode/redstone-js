@@ -542,7 +542,7 @@ class Actor {
     }
 
     putName(x, y, isOnlyGuage = false) {
-        if ((!this.isNpc() && ActorManager.focusActor_tmp !== this) || this.isHero() || this.isDeath()) return;
+        if ((!this.isNpc() && !this.isHero() && ActorManager.focusActor_tmp !== this) || this.isDeath()) return;
 
         const body = this.getBody();
 
@@ -572,7 +572,7 @@ class Actor {
         }
 
 
-        const guageTexture = CommonUI.getGuage(!this.isMonster() ? "npc" : "enemy", this.name);
+        const guageTexture = CommonUI.getGuage(this.isHero() ? "myPlayer" : (!this.isMonster() ? "npc" : "enemy"), this.name);
         const guageSprite = new PIXI.Sprite(guageTexture);
 
         guageSprite.position.set(x - guageSprite.width / 2, y - this.getBodyHeight(true) - 20);
@@ -593,6 +593,14 @@ class Actor {
             brightSprite.position.set(x, y - this.getBodyHeight(true) - 60);
 
             RedStone.gameMap.foremostContainer.addChild(brightSprite, sprite);
+        }
+
+        if (this.isHero()) {
+            const sprite = new PIXI.Sprite(RedStone.player.guildIconTexture);
+            sprite.width = 32;
+            sprite.height = 32;
+            sprite.position.set(guageSprite.x - 32, guageSprite.y - (32 - guageSprite.height) / 2);
+            RedStone.gameMap.foremostContainer.addChild(sprite);
         }
     }
 

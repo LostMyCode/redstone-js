@@ -21,7 +21,6 @@ const dJOB_ROGUE = 6;
 
 class Player {
     constructor() {
-        this.playerTexture = null;
         this.direction = "up";
         this.action = "stand";
 
@@ -36,7 +35,6 @@ class Player {
          */
         this._y = 60 * TILE_HEIGHT;
 
-        this.container = new PIXI.Container();
         this.initialized = false;
         this.lastUpdate = performance.now();
 
@@ -308,50 +306,6 @@ class Player {
         if (!RedStone.gameMap.onceRendered) return;
 
         this.update();
-
-        this.container.removeChildren();
-
-        this.renderGuage();
-        this.renderGuildIcon_test();
-
-        if (!this.onceRendered) {
-            RedStone.mainCanvas.mainContainer.addChild(this.container);
-            this.onceRendered = true;
-        }
-    }
-
-    renderGuage() {
-        this.guageTexture = this.guageTexture || CommonUI.getGuage("myPlayer", "MyPlayer (200)");
-        const texture = this.guageTexture;
-        /**
-         * @type {PIXI.Sprite}
-         */
-        const sprite = this.guageSprite || new PIXI.Sprite(texture);
-        sprite.position.set(this.x - sprite.width / 2, this.y - 90);
-
-        if (!this.guageSprite) {
-            this.container.addChild(sprite);
-            this.guageSprite = sprite;
-        } else {
-            this.container.removeChild(sprite);
-            this.container.addChild(sprite);
-        }
-    }
-
-    renderGuildIcon_test() {
-        if (this.guildIconSprite) {
-            const sprite = this.guildIconSprite;
-            sprite.position.set(this.guageSprite.x - 32, this.guageSprite.y - (32 - this.guageSprite.height) / 2);
-            this.container.removeChild(sprite);
-            this.container.addChild(sprite);
-        } else {
-            this.guildIconSprite = new PIXI.Sprite(this.guildIconTexture);
-            const sprite = this.guildIconSprite;
-            sprite.width = 32;
-            sprite.height = 32;
-            sprite.position.set(this.guageSprite.x - 32, this.guageSprite.y - (32 - this.guageSprite.height) / 2);
-            this.container.addChild(sprite);
-        }
     }
 
     /**
