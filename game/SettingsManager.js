@@ -17,7 +17,7 @@ export default new class SettingsManager {
     init() {
         let settings;
         try {
-            settings = localStorage.getItem(LS_SETTINGS_KEY);
+            settings = localStorage.getItem(LS_SETTINGS_KEY) || {};
             settings = JSON.parse(settings);
         } catch (e) {};
         if (typeof settings === "object") {

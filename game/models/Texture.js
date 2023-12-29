@@ -652,7 +652,7 @@ class Texture {
             br.offset = byteLen - 64 * (actionCount + 1);
             const actionName = br.readString(64); // its not correct length though
 
-            const m = actionName.match(/^0\d+/);
+            const m = actionName.match(/\d{2}/); // e.g. 01walk, 00, 02_run, ...
             if (m) {
                 hasAction = true;
             } else if (hasAction) {
@@ -693,6 +693,15 @@ class Texture {
 
         for (let i = 0; i < actionCount; i++) {
             actions[i].name = br.readString(64);
+
+            // calc and insert action frame count
+            const nextAction = actions[i + 1];
+            if (nextAction) {
+                actions[i].frameCount = nextAction.startFrameIndex - actions[i].startFrameIndex;
+            } else {
+                // theres no next action
+                actions[i].frameCount = this.frameCount - actions[i].startFrameIndex;
+            }
         }
 
         this.actions = actions;

@@ -8,11 +8,16 @@ import { fetchBinaryFile } from "../utils";
 import { DATA_DIR, SAVE_PLAYER_LOCATION } from "./Config";
 import BufferReader from "../utils/BufferReader";
 import MonsterSource from "./models/MonsterSource";
+import Skill2 from "./models/Skill2";
 import EffectDataManager from "./EffectDataManager";
 import Camera from "./Camera";
 import BgmPlayer from "./BgmPlayer";
 import SoundManager from "./SoundManager";
 import Minimap from "./Minimap";
+import Hero from "./Hero";
+import Actor from "./actor/Actor";
+import WrappedAnim from "../engine/WrappedAnim";
+import { ImageManager } from "./ImageData";
 
 class RedStone {
 
@@ -33,6 +38,14 @@ class RedStone {
      */
     static player;
     /**
+     * @type {Hero}
+     */
+    static hero;
+    /**
+     * @type {Actor[]}
+     */
+    static actors = [];
+    /**
      * @type {{[index: Number]: {size: [Number, Number], type: Number, name: String, fileName: String}}}
      */
     static mapList = {};
@@ -44,8 +57,15 @@ class RedStone {
      * @type {boolean}
      */
     static mapListExpanded = false;
+    /**
+     * @type {{[name: string]: WrappedAnim}}
+     */
+    static anims = {};
 
     static async init() {
+        // load player location
+        RedStone.lastLocation = this.loadPlayerLocation();
+
         RedStone.mainCanvas = new MainCanvas();
         RedStone.bgmPlayer = new BgmPlayer();
         RedStone.miniMap = new Minimap();
@@ -65,6 +85,13 @@ class RedStone {
         // load monsters
         await MonsterSource.loadAllMonsters();
 
+        // load skills
+        await Skill2.loadAllSkill2();
+
+        // load hero jobs
+        // await Hero.loadDefaultJob();
+        RedStone.hero = new Hero();
+
         // check save data
 
         // load common resources
@@ -73,28 +100,17 @@ class RedStone {
         // load effects
         await EffectDataManager.init();
 
+        // load image data
+        await ImageManager.init();
+
         // load bgm map
         await SoundManager.init();
 
-        // load player
-
-        // load player location
-        RedStone.lastLocation = this.loadPlayerLocation();
-        
         // init map
         await RedStone.gameMap.init();
 
         // init minimap
         await RedStone.miniMap.init();
-
-        if (SAVE_PLAYER_LOCATION) {
-            // set player position
-            if (this.lastLocation?.position) {
-                const { x, y } = this.lastLocation?.position;
-                this.player.setPosition(x, y);
-                Camera.setPosition(x, y);
-            }
-        }
 
         // water mark click event
         document.querySelector(".water-mark").addEventListener("click", () => {

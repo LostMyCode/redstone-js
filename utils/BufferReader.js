@@ -9,6 +9,10 @@ class BufferReader {
         this.offset = 0;
     }
 
+    readInt8() {
+        return this.buffer.readInt8(this.offset++);
+    }
+
     readUInt8() {
         return this.buffer.readUInt8(this.offset++);
     }
@@ -65,10 +69,26 @@ class BufferReader {
         return arr;
     }
 
+    readStructInt16LE(count) {
+        const arr = [];
+        for (let i = 0; i < count; i++) {
+            arr.push(this.readInt16LE());
+        }
+        return arr;
+    }
+
     readStructUInt32LE(count) {
         const arr = [];
         for (let i = 0; i < count; i++) {
             arr.push(this.readUInt32LE());
+        }
+        return arr;
+    }
+
+    readStructInt32LE(count) {
+        const arr = [];
+        for (let i = 0; i < count; i++) {
+            arr.push(this.readInt32LE());
         }
         return arr;
     }

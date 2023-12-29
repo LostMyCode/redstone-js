@@ -1,11 +1,17 @@
 import * as PIXI from "pixi.js";
 
 import { loadTexture } from "../../utils";
-import { INTERFACE_DIR } from "../Config";
+import { INTERFACE_DIR, MISC_DIR } from "../Config";
 import { CType, MapActorSingle } from "../models/Actor";
 import { ObjectType } from "../models/Map";
 
 const shopIconTextures = {};
+const guageCache = {
+    myPlayer: {},
+    otherPlayer: {},
+    npc: {},
+    enemy: {},
+};
 
 class CommonUI {
     constructor() {
@@ -19,7 +25,9 @@ class CommonUI {
         this.shopIconBrightTexture = this.shopIcon.getPixiTexture(0);
         // this.interface2 = await loadTexture(`${INTERFACE_DIR}/interface2.sd`);
         this.nameBar = await loadTexture(`${INTERFACE_DIR}/name_bar.sd`);
+        this.hitText = await loadTexture(`${INTERFACE_DIR}/hitText.sd`);
         this.minimapAnim = await loadTexture(`${INTERFACE_DIR}/etc_anm.sad`);
+        // this.smiIconSkill = await loadTexture(`${MISC_DIR}/iconSkill.smi`);
     }
 
     async init() {
@@ -45,7 +53,7 @@ class CommonUI {
     /**
      * @param {"myPlayer" | "otherPlayer" | "npc" | "enemy"} type 
      */
-    getGuage(type, text = "") {
+    createGuage(type, text = "") {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
 
@@ -82,6 +90,20 @@ class CommonUI {
         ctx.fillText(text, 10, 12);
 
         return canvas;
+    }
+
+    /**
+     * @param {"myPlayer" | "otherPlayer" | "npc" | "enemy"} type 
+     */
+    getGuage(type, text = "") {
+        if (guageCache[type][text]) return guageCache[type][text];
+
+        const canvas = this.createGuage(type, text);
+        const texture = PIXI.Texture.from(canvas);
+
+        guageCache[type][text] = texture;
+
+        return texture;
     }
 
     /**
@@ -137,6 +159,8 @@ class CommonUI {
         }
 
         if (typeof index !== "number") return null;
+
+        if (shopIconTextures[index]) return shopIconTextures[index];
 
         shopIconTextures[index] = this.shopIcon.getPixiTexture(index);
 
