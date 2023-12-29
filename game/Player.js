@@ -322,6 +322,8 @@ class Player {
             skill = Skill2.allSkills.find(s => s.name === "ダブルスローイング") // skill 152
         }
 
+        if (!target || target.isDeath()) return;
+
         this.battleTarget = target;
         this.usingSkill = skill;
 
