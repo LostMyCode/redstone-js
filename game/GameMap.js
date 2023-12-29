@@ -183,7 +183,7 @@ class GameMap {
             const dir = isMonster ? "monsters" : "NPC";
             const fileName = actorTextureName + ".sad";
             const buffer = fetched[group.job] || (fetched[group.job] = await fetchBinaryFile(`${DATA_DIR}/${dir}/${fileName}`));
-            const anim = RedStone.anims[actorTextureName] || loadAnimation(buffer);
+            const anim = RedStone.anims[actorTextureName] || (RedStone.anims[actorTextureName] = loadAnimation(buffer));
 
             const _actor = new Actor();
             const actorDirect = actor.direct === 8 ? ~~(Math.random() * 8) : actor.direct;
@@ -199,7 +199,8 @@ class GameMap {
             _actor.body = isMonster ? MonsterSource.allMonsters[group.job].textureId : group.job; // temp
             _actor.actorKind = actor.charType;
             _actor._isMonster_tmp = isMonster;
-            _actor.pixiSprite = new PIXI.Sprite();
+            _actor.pixiSprite = _actor.getBody().createPixiSprite("body", _actor.pos.x, _actor.pos.y, _actor.anm, _actor.direct, _actor.frame);
+            _actor.pixiSprite.shadowSprite = _actor.getBody().createPixiSprite("shadow", _actor.pos.x, _actor.pos.y, _actor.anm, _actor.direct, _actor.frame);
 
             const sprite = _actor.pixiSprite
 
@@ -218,10 +219,6 @@ class GameMap {
             });
 
             RedStone.actors.push(_actor);
-
-            if (RedStone.anims[actorTextureName]) continue;
-
-            RedStone.anims[actorTextureName] = anim;
         }
     }
 
@@ -306,7 +303,7 @@ class GameMap {
         });
 
         this.renderPortals();
-        
+
         this.map.actorSingles.forEach(async actor => {
             if (ENABLE_DRAW_MAP_DEBUG) {
                 this.graphics.lineStyle(3, 0xeb4034);
@@ -381,15 +378,13 @@ class GameMap {
         RedStone.player.render();
         // TODO: fix this bad implementation
         const actorSprites = RedStone.actors.map(actor => {
-            // const sprite = actor.getBody().createPixiSprite("body", actor.pos.x, actor.pos.y, actor.anm, actor.direct, actor.frame);
-            // sprite.shadowSprite = actor.getBody().createPixiSprite("shadow", actor.pos.x, actor.pos.y, actor.anm, actor.direct, actor.frame);
             const sprite = actor.pixiSprite;
-            actor.getBody().updatePixiSprite(sprite, "body", actor.pos.x, actor.pos.y, actor.anm, actor.direct, actor.frame);
-            sprite.shadowSprite = actor.getBody().createPixiSprite("shadow", actor.pos.x, actor.pos.y, actor.anm, actor.direct, actor.frame);
+
             sprite.isActorSprite = true;
             sprite.blockX = actor.pos.x / TILE_WIDTH;
             sprite.blockY = actor.pos.y / TILE_HEIGHT;
             sprite.actor = actor;
+
             return sprite;
         });
         const _sprites = [...this.objectSprites, ...actorSprites].sort((a, b) => {
@@ -414,6 +409,16 @@ class GameMap {
 
             if (sprite.isActorSprite) {
                 actorSpritesInView.push(sprite, sprite.shadowSprite);
+
+                const actor = sprite.actor;
+
+                actor.getBody().updatePixiSprite(sprite, "body", actor.pos.x, actor.pos.y, actor.anm, actor.direct, actor.frame);
+                if (sprite.shadowSprite) {
+                    actor.getBody().updatePixiSprite(sprite.shadowSprite, "shadow", actor.pos.x, actor.pos.y, actor.anm, actor.direct, actor.frame);
+                } else {
+                    sprite.shadowSprite = actor.getBody().createPixiSprite("shadow", actor.pos.x, actor.pos.y, actor.anm, actor.direct, actor.frame);
+                }
+
                 sprite.actor.put();
             }
 
@@ -448,14 +453,9 @@ class GameMap {
             }
         });
 
-        actorSpritesInView.forEach(sprite => {
-            if (sprite.guageSprite) {
-                this.foremostContainer.addChild(sprite.guageSprite);
-            }
-            if (sprite.headIconSpriteSet) {
-                this.foremostContainer.addChild(...sprite.headIconSpriteSet);
-            }
-        });
+        // actorSpritesInView.forEach(sprite => {
+
+        // });
 
         if (ActorManager.focusActor_tmp) {
             // add hover sprite

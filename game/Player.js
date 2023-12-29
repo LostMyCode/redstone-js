@@ -169,7 +169,8 @@ class Player {
         this.actor.name = "MyPlayer (200)";
         this.actor.serial = 123123;
         this.actor._isMonster_tmp = false;
-        this.actor.pixiSprite = new PIXI.Sprite();
+        this.actor.pixiSprite = this.actor.getBody().createPixiSprite("body", this.actor.x, this.actor.y, this.actor.anm, this.actor.direct, this.actor.frame);
+        this.actor.pixiSprite.shadowSprite = this.actor.getBody().createPixiSprite("shadow", this.actor.x, this.actor.y, this.actor.anm, this.actor.direct, this.actor.frame);
 
         RedStone.actors.push(this.actor);
     }
@@ -183,8 +184,6 @@ class Player {
         const has = value => Listener.pressingKeys.has(value);
 
         if (has("w") && has("s") || has("a") && has("d")) { // invalid key combinations
-            newAction = "stand";
-            this.setAnimation(newAction, newDirection);
             return;
         }
 
