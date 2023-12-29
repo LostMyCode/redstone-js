@@ -28,12 +28,12 @@ class Player {
          * @private
          * @type {Number}
          */
-        this._x = 6 * TILE_WIDTH;
+        this._x = 4745;
         /**
          * @private
          * @type {Number}
          */
-        this._y = 60 * TILE_HEIGHT;
+        this._y = 2640;
 
         this.initialized = false;
         this.lastUpdate = performance.now();
