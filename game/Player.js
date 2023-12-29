@@ -4,7 +4,7 @@ import { AnimatedSprite } from "pixi.js";
 import { fetchBinaryFile, loadAnimation, loadTexture } from "../utils";
 import { getAngle, getDirection, getDirectionString, getDistance } from "../utils/RedStoneRandom";
 import Camera from "./Camera";
-import { DATA_DIR, TILE_HEIGHT, TILE_WIDTH, X_BOUND_OFFSET, Y_BOUND_OFFSET } from "./Config";
+import { DATA_DIR, SAVE_PLAYER_LOCATION, TILE_HEIGHT, TILE_WIDTH, X_BOUND_OFFSET, Y_BOUND_OFFSET } from "./Config";
 import CommonUI from "./interface/CommonUI";
 import Listener from "./Listener";
 import Skill2 from "./models/Skill2";
@@ -39,7 +39,6 @@ class Player {
         this.lastUpdate = performance.now();
 
         this.init();
-        Camera.setPosition(this.x, this.y);
     }
 
     async load() {
@@ -51,6 +50,15 @@ class Player {
     }
 
     async init() {
+        if (SAVE_PLAYER_LOCATION) {
+            // set player position
+            if (RedStone.lastLocation?.position) {
+                const { x, y } = RedStone.lastLocation?.position;
+                this.setPosition(x, y);
+            }
+        }
+        Camera.setPosition(this.x, this.y);
+
         await this.load();
         this.reset();
 
@@ -124,7 +132,7 @@ class Player {
         if (X < X_BOUND_OFFSET) {
             X = X_BOUND_OFFSET;
         }
-        else if (mapSize.width && X > mapSize.width - X_BOUND_OFFSET) {
+        else if (mapSize && mapSize.width && X > mapSize.width - X_BOUND_OFFSET) {
             X = mapSize.width - X_BOUND_OFFSET;
         }
         this._x = X;
@@ -139,7 +147,7 @@ class Player {
         if (Y < Y_BOUND_OFFSET) {
             Y = Y_BOUND_OFFSET;
         }
-        else if (mapSize.height && Y > mapSize.height - Y_BOUND_OFFSET) {
+        else if (mapSize && mapSize.height && Y > mapSize.height - Y_BOUND_OFFSET) {
             Y = mapSize.height - Y_BOUND_OFFSET;
         }
         this._y = Y;

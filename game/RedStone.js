@@ -63,6 +63,9 @@ class RedStone {
     static anims = {};
 
     static async init() {
+        // load player location
+        RedStone.lastLocation = this.loadPlayerLocation();
+
         RedStone.mainCanvas = new MainCanvas();
         RedStone.bgmPlayer = new BgmPlayer();
         RedStone.miniMap = new Minimap();
@@ -103,25 +106,11 @@ class RedStone {
         // load bgm map
         await SoundManager.init();
 
-        // load player
-
-        // load player location
-        RedStone.lastLocation = this.loadPlayerLocation();
-        
         // init map
         await RedStone.gameMap.init();
 
         // init minimap
         await RedStone.miniMap.init();
-
-        if (SAVE_PLAYER_LOCATION) {
-            // set player position
-            if (this.lastLocation?.position) {
-                const { x, y } = this.lastLocation?.position;
-                this.player.setPosition(x, y);
-                Camera.setPosition(x, y);
-            }
-        }
 
         // water mark click event
         document.querySelector(".water-mark").addEventListener("click", () => {
