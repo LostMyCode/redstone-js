@@ -328,8 +328,7 @@ class GameMap {
 
         try {
             const mapIndex = parseInt(this.currentRmdFileName.match(/\[(\d+)\]/)[1]);
-            const bgmIndex = SoundManager.bgmMap[mapIndex];
-            RedStone.bgmPlayer.play(bgmIndex);
+            RedStone.bgmPlayer.play(mapIndex);
         } catch (e) { };
     }
 

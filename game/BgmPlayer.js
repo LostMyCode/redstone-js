@@ -1,5 +1,7 @@
 import { BGM_DIR } from "./Config";
+import RedStone from "./RedStone";
 import SettingsManager from "./SettingsManager";
+import SoundManager from "./SoundManager";
 
 const BGM_SET = [
     "01 Title-Legend of Red Stone.ogg",
@@ -37,11 +39,19 @@ export default class BgmPlayer {
         });
     }
 
-    play(index) {
-        const replaceBgm = [2, 6, 0, 4, 3, 5, 7, 1, 8];
+    play(index, isMapSerial = true) {
+        if (isMapSerial) {
+            index = SoundManager.bgmMap[index] - 1;
+        }
 
-        if (BGM_SET[index - 1] === undefined) {
-            index = replaceBgm[index];
+        if (index < 0 || index >= BGM_SET.length || !isMapSerial) {
+            index = RedStone.gameMap.map.bgmIndex;
+
+            if (index < 9) {
+                const replaceBgm = [2, 6, 0, 4, 3, 5, 7, 1, 8];
+
+                index = replaceBgm[index];
+            }
         }
 
         if (typeof index !== "number" || (!this.audio.paused && this.currentBgmIndex === index)) return;
@@ -52,7 +62,7 @@ export default class BgmPlayer {
         }
 
         const _play = () => {
-            const fileName = BGM_SET[index - 1];
+            const fileName = BGM_SET[index];
             this.audio.src = `${BGM_DIR}/${fileName}`;
             this.audio.volume = SettingsManager.get("volume") / 100;
             this.audio.play()
