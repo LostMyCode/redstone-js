@@ -5,7 +5,11 @@ import BufferReader from "./BufferReader";
 
 export const fetchBinaryFile = async (path) => {
     const f = await fetch(path);
+
+    if (!f.ok) return null;
+
     const ab = await f.arrayBuffer();
+
     return Buffer.from(ab);
 }
 
