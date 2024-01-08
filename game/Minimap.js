@@ -45,6 +45,7 @@ export default class Minimap {
         this.rootContainer.removeChildren();
         this.graphics.clear();
         this.canvas.style.display = "none";
+        this.canvas.style.opacity = 0;
         this.initialized = false;
     }
 
@@ -52,6 +53,12 @@ export default class Minimap {
         if (!SettingsManager.get("showMinimap")) return;
 
         const buffer = await fetchBinaryFile(`${MINIMAP_DIR}/${RedStone.gameMap.currentRmdFileName}.tga`);
+
+        if (!buffer) {
+            this.reset();
+            return;
+        }
+
         this.tga.load(new Uint8Array(buffer));
         this.renderer.resize(
             Math.min(this.tga.header.width, 333),
@@ -78,6 +85,7 @@ export default class Minimap {
             this.canvas.style.display = "block";
         }
         this.initialized = true;
+        this.canvas.style.opacity = 1;
     }
 
     render() {
