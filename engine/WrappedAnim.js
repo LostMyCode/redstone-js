@@ -33,13 +33,19 @@ export default class WrappedAnim extends Anim {
         }
     }
 
+    getSpriteData(type = "body") {
+        if (type === "shadow") {
+            return this.sprite.shadow;
+        }
+        return this.sprite._16Sprite || this.sprite._8Sprite;
+    }
+
     getFrame(frame, type = "body") {
         const { offset, nextOffset } = this.getOffset(frame, type);
-        const spriteData = (() => {
-            if (type === "shadow") return this.sprite.shadow;
-            return this.sprite._8Sprite;
-        })();
-        const br = new BufferReader(Buffer.from(spriteData.slice(offset, nextOffset)));
+        const br = this.getSpriteData(type);
+
+        br.offset = offset;
+
         const width = br.readUInt16LE();
         const height = br.readUInt16LE();
         const left = br.readInt16LE();
@@ -53,30 +59,39 @@ export default class WrappedAnim extends Anim {
             };
         }
 
-        return { reader: br, width, height, left, top };
+        return { width, height, left, top, dataOffset: offset };
     }
 
     getCanvas(frame, type = "body") {
         if (this.frameCache[type][frame]?.canvas) return this.frameCache[type][frame].canvas;
 
-        const { reader, width, height } = this.getFrame(frame, type);
+        const canvas = this.drawCanvas(frame, type);
+
+        return canvas;
+    }
+
+    drawCanvas(frame, type = "body") {
+        const { dataOffset, width, height } = this.getFrame(frame, type);
+        const reader = this.getSpriteData(type);
         const _drawPixel = this.canvasManager.drawPixel;
         const _getRGB = getRGBA15bit;
         const isUseOpacity = false; // tmp;
         let unityCount, unityWidth, w, h, colorReference, colorData1, colorData2;
 
+        reader.offset = dataOffset + 8;
+
         this.canvasManager.resize(width, height);
 
-        for (h = 0; h < height; h++) {
-            unityCount = reader.readUInt8();
-            w = 0;
+        if (type === "body") {
+            for (h = 0; h < height; h++) {
+                unityCount = reader.readUInt8();
+                w = 0;
 
-            while (unityCount--) {
-                w += reader.readUInt8();
-                unityWidth = reader.readUInt8();
+                while (unityCount--) {
+                    w += reader.readUInt8();
+                    unityWidth = reader.readUInt8();
 
-                while (unityWidth--) {
-                    if (type === "body") {
+                    while (unityWidth--) {
                         colorReference = reader.readUInt8();
                         colorData1 = this.sprite.plt[colorReference * 2 + 1];
                         colorData2 = this.sprite.plt[colorReference * 2];
@@ -87,22 +102,36 @@ export default class WrappedAnim extends Anim {
                             h,
                             _getRGB.call(this, colorData1, colorData2, isUseOpacity)
                         )
-                    } else {
-                        this.canvasManager.drawBlendPixel(
-                            w,
-                            h,
-                            type === "shadow" ? SHADOW_PIXEL_DATA : OUTLINE_PIXEL_DATA
-                        )
-                    }
 
-                    w++;
+                        w++;
+                    }
+                }
+            }
+        } else {
+            const pixelData = type === "shadow" ? SHADOW_PIXEL_DATA : OUTLINE_PIXEL_DATA;
+
+            for (h = 0; h < height; h++) {
+                unityCount = reader.readUInt8();
+                w = 0;
+
+                while (unityCount--) {
+                    w += reader.readUInt8();
+                    unityWidth = reader.readUInt8();
+
+                    while (unityWidth--) {
+                        this.canvasManager.drawBlendPixel(w, h, pixelData);
+
+                        w++;
+                    }
                 }
             }
         }
 
         this.canvasManager.update();
 
-        const canvas = this.canvasManager.cloneCanvas();
+        const canvas = this.canvasManager.canvas;
+
+        this.canvasManager.reset();
 
         if (this.frameCache[type][frame]) {
             this.frameCache[type][frame].canvas = canvas;

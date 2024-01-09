@@ -109,7 +109,7 @@ export default class Anim extends AnimBase {
      * @param {Rect} rect 
      * @param {number} scale 
      */
-    getRect(anm, direct, frame, rect, scale) {
+    getRect(anm, direct, frame, rect, scale = 100) {
         rect.set(0, 0, 0, 0);
 
         if (this.anmData[anm].frameCount === 0) {

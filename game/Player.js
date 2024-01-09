@@ -202,7 +202,7 @@ class Player {
             newAction = "run";
             newDirection = direction.join("-");
 
-            this.actor.anm = ACT_RUN;
+            this.actor.setAnm(ACT_RUN);
         }
         else if (Listener.isMouseDown && !this.usingSkill) {
             const agl = getAngle({ x: this.oldX, y: this.oldY }, this);
@@ -210,7 +210,7 @@ class Player {
             newDirection = getDirectionString(dir);
             newAction = "run";
 
-            this.actor.anm = ACT_RUN;
+            this.actor.setAnm(ACT_RUN);
         }
         else if (this.usingSkill && this.battleTarget) {
             const targetSprite = this.battleTarget.pixiSprite;
@@ -229,7 +229,7 @@ class Player {
         else {
             newAction = "stand";
 
-            this.actor.anm = ACT_READY;
+            this.actor.setAnm(ACT_READY);
         }
 
         this.actor.direct = directionFrameOrder.indexOf(newDirection);

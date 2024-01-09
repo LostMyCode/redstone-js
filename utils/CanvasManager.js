@@ -15,6 +15,17 @@ class CanvasManager {
         this.isErrorOccurred = false;
     }
 
+    reset() {
+        this.canvas = document.createElement("canvas");
+        this.context = this.canvas.getContext("2d");
+
+        this.width = 0;
+        this.height = 0;
+        this.imageData = null;
+
+        this.isErrorOccurred = false;
+    }
+
     initialize() {
         this.resize(CANVAS_DEFAULT_WIDTH, CANVAS_DEFAULT_HEIGHT);
     }
@@ -94,18 +105,6 @@ class CanvasManager {
         while (i--) {
             pixelData[i] = 0;
         }
-    }
-
-    cloneCanvas() {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        const image = this.context.getImageData(0, 0, this.width, this.height);
-
-        canvas.width = this.width;
-        canvas.height = this.height;
-
-        ctx.putImageData(image, 0, 0);
-        return canvas;
     }
 }
 

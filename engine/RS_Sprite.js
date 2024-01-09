@@ -1,5 +1,6 @@
 import BufferReader from "../utils/BufferReader";
 import { PUT_NORMAL, SPRITE_BPP16, SPRITE_BPP8 } from "./DrawH";
+import Rect from "./Rect";
 
 export default class RS_Sprite {
     constructor() {
@@ -9,10 +10,23 @@ export default class RS_Sprite {
     }
 
     close() {
+        /**
+         * @type {BufferReader}
+         */
         this._16Sprite = null;
+        /**
+         * @type {BufferReader}
+         */
         this._8Sprite = null;
+        /**
+         * @type {BufferReader}
+         */
         this.layer = null;
+        /**
+         * @type {BufferReader}
+         */
         this.shadow = null;
+
         this.spriteOffset = null;
         this.layerOffset = null;
         this.shadowOffset = null;
@@ -61,27 +75,30 @@ export default class RS_Sprite {
         if (this.bpp === SPRITE_BPP16) {
 
         } else {
-            this._8Sprite = br.readStructUInt8(this.spriteOffset[this.count]);
+            this._8Sprite = new BufferReader(Buffer.from(br.readStructUInt8(this.spriteOffset[this.count])));
         }
 
         if (this.isShadow) {
             this.shadowOffset = br.readStructUInt32LE((this.count + 1));
 
             if (this.shadowOffset[this.count] > 0) {
-                this.shadow = br.readStructUInt8(this.shadowOffset[this.count]);
+                this.shadow = new BufferReader(Buffer.from(br.readStructUInt8(this.shadowOffset[this.count])));
             }
         }
 
         if (this.isLayer) {
             this.layerOffset = br.readStructUInt32LE(this.count + 1);
-            this.layer = br.readStructUInt8(this.layerOffset[this.count]);
+            this.layer = new BufferReader(Buffer.from(br.readStructUInt8(this.layerOffset[this.count])));
         } else {
             br.offset += this.count * 4;
             br.offset += br.readUInt32LE();
         }
 
         if (this._16Sprite) {
-            const br = new BufferReader(Buffer.from(this._16Sprite.slice(0, 8)));
+            const br = this._16Sprite;
+
+            br.offset = 0;
+
             const width = br.readUInt16LE();
             const height = br.readUInt16LE();
             const left = br.readInt16LE();
@@ -91,7 +108,10 @@ export default class RS_Sprite {
             this.height = height - top;
         }
         if (this._8Sprite) {
-            const br = new BufferReader(Buffer.from(this._8Sprite.slice(0, 8)));
+            const br = this._8Sprite;
+
+            br.offset = 0;
+
             const width = br.readUInt16LE();
             const height = br.readUInt16LE();
             const left = br.readInt16LE();
@@ -125,5 +145,33 @@ export default class RS_Sprite {
         //     this.maxSpriteWidth,
         //     this.maxSpriteHeight
         // );
+    }
+
+    /**
+     * @param {number} index int
+     * @param {Rect} rect 
+     * @param {number} scale int
+     */
+    getRect(index, rect, scale = 100) {
+        if (index >= this.count) {
+            rect.set(-100000, -100000, -90000, -90000);
+            return false;
+        }
+
+        const br = this._16Sprite || this._8Sprite;
+
+        br.offset = this.spriteOffset[index];
+
+        const width = br.readUInt16LE();
+        const height = br.readUInt16LE();
+        const left = br.readInt16LE();
+        const top = br.readInt16LE();
+
+        rect.x1 = ~~(- left * scale / 100);
+        rect.y1 = ~~(- top * scale / 100);
+        rect.x2 = ~~(rect.x1 + width * scale / 100);
+        rect.y2 = ~~(rect.y1 + height * scale / 100);
+
+        return true;
     }
 }
