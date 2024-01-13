@@ -105,6 +105,24 @@ class BufferReader {
         return arr;
     }
 
+    /**
+     * @param {number} count 
+     * @param {number} type 
+     * @param {object} options 
+     */
+    readArray(count, type, options = {}) {
+        const array = options.asTypedArray ? createTypedArray(type, count) : [];
+
+        for (let i = 0; i < count; i++) {
+            const value = this.readByType(type);
+
+            if (options.asTypedArray) array[i] = value;
+            else array.push(value);
+        }
+
+        return array;
+    }
+
     readString(count, encoding) {
         const arr = [];
         const bytes = this.readStructUInt8(count);
@@ -138,14 +156,12 @@ class BufferReader {
      */
     readByType = (type) => {
         switch (type) {
-            case TYPE_DEF.UINT8:
-                return this.readUInt8();
-
-            case TYPE_DEF.UINT16:
-                return this.readUInt16LE();
-
-            case TYPE_DEF.UINT32:
-                return this.readUInt32LE();
+            case TYPE_DEF.UINT8: return this.readUInt8();
+            case TYPE_DEF.UINT16: return this.readUInt16LE();
+            case TYPE_DEF.UINT32: return this.readUInt32LE();
+            case TYPE_DEF.INT8: return this.readInt8();
+            case TYPE_DEF.INT16: return this.readInt16LE();
+            case TYPE_DEF.INT32: return this.readInt32LE();
 
             default:
                 throw new Error("Unsupported read type", type);
@@ -185,9 +201,26 @@ export const TYPE_DEF = {
     UINT8: 0,
     UINT16: 1,
     UINT32: 2,
-    CHAR: 3,
-    CHAR_EUC_KR: 4,
+    INT8: 3,
+    INT16: 4,
+    INT32: 5,
+    CHAR: 6,
+    CHAR_EUC_KR: 7,
     SKIP: 0xFF,
+}
+
+export const createTypedArray = (type, length) => {
+    switch (type) {
+        case TYPE_DEF.UINT8: return new Uint8Array(length);
+        case TYPE_DEF.UINT16: return new Uint16Array(length);
+        case TYPE_DEF.UINT32: return new Uint32Array(length);
+        case TYPE_DEF.INT8: return new Int8Array(length);
+        case TYPE_DEF.INT16: return new Int16Array(length);
+        case TYPE_DEF.INT32: return new Int32Array(length);
+
+        default:
+            throw new Error(`Unsupported read type: ${type}`);
+    }
 }
 
 if (module.exports) {
