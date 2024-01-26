@@ -169,8 +169,8 @@ export default class WrappedAnim extends Anim {
 
         sprite.scale.set(xRate / 100, yRate / 100);
         sprite.position.set(
-            x - this.frameCache[type][targetFrame].info.left,
-            y - this.frameCache[type][targetFrame].info.top
+            x - this.frameCache[type][targetFrame].info.left * (xRate / 100),
+            y - this.frameCache[type][targetFrame].info.top * (yRate / 100)
         );
 
         container.addChild(sprite);
@@ -187,8 +187,8 @@ export default class WrappedAnim extends Anim {
 
         sprite.scale.set(xRate / 100, yRate / 100);
         sprite.position.set(
-            x - this.frameCache[type][targetFrame].info.left,
-            y - this.frameCache[type][targetFrame].info.top
+            x - this.frameCache[type][targetFrame].info.left * (xRate / 100),
+            y - this.frameCache[type][targetFrame].info.top * (yRate / 100)
         );
 
         return sprite;
@@ -205,8 +205,8 @@ export default class WrappedAnim extends Anim {
         sprite.texture = texture;
         sprite.scale.set(xRate / 100, yRate / 100);
         sprite.position.set(
-            x - this.frameCache[type][targetFrame].info.left,
-            y - this.frameCache[type][targetFrame].info.top
+            x - this.frameCache[type][targetFrame].info.left * (xRate / 100),
+            y - this.frameCache[type][targetFrame].info.top * (yRate / 100)
         );
 
         return sprite;

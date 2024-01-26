@@ -411,11 +411,11 @@ class GameMap {
 
                 const actor = sprite.actor;
 
-                actor.getBody().updatePixiSprite(sprite, "body", actor.pos.x, actor.pos.y, actor.anm, actor.direct, actor.frame);
+                actor.getBody().updatePixiSprite(sprite, "body", actor.pos.x, actor.pos.y, actor.anm, actor.direct, actor.frame, actor.horizonScale, actor.verticalScale);
                 if (sprite.shadowSprite) {
-                    actor.getBody().updatePixiSprite(sprite.shadowSprite, "shadow", actor.pos.x, actor.pos.y, actor.anm, actor.direct, actor.frame);
+                    actor.getBody().updatePixiSprite(sprite.shadowSprite, "shadow", actor.pos.x, actor.pos.y, actor.anm, actor.direct, actor.frame, actor.horizonScale, actor.verticalScale);
                 } else {
-                    sprite.shadowSprite = actor.getBody().createPixiSprite("shadow", actor.pos.x, actor.pos.y, actor.anm, actor.direct, actor.frame);
+                    sprite.shadowSprite = actor.getBody().createPixiSprite("shadow", actor.pos.x, actor.pos.y, actor.anm, actor.direct, actor.frame, actor.horizonScale, actor.verticalScale);
                 }
 
                 sprite.actor.put();
@@ -459,7 +459,7 @@ class GameMap {
         if (ActorManager.focusActor_tmp) {
             // add hover sprite
             const actor = ActorManager.focusActor_tmp;
-            const sprite = actor.getBody().createPixiSprite("body", actor.pos.x, actor.pos.y, actor.anm, actor.direct, actor.frame);
+            const sprite = actor.getBody().createPixiSprite("body", actor.pos.x, actor.pos.y, actor.anm, actor.direct, actor.frame, actor.horizonScale, actor.verticalScale);
             sprite.blendMode = PIXI.BLEND_MODES.ADD;
             sprite.alpha = 0.5;
             this.foremostContainer.addChild(sprite);
