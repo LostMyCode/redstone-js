@@ -113,7 +113,7 @@ class Texture {
             xorKey[i] = numCounts[i].indexOf(Math.max.apply(null, numCounts[i]));
         }
 
-        for (let i = ENCODE_KEY_LENGTH, j = null; i < limitAddress; i++) {
+        for (let i = ENCODE_START_ADDRESS, j = null; i < limitAddress; i++) {
             j = (i - ENCODE_START_ADDRESS) % ENCODE_KEY_LENGTH;
             this.textureFileBuffer[i] = this.textureFileBuffer[i] ^ xorKey[j];
         }
