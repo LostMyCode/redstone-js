@@ -37,8 +37,6 @@ class Player {
 
         this.initialized = false;
         this.lastUpdate = performance.now();
-
-        this.init();
     }
 
     async load() {

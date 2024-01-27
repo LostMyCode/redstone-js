@@ -112,6 +112,8 @@ class RedStone {
         // init minimap
         await RedStone.miniMap.init();
 
+        await RedStone.player.init();
+
         // water mark click event
         document.querySelector(".water-mark").addEventListener("click", () => {
             location.href = "https://github.com/LostMyCode/redstone-js";
