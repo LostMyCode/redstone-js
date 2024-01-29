@@ -13,6 +13,7 @@ export default class Ability {
     }
 
     set(skill, level) { this.skill = skill, this.level = level; }
+    copy(ability) { this.skill = ability.skill, this.level = ability.level };
 
     getSkill() {
         if (this.skill >= dMAX_SKILL)
@@ -48,5 +49,37 @@ export default class Ability {
         if (!skill) return 0;
 
         return skill.minimumShootRange;
+    }
+
+    getHitRange(weapon) {
+        let range = 0;
+
+        const skill = this.getSkill();
+
+        if (!skill) return range;
+
+        if (skill.hitRange === 0 && skill.hitRangePerLevel === 0) {
+            if (weapon) {
+                range = weapon.getBasicItem(true).range;
+            }
+
+            range = range * skill.weaponHitRangeCorrect / 100;
+        } else {
+            if (skill.hitRange === 0xffff) {
+                range = skill.hitRangePerLevel;
+            } else {
+                range = (skill.hitRange + skill.hitRangePerLevel * this.level) / 100;
+            }
+        }
+
+        return ~~(range);
+    }
+
+    getUpkeepTime() {
+        const skill = this.getSkill();
+
+        const time = (skill.upkeepTime + skill.upkeepTimePerLevel * this.level) / 100;
+
+        return ~~time;
     }
 }

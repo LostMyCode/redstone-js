@@ -84,10 +84,16 @@ export const ImageManager = new class ImageManager {
     async init() {
         this.effects[14] = loadAnimation(await fetchBinaryFile(`${DATA_DIR}/Effects/hit_basic.sad`));
 
+        this.effects[88] = loadAnimation(await fetchBinaryFile(`${DATA_DIR}/Effects/${EffectDataManager.aInfo[88].m_strImageFileName}`));
+
+        this.effects[98] = loadAnimation(await fetchBinaryFile(`${DATA_DIR}/Effects/${EffectDataManager.aInfo[98].m_strImageFileName}`));
+
         this.effects[137] = loadAnimation(await fetchBinaryFile(`${DATA_DIR}/Effects/${EffectDataManager.aInfo[137].m_strImageFileName}`));
 
+        this.effects[146] = loadAnimation(await fetchBinaryFile(`${DATA_DIR}/Effects/${EffectDataManager.aInfo[146].m_strImageFileName}`));
+
         this.effects[279] = loadAnimation(await fetchBinaryFile(`${DATA_DIR}/Effects/shoot_dagger.sad`));
-        
+
         // this.sprHitText.load(new BufferReader(await fetchBinaryFile(`${INTERFACE_DIR}/hitText.sd`)));
     }
 
@@ -126,8 +132,12 @@ export const ImageManager = new class ImageManager {
                 "body",
                 x, y, anm, direct, frame, horzScale, vertScale);
             sprite.blendMode = PIXI.BLEND_MODES.ADD;
-            if (image === 137) {   // temp
-                // level up effect
+
+            const levelUpEffect = 137;
+            const waterfallEffect = 98;
+            
+            if ([levelUpEffect, waterfallEffect].includes(image)) {   // temp
+                
                 sprite.blendMode = PIXI.BLEND_MODES.SCREEN;
             }
             RedStone.gameMap.foremostContainer.addChild(sprite);

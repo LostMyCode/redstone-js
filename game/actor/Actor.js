@@ -618,6 +618,49 @@ class Actor {
         //
     }
 
+    /**
+     * @param {number} x int
+     * @param {number} y int
+     * @param {Ability} ability 
+     * @param {number} range int
+     */
+    actionToGround(x, y, ability, range) {
+        const skill = ability.getSkill();
+
+        // this.stop();
+
+        this.useSkill = SkillManager.castAtGround(this, x, y, ability, range);
+
+        this.abilityUse.copy(ability);
+
+        // TODO: decrease bullet
+
+        return true;
+    }
+
+    getReleasePos(pos, anm = -1, direct = -1) {
+        console.log(pos, anm, direct)
+        if (anm == -1)
+            anm = anm;
+
+        if (direct == -1)
+            direct = direct;
+
+        if (!this.getBody().anmData[anm]?.isRelease) {
+            pos.x = this.pos.x;
+            pos.y = this.pos.y;
+
+            return;
+        }
+
+        const gameScale = 100; // temp
+        pos.x = this.pos.x + this.getBody().anmData[anm].releasePos[direct].x * this.horizonScale / gameScale;
+        pos.y = this.pos.y + this.getBody().anmData[anm].releasePos[direct].y * this.verticalScale / gameScale;
+    }
+
+    setExclusiveAction(_isSetting) { this.isExclusiveAction = _isSetting; }
+    isExclusiveAction() { return this.isExclusiveAction; }
+
     isDeath = () => !!this.corpseTime;
     isCorpse = () => {
         if (this.corpseTime === 0) return false;

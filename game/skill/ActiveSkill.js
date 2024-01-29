@@ -6,17 +6,21 @@ import { ImageManager } from "../ImageData";
 import RedStone from "../RedStone";
 import SoundManager from "../SoundManager";
 import Actor from "../actor/Actor";
-import { getAnglePos, getAngleToTarget, getTargetPos } from "../../engine/Angle";
-import { getOvalRange } from "../../engine/SFC";
+import { getAnglePos, getAngleToTarget, getOvalAnglePos, getTargetPos } from "../../engine/Angle";
+import { getOvalRange, random } from "../../engine/SFC";
 import Pos from "../../engine/Pos";
 import Skill2 from "../models/Skill2";
 import Ability from "./Ability";
 import HitInfo from "./HitInfo";
-import { SKILL_FIRE_RESULT_FAILED, SKILL_FIRE_RESULT_OK, SKILL_TYPE_BIT_GLIDER, SKILL_TYPE_MACHINE_MISSILE, SKILL_TYPE_SPECIAL_MISSILE } from "./SkillDefine";
+import { SKILL_FIRE_RESULT_FAILED, SKILL_FIRE_RESULT_OK, SKILL_TYPE_BIT_GLIDER, SKILL_TYPE_EXPLOSION_DEPEND_ON_IMAGE, SKILL_TYPE_MACHINE_MISSILE, SKILL_TYPE_SPECIAL_MISSILE, SKILL_TYPE_WATER_FALL, ST_CAST, ST_EXPLOSION } from "./SkillDefine";
 import SkillManager from "./SkillManager";
+import { SYNC_FPS } from "../GameH";
 
 export default class ActiveSkill {
     constructor() {
+        /**
+         * @type {Ability}
+         */
         this.ability = null;
         this.serial = 0;
         this.type = 0xffff;
@@ -95,6 +99,9 @@ export default class ActiveSkill {
         switch (this.type) {
             case SKILL_TYPE_BIT_GLIDER: fireResult = this.fireBitGlider(); break;
             case SKILL_TYPE_SPECIAL_MISSILE: fireResult = this.fireSpecialMissile(); break;
+
+            case SKILL_TYPE_EXPLOSION_DEPEND_ON_IMAGE: fireResult = this.fireExplosionTypeSkillDependOnImage(); break;
+            case SKILL_TYPE_WATER_FALL: fireResult = this.fireWaterFall(); break;
         }
 
         if (fireResult !== SKILL_FIRE_RESULT_OK) {
@@ -116,7 +123,7 @@ export default class ActiveSkill {
 
             // this.caster.setExclusiveAction(this.skill.isExclusiveAction);
         }
-        
+
         // if ...
 
         // if (this.skill.spentHPPercentage) ...
@@ -128,14 +135,18 @@ export default class ActiveSkill {
 
     update() {
         switch (this.type) {
+            case SKILL_TYPE_EXPLOSION_DEPEND_ON_IMAGE: return this.updateExplosionTypeSkillDependOnImage();
             case SKILL_TYPE_BIT_GLIDER: return this.updateBitGlider();
             case SKILL_TYPE_SPECIAL_MISSILE: return this.updateSpecialMissile();
+            case SKILL_TYPE_WATER_FALL: return this.updateWaterFall();
         }
     }
 
     put() {
         switch (this.type) {
             case SKILL_TYPE_SPECIAL_MISSILE: this.putSpecialMissile(); break;
+
+            case SKILL_TYPE_EXPLOSION_DEPEND_ON_IMAGE: this.putExplosionTypeSkillDependOnImage(); break;
         }
     }
 
@@ -394,7 +405,7 @@ export default class ActiveSkill {
             hitInfo = new HitInfo();
             // temp
             hitInfo.physicalDamage = 100000 + Math.floor(Math.random() * 1000000);
-            
+
             if (SkillManager.castSpecialMissile(null, this.target, pos.x, pos.y - casterArrowHeight, hitInfo, this.ability) === 0xffff) {
                 break;
             }
@@ -418,6 +429,284 @@ export default class ActiveSkill {
         return false;
     }
 
+    fireExplosionTypeSkillDependOnImage() {
+        if (this.skill.type === SKILL_TYPE_EXPLOSION_DEPEND_ON_IMAGE) {
+            this.caster.action(this.posTarget.x, this.posTarget.y, this.skill.action);
+        } else {
+            this.castExplosionTypeSkillDependOnImage();
+        }
+
+        this.setExplosionWhichDependOnImageSkillScale(20);
+        this.setExplosionWhichDependOnImageSkillZoommingStart();
+        this.setExplosionWhichDependOnImageSkillFrameStart();
+
+        if (this.skill.isRefitImageSizeByHitRange) {
+            const hitRange = this.ability.getHitRange(null);
+            const scale = ~~(hitRange * 100 / this.skill.imageRadius);
+
+            this.setExplosionWhichDependOnImageSkillScale(scale);
+        }
+
+        if (this.skill.skillSpareValues[0]) {
+            this.height = this.caster.getBodyHeight();
+        } else {
+            this.height = 0;
+        }
+
+        return SKILL_FIRE_RESULT_OK;
+    }
+
+    castExplosionTypeSkillDependOnImage() {
+        if (this.skill.type !== SKILL_TYPE_WATER_FALL) {
+            SoundManager.playActionSound(this.skill);
+        }
+
+        if (this.skill.explosionImage === 0xffff) {
+            return false;
+        }
+
+        const castingTime = ~~(this.skill.castingTime * SYNC_FPS / 1000);
+
+        this.setDependOnImageExplosionSkillCastingTime(castingTime);
+        this.setDependOnImageExplosionSkillHitCount();
+
+        let directCount = 0;
+
+        this.maxFrame = ImageManager.effects[this.skill.explosionImage].getFrameCount(0);
+        this.fps = ImageManager.effects[this.skill.explosionImage].getFPS(0);
+        this.frameCounter = 0;
+        this.anm = 0;
+
+        if (this.skill.type === SKILL_TYPE_WATER_FALL) {
+            this.anm = getRandomInt(0, ImageManager.effects[this.skill.explosionImage].anmCount - 1);
+        }
+
+        this.fps = ~~(this.fps * this.skill.correctFPS / 100);
+
+        this.direct = this.caster.direct;
+        directCount = ImageManager.effects[this.skill.explosionImage].getDirectCount(0);
+
+        this.direct = Math.min(directCount - 1, this.direct);
+
+        if (this.skill.shakeTiming === ST_CAST) {
+            if (this.skill.shakeIntensity) {
+                //
+            }
+        }
+
+        return true;
+    }
+
+    updateExplosionTypeSkillDependOnImage() {
+        if (!this.caster) return true;
+
+        if (!this.skill) return true;
+
+        if (this.frameCounter === 0xffff) {
+            if (this.caster.isTriggerFrame) {
+                if (!this.castExplosionTypeSkillDependOnImage()) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        if (this.decreaseDependOnImageExplosionSkillCastingTime()) {
+            return false;
+        }
+
+        if (this.skill.isZoomInEffectSkill && this.isExplosionWhichDependOnImageSkillZoomming()) {
+            // 
+        }
+
+        while (this.frameCounter >= SYNC_FPS) {
+            this.frameCounter -= SYNC_FPS;
+            this.frame++;
+
+            if (this.frame >= this.maxFrame) {
+                if (this.skill.isZoomInEffectSkill) {
+                    this.setExplosionWhichDependOnImageSkillDeclineScale();
+                } else {
+                    return true;
+                }
+            }
+
+            if (!this.skill || !ImageManager.effects[this.skill.explosionImage]) {
+                return true;
+            }
+
+            if (ImageManager.effects[this.skill.explosionImage].isDamage(0, this.frame)) {
+                if (this.skill.shakeTiming === ST_EXPLOSION) {
+                    if (this.skill.shakeIntensity) {
+                        //
+                    }
+                }
+
+                if (this.getDependOnImageExplosionSkillHitCount() === 0) {
+                    if (this.skill.type === SKILL_TYPE_EXPLOSION_DEPEND_ON_IMAGE) {
+                        SoundManager.playExplosionSound(this.skill);
+                    }
+                }
+
+                this.increaseDependOnImageExplosionSkillHitCount();
+            }
+        }
+
+        this.frameCounter += this.fps;
+
+        if (this.skill.isZoomInEffectSkill && this.isExplosionWhichDependOnImageSkillDeclineScale()) {
+            let scale = this.getExplosionWhichDependOnImageSkillScale();
+
+            scale -= ~~(scale / 4);
+            scale = Math.max(scale, 10);
+
+            this.setExplosionWhichDependOnImageSkillScale(scale);
+
+            if (scale <= 10) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    putExplosionTypeSkillDependOnImage() {
+        if (this.frameCounter === 0xffff) return;
+        if (this.skill.explosionImage === 0xffff) return;
+        if (this.skill.isRapeExplosionImage) return;
+        if (this.frame >= this.maxFrame) return;
+        if (this.skill.isZoomInEffectSkill && this.isExplosionWhichDependOnImageSkillZoomming()) {
+            return;
+        }
+
+        let scale = this.skill.imageScale;
+
+        if (this.skill.isZoomInEffectSkill || this.skill.isRefitImageSizeByHitRange) {
+            scale = this.getExplosionWhichDependOnImageSkillScale();
+        }
+
+        // temp
+        const gameScale = 100;
+
+        // scale = ~~(scale * gameScale / 100);
+
+        let x = this.posTarget.x; // getScaledXPos(posTarget.x)
+        let y = this.posTarget.y - this.height; // getScaledYPos()
+
+        if (this.skill.isRefitImageSizeByHitRange && scale >= 100) {
+            const frameCount = ImageManager.effects[this.skill.explosionImage].getFrameCount(0);
+
+            let width = 0;
+            let height = 0;
+
+            for (let i = 0; i < frameCount; ++i) {
+                width = Math.max(width, ImageManager.effects[this.skill.explosionImage].getSpriteWidth(0, 0, i));
+                height = Math.max(height, ImageManager.effects[this.skill.explosionImage].getSpriteHeight(0, 0, i));
+            }
+
+            const scaleWidth = ~~(width * scale / 100);
+            const scaleHeight = ~~(height * scale / 100);
+            x -= ~~(scaleWidth - width) / 2;
+            y -= ~~(scaleHeight - height) / 2;
+        }
+
+        ImageManager.putWhichUsePalette(this.skill.explosionImage, x, y, this.skill.paletteIndex, this.anm, this.direct, this.frame, scale, scale, this.skill.outputEffect);
+    }
+
+    fireWaterFall() {
+        this.caster.action(this.caster.pos.x, this.caster.pos.y, this.skill.action);
+
+        this.frameCounter = 0xffff;
+        this.resetWaterFallUpkeepTime();
+        this.resetWaterFallStrikePeriod();
+        this.resetWaterFallCasting();
+        this.resetWaterFallStrikeTime();
+
+        return SKILL_FIRE_RESULT_OK;
+    }
+
+    castWaterFall() {
+        this.frameCounter = 0;
+
+        if (this.skill.shakeIntensity) {
+            //
+        }
+
+        this.setWaterFallUpkeepTime(this.ability.getUpkeepTime() * SYNC_FPS);
+        this.setWaterFallCasting();
+
+        let iHitRange = this.ability.getHitRange(null);
+        let iHitCount = 6;
+
+        if (this.skill.skillSpareValues[1])
+            iHitCount = this.skill.skillSpareValues[1];
+
+        for (let i = 0; i < iHitCount; i++)
+            this.strikeWaterFall(360 / iHitCount * i + random(20), iHitRange / 2 + random(iHitRange / 2));
+
+        SoundManager.playActionSound(this.skill);
+    }
+
+    strikeWaterFall(_iAngle, _iDistance) {
+        const pos = new Pos(this.posTarget.x, this.posTarget.y);
+
+        getOvalAnglePos(pos, _iAngle, _iDistance);
+
+        const pos2 = new Pos(this.posTarget.x, this.posTarget.y);
+
+        let range = getOvalRange(pos2.x, pos2.y, pos.x, pos.y);
+
+        range = ~~Math.sqrt(range);
+
+        SkillManager.castExplosion(this.caster, pos.x, pos.y, this.ability);
+    }
+
+    updateWaterFall() {
+        if (!this.isWaterFallCasting()) {
+            if (this.frameCounter != 0xffff) {
+                if (this.decreaseWaterFallCastingTime())
+                    return false;
+
+                this.castWaterFall();
+            }
+            else
+                if (this.caster.isTriggerFrame) {
+                    if (this.skill.isInstanceWaterFall)
+                        this.castWaterFall();
+                    else {
+                        const pos = new Pos;
+
+                        this.caster.getReleasePos(pos);
+
+                        SkillManager.castCustomMissile(pos.x, pos.y, pos.x, pos.y - 400, this.ability);
+
+                        const castingTime = this.skill.castingTime * SYNC_FPS / 1000;
+
+                        this.setWaterFallCastingTime(castingTime);
+
+                        this.frameCounter = 0;
+                    }
+                }
+
+            return false;
+        }
+
+        if (this.decreaseWaterFallUpkeepTime())
+            return true;
+
+        const hitRange = this.ability.getHitRange(null);
+        let hitPeriod = 3;
+
+        if (this.skill.skillSpareValues[2])
+            hitPeriod = this.skill.skillSpareValues[2];
+
+        if (random(0, hitPeriod) == 0)
+            this.strikeWaterFall(random(360), random(hitRange));
+
+        return false;
+    }
+
     setContinuousAttackShotCount = shotCount => this.values[0] = shotCount;
     getContinuousAttackShotCount = () => this.values[0];
     setContinuousAttackActionFPS = fps => this.values[1] = fps;
@@ -435,4 +724,61 @@ export default class ActiveSkill {
 
     setMagicMissileAcceleration = acceleration => this.values[8] = acceleration;
     getMagicMissileAcceleration = () => this.values[8];
+
+    setExplosionWhichDependOnImageSkillScale(_iValue) { this.values[0] = _iValue; }
+    getExplosionWhichDependOnImageSkillScale() { return this.values[0]; }
+
+    setExplosionWhichDependOnImageSkillZoommingStart() { this.values[1] = 0; }
+    isExplosionWhichDependOnImageSkillZoomming() { if (this.values[1] == 0) return true; return false; }
+    setExplosionWhichDependOnImageSkillZoommingComplete() { this.values[1] = 1; }
+    setExplosionWhichDependOnImageSkillDeclineScale() { this.values[1] = 2; }
+    isExplosionWhichDependOnImageSkillDeclineScale() { if (this.values[1] == 2) return true; return false; }
+    setExplosionWhichDependOnImageSkillDeclineScaleFinish() { this.values[1] = 3; }
+
+    setExplosionWhichDependOnImageSkillFrameStart() { this.values[2] = 0; }
+    setExplosionWhichDependOnImageSkillFrameFinish() { this.values[2] = 1; }
+    isExplosionWhichDependOnImageSkillFrameFinish() { if (this.values[2] == 1) return true; return false; }
+
+    setDependOnImageExplosionSkillCastingTime(_iTime) { this.values[3] = _iTime; }
+    decreaseDependOnImageExplosionSkillCastingTime() {
+        if (this.values[3] == 0) return false;
+        this.values[3]--;
+
+        return true;
+    }
+
+    getDependOnImageExplosionSkillHitCount() { return this.values[4]; }
+    setDependOnImageExplosionSkillHitCount(time = 0) { this.values[4] = 0; }
+    increaseDependOnImageExplosionSkillHitCount() { this.values[4]++; }
+
+    resetWaterFallUpkeepTime() { this.values[0] = 0; }
+    setWaterFallUpkeepTime(_iUpkeepTime) { this.values[0] = _iUpkeepTime; }
+    decreaseWaterFallUpkeepTime() {
+        if (this.values[0] == 0) return true;
+
+        this.values[0]--;
+
+        return false;
+    }
+
+    resetWaterFallStrikePeriod() { this.values[1] = 0; }
+    setWaterFallStrikePeriod(_iPeriod) { this.values[1] = _iPeriod; }
+    getWaterFallStrikePeriod() { return this.values[1]; }
+
+    resetWaterFallCasting() { this.values[2] = false; }
+    isWaterFallCasting() { return this.values[2]; }
+    setWaterFallCasting() { this.values[2] = true; }
+
+    resetWaterFallStrikeTime() { this.values[3] = 0; }
+    increaseWaterFallStrikeTime() { this.values[3]++; }
+    getWaterFallStrikeTime() { return this.values[3]; }
+
+    setWaterFallCastingTime(_iTime) { this.values[5] = _iTime; }
+    decreaseWaterFallCastingTime() {
+        if (this.values[5] == 0) return false;
+
+        this.values[5]--;
+
+        return true;
+    }
 }

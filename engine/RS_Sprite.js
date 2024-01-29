@@ -174,4 +174,26 @@ export default class RS_Sprite {
 
         return true;
     }
+
+    get16(index) {
+        if (!this._16Sprite) return null;
+        if (index >= this.count) return null;
+
+        const reader = new BufferReader(this._16Sprite.buffer);
+
+        reader.offset = this.spriteOffset[index];
+
+        return reader;
+    }
+
+    get8(index) {
+        if (!this._8Sprite) return null;
+        if (index >= this.count) return null;
+
+        const reader = new BufferReader(this._8Sprite.buffer);
+
+        reader.offset = this.spriteOffset[index];
+
+        return reader;
+    }
 }

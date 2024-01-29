@@ -1,5 +1,7 @@
+import Actor from "../actor/Actor";
+import Ability from "./Ability";
 import ActiveSkill from "./ActiveSkill";
-import { SKILL_TYPE_SPECIAL_MISSILE } from "./SkillDefine";
+import { SKILL_TYPE_EXPLOSION_DEPEND_ON_IMAGE, SKILL_TYPE_SPECIAL_MISSILE } from "./SkillDefine";
 
 class SkillManager {
     constructor() {
@@ -92,6 +94,105 @@ class SkillManager {
         activeSkill.hitInfo = hitInfo;
 
         if (!activeSkill.fire()) return 0xffff;
+
+        activeSkill.serial = this.rookie;
+
+        const emptySlotIndex = this.activeSkills.findIndex(as => as.serial === 0xffff);
+        this.rookie = emptySlotIndex === -1 ? this.activeSkills.length : emptySlotIndex;
+
+        return activeSkill.serial;
+    }
+
+    /**
+     * @param {Actor} caster 
+     * @param {number} x int
+     * @param {number} y int
+     * @param {Ability} ability 
+     * @param {number} range int
+     */
+    castAtGround(caster, x, y, ability, range) {
+        const skill = ability.getSkill();
+
+        // if (this.activeSkillCount >= )
+
+        const activeSkill = new ActiveSkill();
+
+        this.activeSkills[this.rookie] = activeSkill;
+
+        activeSkill.ability = ability;
+        activeSkill.type = skill.type;
+        activeSkill.caster = caster;
+        activeSkill.pos.x = caster.pos.x;
+        activeSkill.pos.y = caster.pos.y - caster.getHeight();
+        activeSkill.posTarget.x = x;
+        activeSkill.posTarget.y = y;
+        activeSkill.skill = skill;
+        activeSkill.range = range;
+
+        if (!activeSkill.fire()) return 0xffff;
+
+        activeSkill.serial = this.rookie;
+
+        const emptySlotIndex = this.activeSkills.findIndex(as => as.serial === 0xffff);
+        this.rookie = emptySlotIndex === -1 ? this.activeSkills.length : emptySlotIndex;
+
+        return activeSkill.serial;
+    }
+
+    castCustomMissile(beginX, beginY, targetX, targetY, ability) {
+        const skill = ability.getSkill();
+
+        // if (this.activeSkillCount >= )
+
+        const activeSkill = new ActiveSkill();
+
+        this.activeSkills[this.rookie] = activeSkill;
+
+        activeSkill.type = SKILL_TYPE_SPECIAL_MISSILE;
+        activeSkill.caster = null;
+        activeSkill.target = null;
+        activeSkill.pos.x = beginX;
+        activeSkill.pos.y = beginY;
+        activeSkill.posTarget.x = targetX;
+        activeSkill.posTarget.y = targetY;
+        activeSkill.skill = skill;
+        activeSkill.range = 0xffff;
+
+        if (!activeSkill.fire()) return 0xffff;
+
+        activeSkill.serial = this.rookie;
+
+        const emptySlotIndex = this.activeSkills.findIndex(as => as.serial === 0xffff);
+        this.rookie = emptySlotIndex === -1 ? this.activeSkills.length : emptySlotIndex;
+
+        return activeSkill.serial;
+    }
+
+    castExplosion(_lpCaster, _iX, _iY, _lpAbility) {
+        const lpSkill = _lpAbility.getSkill();
+
+        // if (this.activeSkillCount >= )
+
+        const activeSkill = new ActiveSkill();
+
+        this.activeSkills[this.rookie] = activeSkill;
+
+        activeSkill.type = SKILL_TYPE_EXPLOSION_DEPEND_ON_IMAGE;
+        activeSkill.caster = _lpCaster;
+        activeSkill.target = null;
+        activeSkill.pos.x = _iX;
+        activeSkill.pos.y = _iY;
+        activeSkill.posTarget.x = _iX;
+        activeSkill.posTarget.y = _iY;
+        activeSkill.skill = lpSkill;
+        activeSkill.range = 0xffff;
+
+        const bIsExclusiveAction = _lpCaster.isExclusiveAction();
+
+        if (!activeSkill.fire(true))
+            return 0xffff;
+
+        _lpCaster.setExclusiveAction(bIsExclusiveAction);
 
         activeSkill.serial = this.rookie;
 

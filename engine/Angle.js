@@ -269,6 +269,21 @@ const OvalRevised =
 
 /**
  * @param {Pos} curPos 
+ * @param {number} angle int
+ * @param {number} dist int
+ */
+export const getOvalAnglePos = (curPos, angle, dist) => {
+    angle = Math.floor(angle);
+
+    const xs = ~~((dist * OvalRevised[angle].x) >> 8);
+    const ys = ~~((dist * OvalRevised[angle].y) >> 9);
+
+    curPos.x += xs;
+    curPos.y += ys;
+}
+
+/**
+ * @param {Pos} curPos 
  * @param {number} angle 
  * @param {number} dist 
  */

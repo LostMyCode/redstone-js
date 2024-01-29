@@ -45,6 +45,8 @@ export const MAX_MAGICAL_DAMAGE = 2000000;
 export const SKILL_FIRE_RESULT_OK = 0;
 export const SKILL_FIRE_RESULT_FAILED = 1;
 export const SKILL_TYPE_BIT_GLIDER = 27;
+export const SKILL_TYPE_EXPLOSION_DEPEND_ON_IMAGE = 31;
+export const SKILL_TYPE_WATER_FALL = 35;
 export const SKILL_TYPE_MACHINE_MISSILE = 39;
 export const SKILL_TYPE_SPECIAL_MISSILE = 40;
 
@@ -53,3 +55,7 @@ export const HEOP_HIT_ZONE = 0
 export const HEOP_FOOT = 1
 export const HEOP_SHOULDER = 2
 export const HEOP_ON_THE_HEAD = 3;
+
+// Shake Timing
+export const ST_EXPLOSION = 0;
+export const ST_CAST = 1;

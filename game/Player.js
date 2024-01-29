@@ -14,6 +14,8 @@ import Actor from "./actor/Actor";
 import { ACT_READY, ACT_RUN } from "./ActionH";
 import ActorManager from "./actor/ActorManager";
 import { ImageManager } from "./ImageData";
+import Ability from "./skill/Ability";
+import HitInfo from "./skill/HitInfo";
 
 const directionFrameOrder = ["up", "up-right", "right", "down-right", "down", "down-left", "left", "up-left"];
 
@@ -332,6 +334,24 @@ class Player {
             attackCount: 7,
             fps: 10,
         });
+        // const ability = new Ability();
+        // // ability.set(54, 124); // meteor
+        // ability.set(222, 124); // water fall
+        // this.actor.actionToGround(target.pos.x, target.pos.y, ability, 500);
+
+        // RedStone.actors.forEach(actor => {
+        //     if (actor.isHero() || actor.isDeath()) return;
+        //     const sprite = actor.pixiSprite;
+        //     const bounds = sprite.getBounds();
+
+        //     if (Math.hypot(target.pos.x - actor.pos.x, target.pos.y - actor.pos.y) < 500) {
+        //         setTimeout(() => {
+        //             const hitInfo = new HitInfo();
+        //             hitInfo.physicalDamage = 100000 + Math.floor(Math.random() * 1000000);
+        //             this.actor.strike(actor, ability, hitInfo, actor.direct, false);
+        //         }, 1100);
+        //     }
+        // })
 
         console.log("check skill", skill);
     }

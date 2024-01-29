@@ -134,9 +134,31 @@ export default class Anim extends AnimBase {
         return true;
     }
 
+    getSpriteHeight(anm, direct, frame) {
+        const index = this.getSpriteIndex(anm, direct, frame);
+        const reader = this.sprite.get16(index) || this.sprite.get8(index);
+
+        if (reader) {
+            reader.offset += 2;
+            return reader.readUInt16LE();
+        }
+
+        return 0;
+    }
+
+    getSpriteWidth(anm, direct, frame) {
+        const index = this.getSpriteIndex(anm, direct, frame);
+        const reader = this.sprite.get16(index) || this.sprite.get8(index);
+
+        if (reader) return reader.readUInt16LE();
+
+        return 0;
+    }
+
     getFrameCount = anm => this.anmData[anm].frameCount;
-    
+
     getFPS = anm => this.anmData[anm].fps;
 
     getDirectCount = anm => this.anmData[anm].directCount;
+    getSpriteIndex = (anm, direct, frame) => this.anmData[anm].getSprite(direct, frame, false);
 }

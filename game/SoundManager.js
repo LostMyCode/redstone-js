@@ -73,6 +73,7 @@ export default class SoundManager {
     }
 
     static async play(fileName, isFullPath = false) {
+        if (!fileName) return;
         const audio = new Audio();
         audio.src = isFullPath ? fileName : `${DATA_DIR}/Sound/${fileName}`;
         audio.volume = SettingsManager.get("volume") / 100;

@@ -25,4 +25,17 @@ export default new class ActorManager {
             actor.update(delta);
         });
     }
+
+    getTestedActor(serial, isAddValidActorList = true) {
+        if (serial < 0 || serial >= MAX_ACTOR) return null;
+
+        if (RedStone.actors[serial].serial === 0xffff/*  || RedStone.actors[serial].syncStatusWithServer === SSWS_VALID_ACTOR */) {
+            if (isAddValidActorList) {
+                // this.addObscurityActor(serial);
+            }
+            return null;
+        }
+
+        return RedStone.actors[serial];
+    }
 }
