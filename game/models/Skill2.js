@@ -643,6 +643,16 @@ class Skill2 {
         this.comment = br.readString(256, "sjis");
         this.powerup = br.readString(64, "sjis");
     }
+
+    isEnableJob(job) {
+        //
+
+        if (this.enableJob === job) {
+            return true;
+        }
+
+        return false;
+    }
 }
 
 export default Skill2;

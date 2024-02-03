@@ -1,12 +1,24 @@
-import BufferReader from "../utils/BufferReader";
+import * as PIXI from "pixi.js";
+
+import BufferReader, { TYPE_DEF } from "../utils/BufferReader";
 import { PUT_NORMAL, SPRITE_BPP16, SPRITE_BPP8 } from "./DrawH";
+import { REGSDHEADER, SDHEADER } from "./ImageH";
 import Rect from "./Rect";
+import CanvasManager from "../utils/CanvasManager";
+import { getRGBA15bit } from "../utils/RedStoneRandom";
+
+const canvasManager = new CanvasManager;
 
 export default class RS_Sprite {
     constructor() {
         this.height = 0;
         this.maxSpriteWidth = 0;
         this.maxSpriteHeight = 0;
+
+        this.frameCache = {
+            body: [],
+            shadow: [],
+        };
     }
 
     close() {
@@ -53,11 +65,48 @@ export default class RS_Sprite {
 
     // }
 
+    _load(buffer, loadPalette) {
+        const reader = new BufferReader(buffer);
+
+        const header = new SDHEADER(reader);
+
+        console.log(header);
+
+        this.bpp = header.bpp;
+        this.isShadow = header.bShadow;
+        this.isLayer = header.bOutline;
+        this.count = header.imageCount;
+
+        if (this.bpp === 16) {
+            this.bpp = SPRITE_BPP16;
+        } else {
+            this.bpp = SPRITE_BPP8;
+        }
+
+        const result = this.load(reader, loadPalette);
+
+        if (header.reg === REGSDHEADER) {
+            this.getMaxSize();
+
+            //
+        } else {
+            this.maxSpriteWidth = header.maxSpriteWidth;
+            this.maxSpriteHeight = header.maxSpriteHeight;
+            this.maxShadowWidth = header.maxShadowWidth;
+            this.maxShadowHeight = header.maxShadowHeight;
+        }
+    }
+
     /**
      * @param {BufferReader} br 
      * @param {boolean} loadPalette 
      */
     load(br, loadPalette) {
+        if (!(br instanceof BufferReader)) {
+            this._load(br, loadPalette);
+            return;
+        }
+
         this.close();
 
         this.isLoadedPlt = loadPalette;
@@ -70,12 +119,16 @@ export default class RS_Sprite {
             }
         }
 
-        this.spriteOffset = br.readStructUInt32LE((this.count + 1));
+        this.spriteOffset = br.readArray(this.count + 1, TYPE_DEF.UINT32, { asTypedArray: true });
 
         if (this.bpp === SPRITE_BPP16) {
-
+            this._16Sprite = new BufferReader(
+                Buffer.from(br.readArray(this.spriteOffset[this.count] * 2, TYPE_DEF.UINT8, { asTypedArray: true }))
+            );
         } else {
-            this._8Sprite = new BufferReader(Buffer.from(br.readStructUInt8(this.spriteOffset[this.count])));
+            this._8Sprite = new BufferReader(
+                Buffer.from(br.readArray(this.spriteOffset[this.count], TYPE_DEF.UINT8, { asTypedArray: true }))
+            );
         }
 
         if (this.isShadow) {
@@ -124,12 +177,16 @@ export default class RS_Sprite {
         return true;
     }
 
-    put(x, y, index, xRate, yRate, effect, alpha, flip) {
+    put(container, x, y, index, xRate = 100, yRate = 100, effect = 7, alpha = 32, flip = 0) {
         if (effect < PUT_NORMAL) {
             alpha = effect;
         }
 
         if (!this._8Sprite && !this._16Sprite) return;
+
+        const sprite = this.createPixiSprite(x, y, index, xRate = 100, yRate = 100, effect = 7, alpha = 32, flip = 0);
+
+        container.addChild(sprite);
 
         // _PutSprite
         // this.putSprite(
@@ -145,6 +202,41 @@ export default class RS_Sprite {
         //     this.maxSpriteWidth,
         //     this.maxSpriteHeight
         // );
+    }
+
+    createPixiSprite(x, y, index, xRate = 100, yRate = 100, effect = 7, alpha = 32, flip = 0) {
+        if (effect < PUT_NORMAL) {
+            alpha = effect;
+        }
+
+        if (!this._8Sprite && !this._16Sprite) return;
+
+        const canvas = this.getCanvas(index);
+        const texture = PIXI.Texture.from(canvas);
+        const sprite = new PIXI.Sprite(texture);
+
+        sprite.position.set(x, y);
+        sprite.scale.set(xRate / 100, yRate / 100);
+
+        return sprite;
+    }
+
+    updatePixiSprite(pixiSprite, x, y, index, xRate = 100, yRate = 100, effect = 7, alpha = 32, flip = 0) {
+        if (effect < PUT_NORMAL) {
+            alpha = effect;
+        }
+
+        if (!this._8Sprite && !this._16Sprite) return;
+
+        const canvas = this.getCanvas(index);
+        const texture = PIXI.Texture.from(canvas);
+        const sprite = pixiSprite;
+
+        sprite.texture = texture;
+        sprite.position.set(x, y);
+        sprite.scale.set(xRate / 100, yRate / 100);
+
+        return sprite;
     }
 
     /**
@@ -195,5 +287,172 @@ export default class RS_Sprite {
         reader.offset = this.spriteOffset[index];
 
         return reader;
+    }
+
+    getSpriteWidth(index) {
+        const reader = this.get16(index) || this.get8(index);
+
+        if (reader) return reader.readUInt16LE();
+
+        return 0;
+    }
+
+    getSpriteHeight(index) {
+        const reader = this.get16(index) || this.get8(index);
+
+        if (reader) {
+            reader.offset += 2;
+            reader.readUInt16LE();
+        }
+
+        return 0;
+    }
+
+    getMaxSize() {
+        this.maxSpriteWidth = 0;
+        this.maxSpriteHeight = 0;
+
+        this.maxShadowWidth = 0;
+        this.maxShadowHeight = 0;
+
+
+    }
+
+    // getSpriteMaxSize(maxWidth, )
+
+    getOffset(frame, type = "body") {
+        const pixelDataLength = this.bpp === SPRITE_BPP16 ? 2 : 1;
+
+        if (type === "body") {
+            const offset = this.spriteOffset[frame] * pixelDataLength;
+            const nextOffset = this.spriteOffset[frame + 1] * pixelDataLength;
+            return { offset, nextOffset };
+        }
+
+        if (type === "shadow") {
+            const offset = this.shadowOffset[frame];
+            const nextOffset = this.shadowOffset[frame + 1];
+            return { offset, nextOffset };
+        }
+    }
+
+    getSpriteData(type = "body") {
+        if (type === "shadow") {
+            return this.shadow;
+        }
+        return this._16Sprite || this._8Sprite;
+    }
+
+    getFrame(frame, type = "body") {
+        const { offset, nextOffset } = this.getOffset(frame, type);
+        const br = this.getSpriteData(type);
+
+        br.offset = offset;
+
+        const width = br.readUInt16LE();
+        const height = br.readUInt16LE();
+        const left = br.readInt16LE();
+        const top = br.readInt16LE();
+
+        return { width, height, left, top, dataOffset: offset };
+    }
+
+    getCanvas(frame, type = "body") {
+        return this.frameCache[type][frame] || this.createFrameCanvas(frame, type);
+    }
+
+    createFrameCanvas(frame, type = "body") {
+        const { dataOffset, width, height } = this.getFrame(frame, type);
+        const reader = this.getSpriteData(type);
+        const _drawPixel = canvasManager.drawPixel;
+        const _getRGB = getRGBA15bit;
+        const isUseOpacity = false; // tmp;
+        let unityCount, unityWidth, w, h, colorReference, colorData1, colorData2;
+
+        reader.offset = dataOffset + 8;
+
+        canvasManager.resize(width, height);
+
+        if (type === "body") {
+            if (this.bpp === SPRITE_BPP16) {
+                for (h = 0; h < height; h++) {
+                    unityCount = reader.readUInt16LE();
+                    w = 0;
+
+                    while (unityCount--) {
+                        w += reader.readUInt16LE();
+                        unityWidth = reader.readUInt16LE();
+
+                        while (unityWidth--) {
+                            colorData2 = reader.readUInt8();
+                            colorData1 = reader.readUInt8();
+
+                            _drawPixel.call(
+                                canvasManager,
+                                w,
+                                h,
+                                _getRGB.call(this, colorData1, colorData2, isUseOpacity)
+                            )
+
+                            w++;
+                        }
+                    }
+                }
+            } else {
+                for (h = 0; h < height; h++) {
+                    unityCount = reader.readUInt8();
+                    w = 0;
+
+                    while (unityCount--) {
+                        w += reader.readUInt8();
+                        unityWidth = reader.readUInt8();
+
+                        while (unityWidth--) {
+                            colorReference = reader.readUInt8();
+                            colorData1 = this.plt[colorReference * 2 + 1];
+                            colorData2 = this.plt[colorReference * 2];
+
+                            _drawPixel.call(
+                                canvasManager,
+                                w,
+                                h,
+                                _getRGB.call(this, colorData1, colorData2, isUseOpacity)
+                            )
+
+                            w++;
+                        }
+                    }
+                }
+            }
+
+        } else {
+            const pixelData = type === "shadow" ? SHADOW_PIXEL_DATA : OUTLINE_PIXEL_DATA;
+
+            for (h = 0; h < height; h++) {
+                unityCount = reader.readUInt8();
+                w = 0;
+
+                while (unityCount--) {
+                    w += reader.readUInt8();
+                    unityWidth = reader.readUInt8();
+
+                    while (unityWidth--) {
+                        canvasManager.drawBlendPixel(w, h, pixelData);
+
+                        w++;
+                    }
+                }
+            }
+        }
+
+        canvasManager.update();
+
+        const canvas = canvasManager.canvas;
+
+        canvasManager.reset();
+
+        this.frameCache[type][frame] = canvas;
+
+        return canvas;
     }
 }

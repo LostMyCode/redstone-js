@@ -1,5 +1,7 @@
-import BufferReader from "../utils/BufferReader";
+import BufferReader, { TYPE_DEF } from "../utils/BufferReader";
 
+export const REGSDHEADER = "하늘 스프라이트 데이터";
+export const REGSDHEADER2 = "하늘 스프라이트 데이터 2";
 export const REGSADHEADER = "하늘 스프라이트 에니메이션 데이터";
 export const REGSADHEADER2 = "하늘 스프라이트 에니메이션 데이터 2";
 
@@ -8,6 +10,31 @@ export const EVENT_TRIGGER = 2;
 export const EVENT_LOOP_START = 4;
 export const EVENT_LOOP_END = 8;
 export const EVENT_STEP = 16;
+
+export class SDHEADER {
+    /**
+     * @param {BufferReader} br 
+     */
+    constructor(br) {
+        this.size = br.readInt32LE();
+        this.reg = br.readString(40, "kr");
+        this.maxSpriteWidth = br.readUInt16LE();
+        this.maxSpriteHeight = br.readUInt16LE();
+        this.maxShadowWidth = br.readUInt16LE();
+        this.maxShadowHeight = br.readUInt16LE();
+        this.buffer = br.readArray(2, TYPE_DEF.UINT8);
+        this.bpp = br.readUInt8();
+
+        br.offset += 1; // padding
+        
+        this.imageCount = br.readUInt16LE();
+        this.alpha = br.readUInt8();
+        this.bOutline = br.readUInt8() === 1;
+        this.bShadow = br.readUInt8() === 1;
+
+        br.offset += 3; // padding
+    }
+}
 
 export class SADHEADER {
     /**
@@ -20,7 +47,7 @@ export class SADHEADER {
         this.maxSpriteHeight = br.readUInt16LE();
         this.maxShadowWidth = br.readUInt16LE();
         this.maxShadowHeight = br.readUInt16LE();
-        this.buffer = Uint8Array.from(br.readStructUInt8(2));
+        this.buffer = br.readArray(2, TYPE_DEF.UINT8);
         this.anmCount = br.readUInt8();
         this.byAlpha = br.readUInt8();
         this.imageCount = br.readUInt16LE();

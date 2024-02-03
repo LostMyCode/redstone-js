@@ -35,6 +35,7 @@ export default new class Listener {
 
     handleMouseDown = (e) => {
         this.isMouseDown = true;
+        this.target = e.target;
     }
 
     handleMouseUp = (e) => {

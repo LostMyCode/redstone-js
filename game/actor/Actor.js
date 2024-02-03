@@ -20,6 +20,7 @@ import { HEOP_FOOT, HEOP_HIT_ZONE, HEOP_ON_THE_HEAD, HEOP_SHOULDER, JOB_MONSTER_
 import SkillManager from "../skill/SkillManager";
 import { AK_MONSTER, AK_NPC, AK_PLAYER } from "./ActorH";
 import ActorManager from "./ActorManager";
+import { JOB_MAGIC_ARCHER, JOB_MAGIC_LANCER, JOB_ROGUE } from "../job/JobDefineH";
 
 class Actor {
     /**
@@ -129,8 +130,8 @@ class Actor {
         // }
 
         // temp
-        if (this.job === 6) {
-            const bodyName = HeroBody[18];
+        if (this.job  < 19 && !this._isMonster_tmp) {
+            const bodyName = HeroBody[this.job * 3];
             body = RedStone.anims[bodyName];
             return body;
         }

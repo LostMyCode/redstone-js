@@ -17,6 +17,15 @@ export default class Rect {
         this.y2 += y;
     }
 
+    isIn(x, y) {
+        if (x < this.x1) return false;
+        if (x > this.x2) return false;
+        if (y < this.y1) return false;
+        if (y > this.y2) return false;
+
+        return true;
+    }
+
     getLeft = () => Math.min(this.x1, this.x2);
     getRight = () => Math.max(this.x1, this.x2);
     getTop = () => Math.min(this.y1, this.y2);

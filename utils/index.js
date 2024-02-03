@@ -21,6 +21,13 @@ export const loadImageSync = async (src) => {
     });
 }
 
+export const loadZip = async (path) => {
+    const buf = await fetchBinaryFile(path);
+    const unzip = new Zlib.Unzip(buf);
+
+    return unzip;
+}
+
 export const loadZippedImages = async (path) => {
     const buf = await fetchBinaryFile(path);
     const unzip = new Zlib.Unzip(buf);

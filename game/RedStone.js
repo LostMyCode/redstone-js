@@ -18,6 +18,9 @@ import Hero from "./Hero";
 import Actor from "./actor/Actor";
 import WrappedAnim from "../engine/WrappedAnim";
 import { ImageManager } from "./ImageData";
+import GamePlay from "./GamePlay";
+import SettingsManager from "./SettingsManager";
+import SaveData from "./SaveData";
 
 class RedStone {
 
@@ -66,6 +69,8 @@ class RedStone {
         // load player location
         RedStone.lastLocation = this.loadPlayerLocation();
 
+        SaveData.load();
+
         RedStone.mainCanvas = new MainCanvas();
         RedStone.bgmPlayer = new BgmPlayer();
         RedStone.miniMap = new Minimap();
@@ -89,7 +94,7 @@ class RedStone {
         await Skill2.loadAllSkill2();
 
         // load hero jobs
-        // await Hero.loadDefaultJob();
+        await Hero.loadDefaultJob();
         RedStone.hero = new Hero();
 
         // check save data
@@ -114,6 +119,8 @@ class RedStone {
 
         await RedStone.player.init();
 
+        GamePlay.initBottomInterface();
+
         // water mark click event
         document.querySelector(".water-mark").addEventListener("click", () => {
             location.href = "https://github.com/LostMyCode/redstone-js";
@@ -125,6 +132,7 @@ class RedStone {
             if (SAVE_PLAYER_LOCATION) {
                 this.savePlayerLocation();
             }
+            SaveData.save();
         });
 
         LoadingScreen.destroy();

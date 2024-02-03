@@ -1,11 +1,12 @@
 import * as PIXI from "pixi.js";
 
 import WrappedAnim from "../engine/WrappedAnim";
-import { fetchBinaryFile, loadAnimation } from "../utils";
+import { fetchBinaryFile, loadAnimation, loadZip } from "../utils";
 import { DATA_DIR, INTERFACE_DIR } from "./Config";
 import RedStone from "./RedStone";
 import RS_Sprite from "../engine/RS_Sprite";
 import EffectDataManager from "./EffectDataManager";
+import ZippedSpriteData from "../utils/ZippedSpriteData";
 
 export const HeroBody = [
     "Knight01",
@@ -81,8 +82,13 @@ export const ImageManager = new class ImageManager {
      */
     sprHitText = new WrappedAnim();
 
+    gameBottomInterface = new RS_Sprite();
+    packedGameInterface = new ZippedSpriteData();
+
     async init() {
         this.effects[14] = loadAnimation(await fetchBinaryFile(`${DATA_DIR}/Effects/hit_basic.sad`));
+
+        this.effects[18] = loadAnimation(await fetchBinaryFile(`${DATA_DIR}/Effects/${EffectDataManager.aInfo[18].m_strImageFileName}`));
 
         this.effects[88] = loadAnimation(await fetchBinaryFile(`${DATA_DIR}/Effects/${EffectDataManager.aInfo[88].m_strImageFileName}`));
 
@@ -95,6 +101,11 @@ export const ImageManager = new class ImageManager {
         this.effects[279] = loadAnimation(await fetchBinaryFile(`${DATA_DIR}/Effects/shoot_dagger.sad`));
 
         // this.sprHitText.load(new BufferReader(await fetchBinaryFile(`${INTERFACE_DIR}/hitText.sd`)));
+
+        await this.packedGameInterface.load(`${DATA_DIR}/Interface/game_v240203.zip`);
+        
+        // this.gameBottomInterface.load(await fetchBinaryFile(`${DATA_DIR}/Interface/game/bottom.sd`));
+        this.gameBottomInterface.load(this.packedGameInterface.getBuffer("bottom.sd"));
     }
 
     getEffect(index) {

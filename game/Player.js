@@ -16,6 +16,8 @@ import ActorManager from "./actor/ActorManager";
 import { ImageManager } from "./ImageData";
 import Ability from "./skill/Ability";
 import HitInfo from "./skill/HitInfo";
+import Pos from "../engine/Pos";
+import SaveData from "./SaveData";
 
 const directionFrameOrder = ["up", "up-right", "right", "down-right", "down", "down-left", "left", "up-left"];
 
@@ -39,11 +41,22 @@ class Player {
 
         this.initialized = false;
         this.lastUpdate = performance.now();
+
+        window.addEventListener("jobChange", (e) => {
+            const job = e.detail;
+            this.actor.job = job;
+            RedStone.hero.job = job;
+            RedStone.hero.init();
+            
+            SaveData.save();
+        })
     }
 
     async load() {
         const heroAnimBuf = await fetchBinaryFile(`${DATA_DIR}/Heros/Rogue01.sad`);
         RedStone.anims.Rogue01 = loadAnimation(heroAnimBuf);
+        RedStone.anims.Archer01 = loadAnimation(await fetchBinaryFile(`${DATA_DIR}/Heros/Archer01.sad`));
+        RedStone.anims.Wizard01 = loadAnimation(await fetchBinaryFile(`${DATA_DIR}/Heros/Wizard01.sad`));
 
         // custom
         this.guildIconTexture = await PIXI.Texture.fromURL(`${DATA_DIR}/custom/rs_guild_icon.png`);
@@ -79,22 +92,22 @@ class Player {
 
             Listener.pressingKeys.forEach(key => {
                 switch (key) {
-                    case "w":
+                    case "ArrowUp":
                         moveY -= moveAmount;
                         positionUpdated = true;
                         break;
 
-                    case "d":
+                    case "ArrowRight":
                         moveX += moveAmount;
                         positionUpdated = true;
                         break;
 
-                    case "s":
+                    case "ArrowDown":
                         moveY += moveAmount;
                         positionUpdated = true;
                         break;
 
-                    case "a":
+                    case "ArrowLeft":
                         moveX -= moveAmount;
                         positionUpdated = true;
                         break;
@@ -167,7 +180,7 @@ class Player {
 
         this.actor = new Actor();
         this.actor.pos.set(this.x, this.y);
-        this.actor.job = dJOB_ROGUE;
+        this.actor.job = RedStone.hero.job;
         this.actor.anm = 2;
         this.actor.direct = directionFrameOrder.indexOf(this.direction);
         this.actor.name = "MyPlayer (200)";
@@ -181,22 +194,24 @@ class Player {
 
     update() {
         if (!this.initialized) return;
+        if (this.locked) return;
+        if (Listener?.target?.id !== "canvas") return;
 
         let newAction = this.action
         let newDirection = this.direction;
 
         const has = value => Listener.pressingKeys.has(value);
 
-        if (has("w") && has("s") || has("a") && has("d")) { // invalid key combinations
+        if (has("ArrowUp") && has("ArrowDown") || has("ArrowLeft") && has("ArrowRight")) { // invalid key combinations
             return;
         }
 
         const direction = [];
 
-        if (has("w")) direction.push("up");
-        else if (has("s")) direction.push("down");
-        if (has("a")) direction.push("left");
-        else if (has("d")) direction.push("right");
+        if (has("ArrowUp")) direction.push("up");
+        else if (has("ArrowDown")) direction.push("down");
+        if (has("ArrowLeft")) direction.push("left");
+        else if (has("ArrowRight")) direction.push("right");
 
         if (direction.length) {
             newAction = "run";
@@ -226,10 +241,10 @@ class Player {
                 this.actor.setAnm(ACT_READY);
             }
         }
-        else {
+        else if (!this.usingSkill) {
             newAction = "stand";
 
-            this.actor.setAnm(ACT_READY);
+            if (this.actor.anm !== ACT_READY) this.actor.setAnm(ACT_READY);
         }
 
         this.actor.direct = directionFrameOrder.indexOf(newDirection);
@@ -240,6 +255,7 @@ class Player {
 
     updateMovement() {
         if (!RedStone.gameMap.onceRendered) return;
+        if (this.locked) return;
         const now = performance.now();
         const delta = now - this.lastUpdate;
         this.lastUpdate = now;
@@ -249,6 +265,7 @@ class Player {
             this.targetActor = null;
             return;
         }
+        if (Listener?.target?.id !== "canvas") return;
         if (ActorManager.focusActor_tmp && !this.targetActor) {
             this.targetActor = ActorManager.focusActor_tmp;
         }
@@ -322,36 +339,51 @@ class Player {
             skill = Skill2.allSkills.find(s => s.name === "ダブルスローイング") // skill 152
         }
 
-        if (!target || target.isDeath()) return;
+        if (target?.isDeath()) return;
 
         this.battleTarget = target;
         this.usingSkill = skill;
 
-        this.actor.attackToActorByContinuousAttack({
-            skill: this.usingSkill.serial,
-            level: 0,
-            target: this.battleTarget,
-            attackCount: 7,
-            fps: 10,
-        });
-        // const ability = new Ability();
-        // // ability.set(54, 124); // meteor
-        // ability.set(222, 124); // water fall
-        // this.actor.actionToGround(target.pos.x, target.pos.y, ability, 500);
+        const targetPos = target ? target.pos : (() => {
+            const targetX = Listener.mouseX - innerWidth / 2 + Camera.x;
+            const targetY = Listener.mouseY - innerHeight / 2 + Camera.y;
 
-        // RedStone.actors.forEach(actor => {
-        //     if (actor.isHero() || actor.isDeath()) return;
-        //     const sprite = actor.pixiSprite;
-        //     const bounds = sprite.getBounds();
+            return new Pos(~~targetX, ~~targetY);
+        })();
 
-        //     if (Math.hypot(target.pos.x - actor.pos.x, target.pos.y - actor.pos.y) < 500) {
-        //         setTimeout(() => {
-        //             const hitInfo = new HitInfo();
-        //             hitInfo.physicalDamage = 100000 + Math.floor(Math.random() * 1000000);
-        //             this.actor.strike(actor, ability, hitInfo, actor.direct, false);
-        //         }, 1100);
-        //     }
-        // })
+        if (skill.serial === 152) {
+            this.actor.attackToActorByContinuousAttack({
+                skill: this.usingSkill.serial,
+                level: 0,
+                target: this.battleTarget,
+                attackCount: 7,
+                fps: 10,
+            });
+        }
+        else if ([54, 222].includes(skill.serial)) {
+            const ability = new Ability();
+            // ability.set(54, 124); // meteor
+            // ability.set(222, 124); // water fall
+            ability.set(skill.serial, 100);
+
+            this.actor.actionToGround(targetPos.x, targetPos.y, ability, 500);
+
+            setTimeout(() => {
+                RedStone.actors.forEach(actor => {
+                    if (actor.isHero() || actor.isDeath()) return;
+                    const sprite = actor.pixiSprite;
+                    const bounds = sprite.getBounds();
+
+                    if (Math.hypot(targetPos.x - actor.pos.x, targetPos.y - actor.pos.y) < 500) {
+                        const hitInfo = new HitInfo();
+                        hitInfo.physicalDamage = 100000 + Math.floor(Math.random() * 1000000);
+                        this.actor.strike(actor, ability, hitInfo, actor.direct, false);
+                    }
+                })
+
+                this.usingSkill = null;
+            }, 1100);
+        }
 
         console.log("check skill", skill);
     }

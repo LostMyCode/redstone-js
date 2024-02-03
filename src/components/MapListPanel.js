@@ -74,9 +74,9 @@ class MapListPanel extends React.Component {
                     <div className="flex" style={{ gap: 5 }}>
                         <a href="https://twitter.com/LostMyCode" target="_blank">Twitter</a>
                         <a href="https://github.com/LostMyCode/redstone-js" target="_blank">GitHub</a>
-                        <div className="flex align-items-center button-base" onClick={this.handleSettingsClick}>
+                        {/* <div className="flex align-items-center button-base" onClick={this.handleSettingsClick}>
                             <IoSettingsSharp />
-                        </div>
+                        </div> */}
                     </div>
                 </div>
                 <div className="map-list-panel" style={{

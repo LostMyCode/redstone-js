@@ -27,7 +27,7 @@ class CommonUI {
         this.nameBar = await loadTexture(`${INTERFACE_DIR}/name_bar.sd`);
         this.hitText = await loadTexture(`${INTERFACE_DIR}/hitText.sd`);
         this.minimapAnim = await loadTexture(`${INTERFACE_DIR}/etc_anm.sad`);
-        // this.smiIconSkill = await loadTexture(`${MISC_DIR}/iconSkill.smi`);
+        this.smiIconSkill = await loadTexture(`${MISC_DIR}/iconSkill.smi`);
     }
 
     async init() {

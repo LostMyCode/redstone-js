@@ -1,4 +1,5 @@
 import Skill2 from "../models/Skill2";
+import { SKILL_CAST_AT_GROUND } from "./SkillDefine";
 
 const dMAX_SKILL = 2048;
 
@@ -30,8 +31,7 @@ export default class Ability {
 
         if (!skill) return false;
 
-        return true; // temp
-        // return skill.isEnableJob(job);
+        return skill.isEnableJob(job);
     }
 
     getAttackRange(weapon, defaultRange) {
@@ -81,5 +81,13 @@ export default class Ability {
         const time = (skill.upkeepTime + skill.upkeepTimePerLevel * this.level) / 100;
 
         return ~~time;
+    }
+
+    isCastGroundSkill() {
+        if (this.getSkill()?.targetMethod & SKILL_CAST_AT_GROUND) {
+            return true;
+        }
+
+        return false;
     }
 }

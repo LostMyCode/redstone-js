@@ -2,9 +2,10 @@ import { fetchBinaryFile } from "../utils";
 import BufferReader from "../utils/BufferReader";
 import { DATA_DIR } from "./Config";
 import RedStone from "./RedStone";
+import SaveData from "./SaveData";
+import SettingsManager from "./SettingsManager";
+import { JOB_ROGUE } from "./job/JobDefineH";
 import Ability from "./skill/Ability";
-
-const dJOB_ROGUE = 6;
 
 class Hero {
 
@@ -25,14 +26,31 @@ class Hero {
          */
         this.ability = new Array(52);
         this.serial = 123123;
+
+        this.job = SaveData.saveData?.job ?? JOB_ROGUE;
+
+        // temp
+        this.quickSkillsEachJob = SaveData.saveData?.quickSkillsEachJob || {};
+
+        this.currentQuickSkillSlot = 0;
+        this.quickSkills = Array(10).fill().map(a => Array(10).fill().map(b => Array(2).fill(0xffff)));
+
         this.init();
     }
 
     init() {
         if (!Hero.jobDataBufferReader) return;
 
+        this.quickSkills =
+            this.quickSkillsEachJob[this.job] ||
+            Array(10).fill().map(a => Array(10).fill().map(b => Array(2).fill(0xffff)));
+
+        this.ability = new Array(52);
+
+        const console = { log: () => { } } //window.console
+
         const br = Hero.jobDataBufferReader;
-        br.offset += dJOB_ROGUE * 3876;
+        br.offset = this.job * 3876;
         let a;
         a = br.readUInt32LE();
         console.log("level", a);
@@ -238,6 +256,21 @@ class Hero {
 
 
     }
+
+    // HeroInfo
+
+    getAbility(_iAbility) {
+        const ABILITY_COUNT = 52; // temp
+
+        if (_iAbility >= ABILITY_COUNT || _iAbility < 0) return null;
+
+
+        return this.ability[_iAbility];
+    }
+
+    // HeroInterface
+
+    getQuickSkill(_iSlot) { return this.getAbility(this.quickSkills[this.currentQuickSkillSlot][_iSlot][(this.job) % 2]); }
 }
 
 export default Hero;

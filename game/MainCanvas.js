@@ -6,6 +6,7 @@ import { ENABLE_PERFORMANCE_MONITOR } from "./Config";
 import RedStone from "./RedStone";
 import SkillManager from "./skill/SkillManager";
 import ActorManager from "./actor/ActorManager";
+import GamePlay from "./GamePlay";
 
 const renderTimes = [];
 
@@ -31,6 +32,9 @@ class MainCanvas {
 
         this.rootContainer = new PIXI.Container;
         this.mainContainer = new PIXI.Container;
+        this.interfaceContainer = new PIXI.Container;
+
+        this.frameCounter = 0;
 
         this.init();
     }
@@ -71,6 +75,7 @@ class MainCanvas {
         ticker.start();
 
         this.rootContainer.addChild(this.mainContainer);
+        this.rootContainer.addChild(this.interfaceContainer);
     }
 
     render(delta) {
@@ -89,7 +94,12 @@ class MainCanvas {
         RedStone.player.updateMovement();
         // RedStone.player.render();
 
+        this.interfaceContainer.removeChildren();
+        GamePlay.drawBottomInterface();
+
         this.renderer.render(this.rootContainer);
+
+        this.frameCounter++;
     }
 }
 
