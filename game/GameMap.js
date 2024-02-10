@@ -129,9 +129,24 @@ class GameMap {
 
         RedStone.actors = [];
 
+        Object.values(this.tileSubContainers).forEach(c => {
+            c.cacheAsBitmap = false;
+            c.destroy(true);
+        });
         this.tileSubContainers = {};
+
+        const destroy = (sprite) => {
+            sprite.destroy(true);
+            sprite.shadowSprite && sprite.shadowSprite.destroy(true);
+        }
+        
+        this.objectSprites.forEach(destroy);
         this.objectSprites = [];
+
+        this.positionSpecifiedObjectSprites.forEach(destroy);
         this.positionSpecifiedObjectSprites = [];
+
+        this.actorSprites.forEach(destroy);
         this.actorSprites = [];
 
         this.map = null;
