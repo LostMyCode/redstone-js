@@ -1,9 +1,7 @@
 import * as PIXI from "pixi.js";
 
-import RedStoneMap, { Mapset, ObjectType } from "./models/Map";
 import { fetchBinaryFile, loadAnimation, loadTexture, loadZippedTextures } from "../utils";
 import BufferReader from "../utils/BufferReader";
-import Map from "./models/Map";
 import Camera from "./Camera";
 import LoadingScreen from "./interface/LoadingScreen";
 import { DATA_DIR, ENABLE_DRAW_MAP_DEBUG, INTERFACE_DIR, MAPSET_DIR, RMD_DIR, TILE_HEIGHT, TILE_WIDTH } from "./Config";
@@ -16,6 +14,9 @@ import MonsterSource from "./models/MonsterSource";
 import SoundManager from "./SoundManager";
 import Actor from "./actor/Actor";
 import ActorManager from "./actor/ActorManager";
+import RS_Map from "./RS_Map";
+import { AREA_PORTAL, AREA_START_AREA, GAS_ENTER_BUILDING, GAS_INNER_PORTAL } from "./object/area/AreaDefine";
+import { getMapsetName } from "./models/Mapset";
 
 const getTextureFileName = (textureId, extension = "rso") => {
     if (!extension) throw new Error("[Error] Invalid file extension");
@@ -65,9 +66,9 @@ ENABLE_DRAW_MAP_DEBUG && PIXI.BitmapFont.from("ActorPosFont", {
 class GameMap {
     constructor() {
         /**
-         * @type {Map}
+         * @type {RS_Map}
          */
-        this.map = null;
+        this.rsMap = null;
 
         this.tileContainer = new PIXI.Container();
         this.objectContainer = new PIXI.Container();
@@ -116,6 +117,7 @@ class GameMap {
         this.foremostContainer.removeChildren();
         this.graphics.clear();
 
+        CommonUI.destroyGuageCache();
         RedStone.player.reset();
 
         RedStone.mainCanvas.mainContainer.removeChild(
@@ -139,7 +141,7 @@ class GameMap {
             sprite.destroy(true);
             sprite.shadowSprite && sprite.shadowSprite.destroy(true);
         }
-        
+
         this.objectSprites.forEach(destroy);
         this.objectSprites = [];
 
@@ -149,7 +151,7 @@ class GameMap {
         this.actorSprites.forEach(destroy);
         this.actorSprites = [];
 
-        this.map = null;
+        this.rsMap = null;
         this.onceRendered = false;
         this.initialized = false;
     }
@@ -165,24 +167,32 @@ class GameMap {
         console.log("[Game]", "Loading scenario file...");
         // const rmd = await fetchBinaryFile(`${RMD_DIR}/[060]T01_A01.rmd`);
         const rmd = await fetchBinaryFile(`${RMD_DIR}/${rmdFileName}`);
-        this.map = new RedStoneMap(new BufferReader(rmd));
+        this.rsMap = new RS_Map();
+        this.rsMap.load(new BufferReader(rmd));
         this.currentRmdFileName = rmdFileName;
-        console.log("[Game]", "Scenario loaded", this.map);
+        console.log("[Game]", "Scenario loaded", this.rsMap);
+        console.log("[Game]", "Map:", this.rsMap.name);
 
-        Camera.setMapSize(this.map.size.width * TILE_WIDTH, this.map.size.height * TILE_HEIGHT);
+        Camera.setMapSize(this.rsMap.pixelWidth, this.rsMap.pixelHeight);
         this.initPosition();
 
-        const mapsetName = this.map.getMapsetName();
+        const mapsetName = getMapsetName(this.rsMap.tileSet);
         this.tileTexture = await loadTexture(`${MAPSET_DIR}/${mapsetName}/tile.mpr`);
         this.objectTextures = await loadZippedTextures(`${MAPSET_DIR}/${mapsetName}/${mapsetName}_Objects.zip`);
-        this.buildingTextures = Object.keys(this.map.buildingInfos).length ? await loadZippedTextures(`${MAPSET_DIR}/${mapsetName}/${mapsetName}_Buildings.zip`) : null;
+        this.buildingTextures = this.rsMap.object.buildingCount ? await loadZippedTextures(`${MAPSET_DIR}/${mapsetName}/${mapsetName}_Buildings.zip`) : null;
 
         const fetched = {};
 
+        const savedActors = this.rsMap.saveActors.filter(actor => actor && actor.serial !== -1);
+
         // load actors
-        for (let actor of this.map.actorSingles) {
-            const group = this.map.actorGroups[actor.internalID];
-            const isMonster = [CType.Monster, CType.QuestMonster].includes(actor.charType);
+        for (let i = 0; i < savedActors.length; i++) {
+            const actor = savedActors[i];
+
+            if (!actor) continue;
+
+            const group = this.rsMap.characters[actor.character];
+            const isMonster = [CType.Monster, CType.QuestMonster].includes(actor.actorKind);
             let actorTextureName;
 
             if (isMonster) {
@@ -203,16 +213,15 @@ class GameMap {
             const _actor = new Actor();
             const actorDirect = actor.direct === 8 ? ~~(Math.random() * 8) : actor.direct;
 
-            _actor.pos.set(actor.point.x, actor.point.y);
+            _actor.pos.set(actor.pos.x, actor.pos.y);
             _actor.direct = actorDirect;
             _actor.horizonScale = group.scale.width;
             _actor.verticalScale = group.scale.height;
-            _actor.actorSingle = actor;
             _actor.anm = 2;
             _actor.job = group.job;
             _actor.name = actor.name;
             _actor.body = isMonster ? MonsterSource.allMonsters[group.job].textureId : group.job; // temp
-            _actor.actorKind = actor.charType;
+            _actor.actorKind = actor.actorKind;
             _actor._isMonster_tmp = isMonster;
             _actor.pixiSprite = _actor.getBody().createPixiSprite("body", _actor.pos.x, _actor.pos.y, _actor.anm, _actor.direct, _actor.frame);
             _actor.pixiSprite.shadowSprite = _actor.getBody().createPixiSprite("shadow", _actor.pos.x, _actor.pos.y, _actor.anm, _actor.direct, _actor.frame);
@@ -238,14 +247,14 @@ class GameMap {
     }
 
     async init() {
-        if (!this.map) await this.loadMap(RedStone.lastLocation?.map);
-        const map = this.map;
-        const mapsetName = this.map.getMapsetName();
+        if (!this.rsMap) await this.loadMap(RedStone.lastLocation?.map);
+        const rsMap = this.rsMap;
+        const mapsetName = getMapsetName(this.rsMap.tileSet);
 
-        for (let i = 0; i < map.size.height; i++) {
-            for (let j = 0; j < map.size.width; j++) {
-                const tileCode = map.tileData1[i * map.size.width + j];
-                const objectCode = map.tileData3[i * map.size.width + j];
+        for (let i = 0; i < rsMap.height; i++) {
+            for (let j = 0; j < rsMap.width; j++) {
+                const tileCode = rsMap.map[i * rsMap.width + j];
+                const objectCode = rsMap.info[i * rsMap.width + j];
 
                 this.renderTile(tileCode, j, i);
                 this.renderObject(objectCode, j, i);
@@ -261,36 +270,36 @@ class GameMap {
             sc.cacheAsBitmap = true;
         }
 
-        // render position specified objects
-        const objects = map.positionSpecifiedObjects;
-        objects.forEach(obj => {
-            const fileName = getTextureFileName(obj.textureId, "rfo");
+        // init position specified objects
+        const tinyObjects = rsMap.object.tinyObjectList;
+
+        tinyObjects.forEach(obj => {
+            const fileName = getTextureFileName(obj.object, "rfo");
             const texture = this.objectTextures.getTexture(fileName);
             const pixiTexture = texture.getPixiTexture(0);
-            const x = obj.point.x - texture.shape.body.left[0];
-            const y = obj.point.y - texture.shape.body.top[0];
+            const x = obj.pos.x - texture.shape.body.left[0];
+            const y = obj.pos.y - texture.shape.body.top[0];
 
             const sprite = new PIXI.Sprite(pixiTexture);
             sprite.position.set(x, y);
-            sprite.blockX = Math.floor(obj.point.x / TILE_WIDTH);
-            sprite.blockY = Math.floor(obj.point.y / TILE_HEIGHT);
+            sprite.blockX = Math.floor(obj.pos.x / TILE_WIDTH);
+            sprite.blockY = Math.floor(obj.pos.y / TILE_HEIGHT);
 
-            // this.positionSpecifiedObjectContainer.addChild(sprite);
             this.positionSpecifiedObjectSprites.push(sprite);
 
             // animated objects (rfo)
-            if (animationObjectTexIds[mapsetName]?.rfo?.includes(obj.textureId)) {
+            if (animationObjectTexIds[mapsetName]?.rfo?.includes(obj.object)) {
                 const pixiTextures = [];
                 for (let i = 1; i < texture.frameCount; i++) {
                     pixiTextures.push(texture.getPixiTexture(i));
                 }
-                const x = obj.point.x - texture.shape.body.left[1];
-                const y = obj.point.y - texture.shape.body.top[1];
+                const x = obj.pos.x - texture.shape.body.left[1];
+                const y = obj.pos.y - texture.shape.body.top[1];
                 const sprite = new PIXI.AnimatedSprite(pixiTextures);
                 sprite.position.set(x, y);
                 sprite.animationSpeed = 0.1;
-                sprite.blockX = Math.floor(obj.point.x / TILE_WIDTH);
-                sprite.blockY = Math.floor(obj.point.y / TILE_HEIGHT);
+                sprite.blockX = Math.floor(obj.pos.x / TILE_WIDTH);
+                sprite.blockY = Math.floor(obj.pos.y / TILE_HEIGHT);
                 sprite.play();
                 this.positionSpecifiedObjectSprites.push(sprite);
             }
@@ -298,8 +307,8 @@ class GameMap {
             if (texture.isExistShadow) {
                 const pixiTexture = texture.getPixiTexture(0, "shadow");
 
-                const x = obj.point.x - texture.shape.shadow.left[0];
-                const y = obj.point.y - texture.shape.shadow.top[0];
+                const x = obj.pos.x - texture.shape.shadow.left[0];
+                const y = obj.pos.y - texture.shape.shadow.top[0];
 
                 const shadowSprite = new PIXI.Sprite(pixiTexture);
                 shadowSprite.position.set(x, y);
@@ -310,8 +319,8 @@ class GameMap {
             if (ENABLE_DRAW_MAP_DEBUG) {
                 this.graphics.lineStyle(1, 0x42f575);
                 this.graphics.drawCircle(
-                    obj.point.x,
-                    obj.point.y,
+                    obj.pos.x,
+                    obj.pos.y,
                     10
                 );
             }
@@ -319,10 +328,12 @@ class GameMap {
 
         this.renderPortals();
 
-        this.map.actorSingles.forEach(async actor => {
+        this.rsMap.saveActors.forEach(async actor => {
+            if (!actor || actor.serial === -1) return;
+
             if (ENABLE_DRAW_MAP_DEBUG) {
                 this.graphics.lineStyle(3, 0xeb4034);
-                this.graphics.drawCircle(actor.point.x, actor.point.y, 10);
+                this.graphics.drawCircle(actor.pos.x, actor.pos.y, 10);
             }
         });
 
@@ -339,7 +350,7 @@ class GameMap {
         }
 
         this.initialized = true;
-        window.dispatchEvent(new CustomEvent("displayLogUpdate", { detail: { key: "map-name", value: this.map.name } }));
+        window.dispatchEvent(new CustomEvent("displayLogUpdate", { detail: { key: "map-name", value: this.rsMap.name } }));
 
         try {
             const mapIndex = parseInt(this.currentRmdFileName.match(/\[(\d+)\]/)[1]);
@@ -359,8 +370,8 @@ class GameMap {
                 y: portalSprite.y + portalSprite.height / 2
             };
             if (getDistance(RedStone.player, portalPoint) < 70) {
-                console.log("portal gate", this.selectedPortal.area.moveToFileName);
-                this.moveField(this.selectedPortal.area.moveToFileName);
+                console.log("portal gate", this.selectedPortal.area.string);
+                this.moveField(this.selectedPortal.area.string);
                 this.selectedPortal = null;
                 return;
             }
@@ -502,11 +513,6 @@ class GameMap {
     }
 
     renderObject(code, blockX, blockY) {
-        // TODO: sort objects and shadows
-
-        const map = this.map;
-        const mapsetName = this.map.getMapsetName();
-
         if (code === 0 || code === 8193) return;
         if (code < 16 << 8) return;
 
@@ -515,27 +521,6 @@ class GameMap {
 
         isBuilding = code >= 16 << 11;
         index = isBuilding ? code % (16 << 11) : code >= (16 << 10) ? code % (16 << 10) : code % (16 << 8);
-
-        const objectInfo = isBuilding ? map.buildingInfos[index] : map.objectInfos[index];
-        if (!objectInfo) {
-            return;
-        }
-
-        const fileName = getTextureFileName(objectInfo.textureId, isBuilding ? "rbd" : undefined);
-        const texture = isBuilding ? this.buildingTextures.getTexture(fileName) : this.objectTextures.getTexture(fileName);
-
-        const blockCenterX = blockX * TILE_WIDTH + TILE_WIDTH / 2;
-        const blockCenterY = blockY * TILE_HEIGHT + TILE_HEIGHT / 2;
-        const x = blockCenterX - texture.shape.body.left[0];
-        const y = blockCenterY - texture.shape.body.top[0];
-
-        const pixiTexture = texture.getPixiTexture(0);
-        const sprite = new PIXI.Sprite(pixiTexture);
-        sprite.position.set(x, y);
-        sprite.blockX = blockX;
-        sprite.blockY = blockY;
-        sprite.isBuilding = true;
-        this.objectSprites.push(sprite);
 
         if (ENABLE_DRAW_MAP_DEBUG) {
             this.graphics.lineStyle(1, 0xf5b042);
@@ -547,8 +532,39 @@ class GameMap {
             );
         }
 
+        if (isBuilding) {
+            this.initBuilding(index, blockX, blockY);
+        } else {
+            this.initFixedObject(index, blockX, blockY);
+        }
+    }
+
+    initFixedObject(index, blockX, blockY) {
+        const mapsetName = getMapsetName(this.rsMap.tileSet);
+        const objectInfo = this.rsMap.object.fixedObjectList[index];
+
+        if (!objectInfo) {
+            return;
+        }
+
+        const textureId = objectInfo.object;
+        const fileName = getTextureFileName(textureId);
+        const texture = this.objectTextures.getTexture(fileName);
+
+        const blockCenterX = blockX * TILE_WIDTH + TILE_WIDTH / 2;
+        const blockCenterY = blockY * TILE_HEIGHT + TILE_HEIGHT / 2;
+        const x = blockCenterX - texture.shape.body.left[0];
+        const y = blockCenterY - texture.shape.body.top[0];
+
+        const pixiTexture = texture.getPixiTexture(0);
+        const sprite = new PIXI.Sprite(pixiTexture);
+        sprite.position.set(x, y);
+        sprite.blockX = blockX;
+        sprite.blockY = blockY;
+        this.objectSprites.push(sprite);
+
         // animated objects (rso)
-        if (!isBuilding && animationObjectTexIds[mapsetName]?.rso?.includes(objectInfo.textureId)) {
+        if (animationObjectTexIds[mapsetName]?.rso?.includes(objectInfo.object)) {
             const pixiTextures = [];
             for (let i = 1; i < texture.frameCount; i++) {
                 pixiTextures.push(texture.getPixiTexture(i));
@@ -565,7 +581,7 @@ class GameMap {
         }
 
         // shadow
-        if ((objectInfo.isDrawShadow || isBuilding) && texture.isExistShadow) {
+        if (objectInfo.isPutShadow && texture.isExistShadow) {
             const pixiTexture = texture.getPixiTexture(0, "shadow");
 
             const x = blockCenterX - texture.shape.shadow.left[0];
@@ -578,14 +594,15 @@ class GameMap {
         }
 
         // render sub objects
-        !isBuilding && objectInfo.subObjectInfos.forEach(subObjectInfo => {
-            const { textureId, offsetX, offsetY, xAnchorFlag, yAnchorFlag } = subObjectInfo;
-            const fileName = getTextureFileName(textureId, "rfo");
+        objectInfo.addonObjects.forEach(addonObject => {
+            if (addonObject.object === 0xffff) return;
+
+            const fileName = getTextureFileName(addonObject.object, "rfo");
             const texture = this.objectTextures.getTexture(fileName);
             const pixiTexture = texture.getPixiTexture(0);
 
-            const x = xAnchorFlag === 0xff ? blockCenterX - 0xff + offsetX - texture.shape.body.left[0] : blockCenterX + offsetX - texture.shape.body.left[0];
-            const y = yAnchorFlag === 0xff ? blockCenterY - 0xff + offsetY - texture.shape.body.top[0] : blockCenterY + offsetY - texture.shape.body.top[0];
+            const x = blockCenterX - texture.shape.body.left[0] + addonObject.dx;
+            const y = blockCenterY - texture.shape.body.top[0] + addonObject.dy;
 
             const sprite = new PIXI.Sprite(pixiTexture);
             sprite.position.set(x, y);
@@ -594,7 +611,7 @@ class GameMap {
             this.objectSprites.push(sprite);
 
             // animated objects (rfo)
-            if (animationObjectTexIds[mapsetName]?.rfo?.includes(textureId)) {
+            if (animationObjectTexIds[mapsetName]?.rfo?.includes(addonObject.object)) {
                 const pixiTextures = [];
                 for (let i = 1; i < texture.frameCount; i++) {
                     pixiTextures.push(texture.getPixiTexture(i));
@@ -610,51 +627,87 @@ class GameMap {
                 this.objectSprites.push(sprite);
             }
         });
+    }
+
+    initBuilding(index, blockX, blockY) {
+        const mapsetName = getMapsetName(this.rsMap.tileSet);
+        const objectInfo = this.rsMap.object.buildingList[index];
+
+        if (!objectInfo) {
+            return;
+        }
+
+        const textureId = objectInfo.building;
+        const fileName = getTextureFileName(textureId, "rbd");
+        const texture = this.buildingTextures.getTexture(fileName);
+
+        const blockCenterX = blockX * TILE_WIDTH + TILE_WIDTH / 2;
+        const blockCenterY = blockY * TILE_HEIGHT + TILE_HEIGHT / 2;
+        const x = blockCenterX - texture.shape.body.left[0];
+        const y = blockCenterY - texture.shape.body.top[0];
+
+        const pixiTexture = texture.getPixiTexture(0);
+        const sprite = new PIXI.Sprite(pixiTexture);
+        sprite.position.set(x, y);
+        sprite.blockX = blockX;
+        sprite.blockY = blockY;
+        sprite.isBuilding = true;
+        this.objectSprites.push(sprite);
+
+        // shadow
+        if (objectInfo.isPutShadow && texture.isExistShadow) {
+            const pixiTexture = texture.getPixiTexture(0, "shadow");
+
+            const x = blockCenterX - texture.shape.shadow.left[0];
+            const y = blockCenterY - texture.shape.shadow.top[0];
+
+            const shadowSprite = new PIXI.Sprite(pixiTexture);
+            shadowSprite.position.set(x, y);
+
+            sprite.shadowSprite = shadowSprite;
+        }
 
         // render building parts
-        if (isBuilding) {
-            objectInfo.parts.forEach(frameIndex => {
-                const pixiTexture = texture.getPixiTexture(frameIndex);
+        for (let i = 0; i < objectInfo.addonBlockCount; i++) {
+            const pixiTexture = texture.getPixiTexture(objectInfo.addonBlocks[i]);
 
-                const x = blockCenterX - texture.shape.body.left[frameIndex];
-                const y = blockCenterY - texture.shape.body.top[frameIndex];
+            const x = blockCenterX - texture.shape.body.left[objectInfo.addonBlocks[i]];
+            const y = blockCenterY - texture.shape.body.top[objectInfo.addonBlocks[i]];
 
-                const sprite = new PIXI.Sprite(pixiTexture);
-                sprite.position.set(x, y);
-                sprite.blockX = blockX;
-                sprite.blockY = blockY;
-                sprite.isBuilding = true;
+            const sprite = new PIXI.Sprite(pixiTexture);
+            sprite.position.set(x, y);
+            sprite.blockX = blockX;
+            sprite.blockY = blockY;
+            sprite.isBuilding = true;
 
-                this.objectSprites.push(sprite);
-
-                if (texture.isExistShadow) {
-                    const pixiTexture = texture.getPixiTexture(frameIndex, "shadow");
-
-                    const x = blockCenterX - texture.shape.shadow.left[frameIndex];
-                    const y = blockCenterY - texture.shape.shadow.top[frameIndex];
-
-                    const shadowSprite = new PIXI.Sprite(pixiTexture);
-                    shadowSprite.position.set(x, y);
-
-                    sprite.shadowSprite = shadowSprite;
-                }
-            });
+            this.objectSprites.push(sprite);
         }
+
+        // for (let i = 0; i < objectInfo.addonObjectCount; i++) {
+        //     const object = objectInfo.addonObjects[i].object;
+        //     const fileName = getTextureFileName(object, "rfo");
+        //     console.log("addon name", fileName, x + objectInfo.addonObjects[i].dx, y + objectInfo.addonObjects[i].dy);
+        //     const texture = this.objectTextures.getTexture(fileName);
+        //     const pixiTexture = texture.getPixiTexture(0);
+        //     const sprite = new PIXI.Sprite(pixiTexture);
+
+        //     sprite.position.set(x + objectInfo.addonObjects[i].dx, y + objectInfo.addonObjects[i].dy);
+        // }
     }
 
     renderPortals() {
-        this.map.areaInfos.forEach(area => {
-            if (!area.moveToFileName) return;
-            if (area.objectInfo !== ObjectType.WarpPortal) return;
+        this.rsMap.area.areas.forEach(area => {
+            if (area.kind !== AREA_PORTAL || !area.string) return;
 
-            const centerPos = area.centerPos;
+            const centerPos = area.getCenterPos();
+
             let sprite;
 
-            if (area.gateShape === 1) { // door
+            if (area.gateShape === GAS_ENTER_BUILDING) { // door
                 const textures = Array(6).fill(null).map((v, i) => this.portalTexture.getPixiTexture(i));
                 sprite = new PIXI.AnimatedSprite(textures);
             }
-            else if (area.gateShape === 4) {
+            else if (area.gateShape === GAS_INNER_PORTAL) {
                 const index = 109;
                 const textures = Array(6).fill(null).map((v, i) => this.portalTexture.getPixiTexture(index + i));
                 sprite = new PIXI.AnimatedSprite(textures);
@@ -691,26 +744,30 @@ class GameMap {
 
     initPosition() {
         if (this.prevRmdName) {
-            const portalToPrevMap = this.map.areaInfos.find(area => area.moveToFileName === this.prevRmdName);
+            const portalToPrevMap = this.rsMap.area.areas.find(area => area?.string === this.prevRmdName);
 
             if (portalToPrevMap) {
-                Camera.setPosition(portalToPrevMap.centerPos.x, portalToPrevMap.centerPos.y);
-                RedStone.player.setPosition(portalToPrevMap.centerPos.x, portalToPrevMap.centerPos.y);
+                const centerPos = portalToPrevMap.getCenterPos();
+
+                Camera.setPosition(centerPos.x, centerPos.y);
+                RedStone.player.setPosition(centerPos.x, centerPos.y);
             } else {
                 console.log("prev map portal not found :(");
-                const portals = this.map.areaInfos.filter(area => [ObjectType.WarpPortal, ObjectType.SystemMovePosition].includes(area.objectInfo));
+                const portals = this.rsMap.area.areas.filter(area => [AREA_PORTAL, AREA_START_AREA].includes(area.kind));
                 const randomPortal = portals[Math.floor(Math.random() * portals.length)];
-                Camera.setPosition(randomPortal.centerPos.x, randomPortal.centerPos.y);
-                RedStone.player.setPosition(randomPortal.centerPos.x, randomPortal.centerPos.y);
+                const centerPos = randomPortal.getCenterPos();
+
+                Camera.setPosition(centerPos.x, centerPos.y);
+                RedStone.player.setPosition(centerPos.x, centerPos.y);
             }
         }
     }
 
     getRealSize() {
-        if (!this.map) return null;
+        if (!this.rsMap) return null;
         return {
-            width: this.map.size.width * TILE_WIDTH,
-            height: this.map.size.height * TILE_HEIGHT
+            width: this.rsMap.pixelWidth,
+            height: this.rsMap.pixelHeight
         }
     }
 
@@ -730,11 +787,11 @@ class GameMap {
     }
 
     getBlock(x, y) {
-        const blocks = this.map.tileData3;
-        if (blocks.length <= y * this.map.size.width + x) {
+        const blocks = this.rsMap.info;
+        if (blocks.length <= y * this.rsMap.width + x) {
             return 1;
         }
-        return blocks[y * this.map.size.width + x];
+        return blocks[y * this.rsMap.width + x];
     }
 
     isBlockedWay(ax, ay, bx, by) {

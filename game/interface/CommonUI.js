@@ -2,8 +2,9 @@ import * as PIXI from "pixi.js";
 
 import { loadTexture } from "../../utils";
 import { INTERFACE_DIR, MISC_DIR } from "../Config";
-import { CType, MapActorSingle } from "../models/Actor";
-import { ObjectType } from "../models/Map";
+import { CType } from "../models/Actor";
+import { AREA_HUNTING_AREA, AREA_PORTAL } from "../object/area/AreaDefine";
+import Actor from "../actor/Actor";
 
 const shopIconTextures = {};
 const guageCache = {
@@ -17,6 +18,8 @@ class CommonUI {
     constructor() {
         this.interface = null;
         this.interface2 = null;
+
+        this.guageSprites = [];
     }
 
     async load() {
@@ -106,13 +109,27 @@ class CommonUI {
         return texture;
     }
 
+    destroyGuageCache() {
+        Object.keys(guageCache).forEach(type => {
+            guageCache[type] = {};
+        });
+
+        this.guageSprites.forEach(s => {
+            if (s && !s.destroyed) {
+                s.destroy(true);
+            }
+        });
+
+        this.guageSprites = [];
+    }
+
     /**
-     * @param {MapActorSingle} actor 
+     * @param {Actor} actor 
      */
     getActorHeadIcon(actor) {
         let index;
 
-        switch (actor.charType) {
+        switch (actor.actorKind) {
             case CType.Equipment_merchant:
                 index = 3;
                 break;
@@ -173,8 +190,8 @@ class CommonUI {
         let isAnim = true;
         let scale = 1;
 
-        switch (areaInfo.objectInfo) {
-            case ObjectType.WarpPortal:
+        switch (areaInfo.kind) {
+            case AREA_PORTAL:
                 switch (areaInfo.gateShape) {
                     case 0:
                         index = 15;
@@ -214,7 +231,7 @@ class CommonUI {
                 }
                 break;
 
-            case ObjectType.HuntingArea:
+            case AREA_HUNTING_AREA:
                 index = 126;
                 frames = 9;
                 break;

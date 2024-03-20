@@ -2,10 +2,10 @@ import * as PIXI from "pixi.js";
 import TgaLoader from "tga-js";
 import RedStone from "./RedStone";
 import { fetchBinaryFile } from "../utils";
-import { MINIMAP_DIR, TILE_HEIGHT, TILE_WIDTH } from "./Config";
+import { MINIMAP_DIR } from "./Config";
 import SettingsManager from "./SettingsManager";
 import CommonUI from "./interface/CommonUI";
-import { ObjectType } from "./models/Map";
+import { AREA_HUNTING_AREA, AREA_PORTAL } from "./object/area/AreaDefine";
 
 export default class Minimap {
     constructor() {
@@ -44,8 +44,14 @@ export default class Minimap {
         this.container.removeChildren();
         this.rootContainer.removeChildren();
         this.graphics.clear();
+
+        if (this.sprite && !this.sprite.destroyed) {
+            this.sprite.destroy(true);
+        }
+
         this.canvas.style.display = "none";
         this.canvas.style.opacity = 0;
+
         this.initialized = false;
     }
 
@@ -68,13 +74,13 @@ export default class Minimap {
         this.sprite = new PIXI.Sprite(this.texture);
         this.container.addChild(this.sprite);
 
-        RedStone.gameMap.map.areaInfos.forEach(areaInfo => {
-            if (![ObjectType.WarpPortal, ObjectType.HuntingArea].includes(areaInfo.objectInfo)) return;
-            const sprite = CommonUI.getMinimapIcon(areaInfo);
+        RedStone.gameMap.rsMap.area.areas.forEach(area => {
+            if (![AREA_PORTAL, AREA_HUNTING_AREA].includes(area.kind)) return;
+            const sprite = CommonUI.getMinimapIcon(area);
             if (!sprite) return;
-            const centerPos = areaInfo.centerPos;
-            const xRatio = centerPos.x / (RedStone.gameMap.map.size.width * TILE_WIDTH);
-            const yRatio = centerPos.y / (RedStone.gameMap.map.size.height * TILE_HEIGHT);
+            const centerPos = area.getCenterPos();
+            const xRatio = centerPos.x / (RedStone.gameMap.rsMap.pixelWidth);
+            const yRatio = centerPos.y / (RedStone.gameMap.rsMap.pixelHeight);
             sprite.position.set(this.sprite.width * xRatio - sprite.width / 2, this.sprite.height * yRatio - sprite.height / 2);
             this.container.addChild(sprite);
         });
@@ -93,8 +99,8 @@ export default class Minimap {
 
         this.sprite.position.set()
 
-        const xRatio = RedStone.player.x / (RedStone.gameMap.map.size.width * TILE_WIDTH);
-        const yRatio = RedStone.player.y / (RedStone.gameMap.map.size.height * TILE_HEIGHT);
+        const xRatio = RedStone.player.x / (RedStone.gameMap.rsMap.pixelWidth);
+        const yRatio = RedStone.player.y / (RedStone.gameMap.rsMap.pixelHeight);
         const x = this.sprite.width * xRatio
         const y = this.sprite.height * yRatio
         const canvasWidth = this.canvas.width / (window.devicePixelRatio || 1);

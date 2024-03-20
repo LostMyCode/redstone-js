@@ -5,14 +5,13 @@ import { loadTexture } from "../../utils";
 import { getRandomInt } from "../../utils/RedStoneRandom";
 import { ACT_CHANGE1, ACT_DEAD, ACT_READY, ACT_SITDOWN, GetDirect } from "../ActionH";
 import Camera from "../Camera";
-import { DATA_DIR } from "../Config";
 import EffectDataManager from "../EffectDataManager";
 import HitEffectManager from "../HitEffectManager";
 import { HeroBody, ImageManager } from "../ImageData";
 import RedStone from "../RedStone";
 import SoundManager from "../SoundManager";
 import CommonUI from "../interface/CommonUI";
-import { ActorImage, CType, MapActorSingle, MonsterType } from "../models/Actor";
+import { ActorImage, CType, MonsterType } from "../models/Actor";
 import MonsterSource from "../models/MonsterSource";
 import Ability from "../skill/Ability";
 import HitInfo from "../skill/HitInfo";
@@ -20,14 +19,9 @@ import { HEOP_FOOT, HEOP_HIT_ZONE, HEOP_ON_THE_HEAD, HEOP_SHOULDER, JOB_MONSTER_
 import SkillManager from "../skill/SkillManager";
 import { AK_MONSTER, AK_NPC, AK_PLAYER } from "./ActorH";
 import ActorManager from "./ActorManager";
-import { JOB_MAGIC_ARCHER, JOB_MAGIC_LANCER, JOB_ROGUE } from "../job/JobDefineH";
 
 class Actor {
-    /**
-     * @param {MapActorSingle} actorSingle 
-     */
-    constructor(actorSingle) {
-        this.actorSingle = actorSingle;
+    constructor() {
         this.horizonScale = 100;
         this.verticalScale = 100;
         this.abilityUse = new Ability();
@@ -578,9 +572,10 @@ class Actor {
 
         guageSprite.position.set(x - guageSprite.width / 2, y - this.getBodyHeight(true) - 20);
 
+        CommonUI.guageSprites.push(guageSprite);
         RedStone.gameMap.foremostContainer.addChild(guageSprite);
 
-        const headIconTexture = CommonUI.getActorHeadIcon({ charType: this.actorKind });
+        const headIconTexture = CommonUI.getActorHeadIcon(this);
 
         if (headIconTexture) {
             const brightSprite = new PIXI.Sprite(CommonUI.shopIconBrightTexture);

@@ -45,7 +45,7 @@ export default class BgmPlayer {
         }
 
         if (index < 0 || index >= BGM_SET.length || !isMapSerial) {
-            index = RedStone.gameMap.map.bgmIndex;
+            index = RedStone.gameMap.rsMap.bgmList[0];
 
             if (index < 9) {
                 const replaceBgm = [2, 6, 0, 4, 3, 5, 7, 1, 8];

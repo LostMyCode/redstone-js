@@ -1,3 +1,4 @@
+import { VVI_48_ENCRYT } from "../../common/FieldCommon";
 import BufferReader from "../../utils/BufferReader";
 import { decodeScenarioBuffer } from "../../utils/RedStoneRandom";
 import Event from "./Event";
@@ -413,10 +414,11 @@ export class MapActorSingle {
 }
 
 export class MapActorGroup {
-    constructor(br, structLength, job2Index) {
+    constructor(br, structLength, job2Index, fileVersion) {
         this.br = br;
         this.structLength = structLength;
         this.job = job2Index;
+        this.fileVersion = fileVersion
         this.readData(br);
     }
 
@@ -424,10 +426,13 @@ export class MapActorGroup {
      * @param {BufferReader} br 
      */
     readData(br) {
-        let encryptedBuf = Buffer.from(br.readStructUInt8(this.structLength));
-        let decryptedBuf = decodeScenarioBuffer(encryptedBuf, br.decodeKey);
+        let buf = Buffer.from(br.readStructUInt8(this.structLength));
 
-        const baseReader = new BufferReader(decryptedBuf);
+        if (!this.fileVersion || this.fileVersion >= VVI_48_ENCRYT) {
+            buf = decodeScenarioBuffer(buf, br.decodeKey);
+        }
+
+        const baseReader = new BufferReader(buf);
         this.internalID = baseReader.readUInt16LE();
         this.unknown_1 = baseReader.readUInt16LE(); // is same value as job2Index?
         this.minLevel = baseReader.readUInt16LE();
@@ -453,7 +458,7 @@ export class MapActorGroup {
             };
             this.enemyKarmaInfos.push(enemyKarmaInfo);
             for (let j = 0; j < enemyKarmaInfo.karmas.length; j++) {
-                enemyKarmaInfo.karmas[j] = new Karma(br);
+                enemyKarmaInfo.karmas[j] = new Karma(br, this.fileVersion);
             }
         }
     }

@@ -1,3 +1,5 @@
+import BufferReader from "../utils/BufferReader";
+
 export const getOvalRange = (x1, y1, x2, y2) => {
     x1 -= x2;
     y1 -= y2;
@@ -7,6 +9,16 @@ export const getOvalRange = (x1, y1, x2, y2) => {
     if (y1 >= 0x7fff || y1 <= -0x7fff) return 0x7ffffff;
 
     return x1 * x1 + y1 * y1;
+}
+
+export class Index {
+    /**
+     * @param {BufferReader} reader 
+     */
+    constructor(reader) {
+        this.value = reader ? reader.readInt32LE() : 0;
+        this.index = reader ? reader.readInt32LE() : 0;
+    }
 }
 
 export function random(range) {

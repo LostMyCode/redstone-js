@@ -1,4 +1,5 @@
 import iconv from "iconv-lite";
+import BufferReader from "./BufferReader";
 
 const aucDataTable =
     [0xAF, 0x7E, 0xF5, 0xE7, 0xDD, 0xF9, 0xBE, 0xEE, 0xED, 0xBE, 0xCF, 0xBE, 0x9F, 0xBB, 0x7B, 0xE7
@@ -57,6 +58,15 @@ export const decodeScenarioBuffer = (data, decodeKey) => {
         if (encCounter >= 0x47) encCounter = 0;
     }
     return Buffer.from(result);
+}
+
+export const decodeScenarioBuffer_V2 = (reader, size, decodeKey) => {
+    if (typeof decodeKey !== "number") {
+        decodeKey = reader.decodeKey;
+    }
+    const bytes = reader.readStructUInt8(size);
+    const decryptedBuffer = decodeScenarioBuffer(bytes, decodeKey);
+    return new BufferReader(decryptedBuffer);
 }
 
 export const sjisByteToString = (sjisByteArray) => {

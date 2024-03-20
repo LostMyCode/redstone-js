@@ -1,9 +1,11 @@
+import { VVI_49_ENCRYT_MORE } from "../../common/FieldCommon";
 import BufferReader from "../../utils/BufferReader";
 import { decodeScenarioBuffer } from "../../utils/RedStoneRandom";
 
 export default class Karma {
-    constructor(br) {
+    constructor(br, fileVersion) {
         this.br = br;
+        this.fileVersion = fileVersion;
         this.readData(br);
     }
 
@@ -11,10 +13,13 @@ export default class Karma {
      * @param {BufferReader} br 
      */
     readData(br) {
-        let encryptedBuf = Buffer.from(br.readStructUInt8(0x10));
-        let decryptedBuf = decodeScenarioBuffer(encryptedBuf, br.decodeKey);
+        let buf = Buffer.from(br.readStructUInt8(0x10));
 
-        const baseReader = new BufferReader(decryptedBuf);
+        if (!this.fileVersion || this.fileVersion >= VVI_49_ENCRYT_MORE) {
+            buf = decodeScenarioBuffer(buf, br.decodeKey);
+        }
+
+        const baseReader = new BufferReader(buf);
         this.unknown_1 = baseReader.readUInt16LE();
         this.conditionRelation = baseReader.readUInt16LE();
         this.commands = new Array(baseReader.readUInt16LE()); // KarmaItemCommand Array
@@ -31,19 +36,20 @@ export default class Karma {
 
         for (let i = 0; i < this.conditions.length; i++) {
             // this.conditions[i] = new KarmaItemCondition(br);
-            this.conditions[i] = new KarmaItem(br);
+            this.conditions[i] = new KarmaItem(br, this.fileVersion);
         }
 
         for (let i = 0; i < this.commands.length; i++) {
             // this.commands[i] = new KarmaItemCommand(br);
-            this.commands[i] = new KarmaItem(br);
+            this.commands[i] = new KarmaItem(br, this.fileVersion);
         }
     }
 }
 
 export class KarmaItem {
-    constructor(br) {
+    constructor(br, fileVersion) {
         this.br = br;
+        this.fileVersion = fileVersion;
         this.readData(br);
     }
 
@@ -51,10 +57,13 @@ export class KarmaItem {
      * @param {BufferReader} br 
      */
     readData(br) {
-        let encryptedBuf = Buffer.from(br.readStructUInt8(0x20));
-        let decryptedBuf = decodeScenarioBuffer(encryptedBuf, br.decodeKey);
+        let buf = Buffer.from(br.readStructUInt8(0x20));
 
-        const baseReader = new BufferReader(decryptedBuf);
+        if (!this.fileVersion || this.fileVersion >= VVI_49_ENCRYT_MORE) {
+            buf = decodeScenarioBuffer(buf, br.decodeKey);
+        }
+
+        const baseReader = new BufferReader(buf);
         this._karmaItem = baseReader.readUInt32LE();
         this.value = baseReader.readStructUInt32LE(4);
         this.unknown_0 = baseReader.readUInt32LE();
@@ -64,9 +73,6 @@ export class KarmaItem {
         let messageLength = messageFlags & 0x7FFF;
 
         this.unknown_2 = ((messageFlags >> 15) & 1) == 1;
-        if (this.unknown_2) {
-            console.log("whats");
-        }
 
         if (!this.unknown_2 && messageLength > 0) {
             this.message = decodeScenarioBuffer(br.readStructUInt8(messageLength), br.decodeKey);
