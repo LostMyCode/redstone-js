@@ -1,5 +1,5 @@
 # RedStoneJS
-RedStoneJS is a port of "RED STONE ONLINE" to HTML5 (web) 
+RedStoneJS is an unofficial project to bring "RED STONE ONLINE" to web browsers 
 
 無料オンラインゲーム「RED STONE」をWEBに移植するプロジェクト
 
