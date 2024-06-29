@@ -2,6 +2,7 @@ import * as PIXI from "pixi.js";
 import { loadTexture } from "../../utils";
 import RedStone from "../RedStone";
 import { INTERFACE_DIR } from "../Config";
+import { updateDisplayLog } from "../../utils/DisplayLogUpdater";
 
 class LoadingScreen {
     constructor() {
@@ -57,6 +58,8 @@ class LoadingScreen {
     destroy() {
         this.container.removeChildren();
         RedStone.mainCanvas.rootContainer.removeChild(this.container);
+
+        updateDisplayLog("loading-status", null);
     }
 }
 

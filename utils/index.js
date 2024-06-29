@@ -2,15 +2,27 @@ import WrappedAnim from "../engine/WrappedAnim";
 import { DATA_DIR } from "../game/Config";
 import Texture, { ZippedTextures } from "../game/models/Texture";
 import BufferReader from "./BufferReader";
+import { updateDisplayLog } from "./DisplayLogUpdater";
 
 export const fetchBinaryFile = async (path) => {
-    const f = await fetch(path);
+    const fileName = path.split('/').pop();
 
-    if (!f.ok) return null;
+    updateDisplayLog("loading-status", `Loading ${fileName}`);
 
-    const ab = await f.arrayBuffer();
-
-    return Buffer.from(ab);
+    return fetch(path)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("not ok");
+            }
+            return response.arrayBuffer();
+        })
+        .then(ab => {
+            return Buffer.from(ab);
+        })
+        .catch(e => {
+            updateDisplayLog("loading-status", `Failed to fetch ${fileName}`);
+            throw e;
+        });
 }
 
 export const loadImageSync = async (src) => {

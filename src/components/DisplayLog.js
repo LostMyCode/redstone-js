@@ -41,6 +41,7 @@ class DisplayLog extends React.Component {
 
 DisplayLog.logs.set("map-name", null);
 DisplayLog.logs.set("player-pos", null);
+DisplayLog.logs.set("loading-status", null);
 
 window.addEventListener("displayLogUpdate", e => {
     DisplayLog.logs.set(e.detail.key, e.detail.value);
