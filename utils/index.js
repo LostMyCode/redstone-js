@@ -9,6 +9,10 @@ export const fetchBinaryFile = async (path) => {
 
     updateDisplayLog("loading-status", `Loading ${fileName}`);
 
+    if (['sad', 'sd', 'dat', 'mpr', 'smi', 'rmd'].includes(fileName.split(".").pop())) {
+        path += '.txt';
+    }
+
     return fetch(path)
         .then(response => {
             if (!response.ok) {

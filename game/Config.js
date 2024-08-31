@@ -1,10 +1,10 @@
-export const DATA_DIR = "https://static.sigr.io/redstone";
-export const MAPSET_DIR = "https://static.sigr.io/redstone/Mapset";
-export const INTERFACE_DIR = "https://static.sigr.io/redstone/Interface";
-export const RMD_DIR = "https://static.sigr.io/redstone/Scenario";
-export const BGM_DIR = "https://static.sigr.io/redstone/Bgm";
-export const MINIMAP_DIR = "https://static.sigr.io/redstone/Scenario/Minimap";
-export const MISC_DIR = "https://static.sigr.io/redstone/Misc";
+export const DATA_DIR = "https://rs-data-cdn.sigr.io";
+export const MAPSET_DIR = "https://rs-data-cdn.sigr.io/Mapset";
+export const INTERFACE_DIR = "https://rs-data-cdn.sigr.io/Interface";
+export const RMD_DIR = "https://rs-data-cdn.sigr.io/Scenario";
+export const BGM_DIR = "https://rs-data-cdn.sigr.io/Bgm";
+export const MINIMAP_DIR = "https://rs-data-cdn.sigr.io/Scenario/Minimap";
+export const MISC_DIR = "https://rs-data-cdn.sigr.io/Misc";
 
 export const TILE_WIDTH = 64;
 export const TILE_HEIGHT = 32;
