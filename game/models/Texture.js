@@ -756,62 +756,109 @@ class Texture {
         );
     }
 
-    createTextureCanvases(type = "body") {
-        for (let i = 0; i < this.frameCount; i++) {
-            this.draw(i, type);
-        }
-        return this.shape[type].canvas;
-    }
-
-    createTextureCanvas(frameIndex, type) {
-        this.draw(frameIndex, type);
-        return this.shape[type].canvas[frameIndex];
-    }
-
     getCanvas(frameIndex, type = "body") {
-        if (!this.isAnalyzed) this.analyze();
-        if (!this.shape[type].canvas[frameIndex]) this.createTextureCanvas(frameIndex, type);
-        return this.shape[type].canvas[frameIndex].canvas;
+        const shape = this.shape[type];
+
+        if (shape.canvas[frameIndex]) {
+            return shape.canvas[frameIndex];
+        }
+
+        const width = this.getIsUseMargin() ? this.maxSizeInfo.outerWidth : shape.width[frameIndex];
+        const height = this.getIsUseMargin() ? this.maxSizeInfo.outerHeight : shape.height[frameIndex];
+
+        const app = new PIXI.Application({
+            width,
+            height,
+            backgroundColor: 0x1099bb,
+            antialias: true
+        });
+
+        const texture = this.getPixiTexture(frameIndex, type);
+        const sprite = new PIXI.Sprite(texture);
+        const renderTexture = PIXI.RenderTexture.create({
+            width: texture.width,
+            height: texture.height,
+            resolution: texture.resolution || 1
+        });
+
+        app.renderer.render(sprite, { renderTexture });
+
+        const canvas = document.createElement('canvas');
+        canvas.width = texture.width;
+        canvas.height = texture.height;
+        const ctx = canvas.getContext('2d');
+
+        const pixels = app.renderer.extract.pixels(renderTexture);
+        const imageData = ctx.createImageData(texture.width, texture.height);
+        imageData.data.set(pixels);
+        ctx.putImageData(imageData, 0, 0);
+
+        renderTexture.destroy();
+        sprite.destroy();
+
+        shape.canvas[frameIndex] = canvas;
+
+        return canvas;
     }
 
     getPixiTexture(frameIndex, type = "body") {
         if (!this.isAnalyzed) this.analyze();
-        if (!this.shape[type].canvas[frameIndex]) this.createTextureCanvas(frameIndex, type);
-        const texture = PIXI.Texture.from(this.shape[type].canvas[frameIndex].canvas);
+
+        const shape = this.shape[type];
+
+        // Return from cache if available
+        if (shape.textures[frameIndex]) {
+            return shape.textures[frameIndex];
+        }
+
+        // Generate pixel data if not available
+        if (!shape.pixelData[frameIndex]) {
+            this.draw(frameIndex, type);
+        }
+
+        const pixelData = shape.pixelData[frameIndex];
+        if (!pixelData) {
+            // Return empty texture for empty frames
+            return PIXI.Texture.EMPTY;
+        }
+
+        const width = this.getIsUseMargin() ? this.maxSizeInfo.outerWidth : shape.width[frameIndex];
+        const height = this.getIsUseMargin() ? this.maxSizeInfo.outerHeight : shape.height[frameIndex];
+
+        const texture = PIXI.Texture.fromBuffer(pixelData, width, height);
+        shape.textures[frameIndex] = texture; // Cache the texture
+
         return texture;
     }
 
     draw(frameIndex, type = "body") {
-        this.drawFrame = frameIndex;
-        this.drawShapeType = type;
-        const canvasManager = this.shape[type].canvas[frameIndex] || new CanvasManager();
-        this.shape[type].canvas[frameIndex] = canvasManager;
+        const shape = this.shape[type];
+        const width = this.getIsUseMargin() ? this.maxSizeInfo.outerWidth : shape.width[frameIndex];
+        const height = this.getIsUseMargin() ? this.maxSizeInfo.outerHeight : shape.height[frameIndex];
 
-        this.resizeCanvas();
-
-        type === "body" && this.drawBody();
-        type === "shadow" && this.drawShadow();
-        type === "outline" && this.drawOutline();
-
-        // update
-        canvasManager.update();
-    }
-
-    redraw() {
-        this.draw(this.drawFrame);
-    }
-
-    resizeCanvas() {
-        const canvasManager = this.shape[this.drawShapeType].canvas[this.drawFrame];
-
-        if (false/* this.getIsUseMargin() */) {
-            canvasManager.resize(this.maxSizeInfo.outerWidth, this.maxSizeInfo.outerHeight);
-        } else {
-            canvasManager.resize(this.shape[this.drawShapeType].width[this.drawFrame], this.shape[this.drawShapeType].height[this.drawFrame])
+        if (width === 0 || height === 0) {
+            shape.pixelData[frameIndex] = null;
+            return;
         }
+
+        const pixelData = new Uint8ClampedArray(width * height * 4);
+
+        switch (type) {
+            case "body":
+                this.drawBody(frameIndex, pixelData, width, height);
+                break;
+            case "shadow":
+                this.drawShadow(frameIndex, pixelData, width, height);
+                break;
+            case "outline":
+                this.drawOutline(frameIndex, pixelData, width, height);
+                break;
+        }
+
+        shape.pixelData[frameIndex] = pixelData;
     }
 
-    drawBody() {
+    drawBody(frameIndex, pixelData, canvasWidth, canvasHeight) {
         if (!this.getIsShowBody()) {
             return;
         }
@@ -819,38 +866,29 @@ class Texture {
         switch (this.fileExtension) {
             case "smi":
             case "mpr":
-                this.drawBodySmi();
+                this.drawBodySmi(frameIndex, pixelData, canvasWidth, canvasHeight);
                 break;
             default:
                 if (this.isHighColor) {
-                    this.drawBodyHighColor();
+                    this.drawBodyHighColor(frameIndex, pixelData, canvasWidth, canvasHeight);
                 } else {
-                    this.drawBodyLowColor();
+                    this.drawBodyLowColor(frameIndex, pixelData, canvasWidth, canvasHeight);
                 }
         }
     }
 
-    drawBodySmi() {
+    drawBodySmi(frameIndex, pixelData, canvasWidth, canvasHeight) {
         const reader = this.reader;
-        const canvasManager = this.shape.body.canvas[this.drawFrame];
+        const isUseOpacity = this.getIsUseOpacity();
+        const isUseMargin = this.getIsUseMargin();
 
-        var isUseOpacity = this.getIsUseOpacity();
-        var isUseMargin = this.getIsUseMargin();
-        var isUseBackground = this.getIsUseBackground();
+        const startOffset = this.shape.body.startOffset[frameIndex];
+        const width = this.shape.body.width[frameIndex];
+        const height = this.shape.body.height[frameIndex];
+        const left = isUseMargin ? this.maxSizeInfo.left - this.shape.body.left[frameIndex] : 0;
+        const top = isUseMargin ? this.maxSizeInfo.top - this.shape.body.top[frameIndex] : 0;
 
-        var startOffset = this.shape.body.startOffset[this.drawFrame];
-        var width = this.shape.body.width[this.drawFrame];
-        var height = this.shape.body.height[this.drawFrame];
-        var left = isUseMargin ? this.maxSizeInfo.left - this.shape.body.left[this.drawFrame] : 0;
-        var top = isUseMargin ? this.maxSizeInfo.top - this.shape.body.top[this.drawFrame] : 0;
-
-        var w, h, colorData1, colorData2, _drawPixel;
-
-        if (isUseBackground && isUseOpacity) {
-            _drawPixel = canvasManager.drawBlendPixel;
-        } else {
-            _drawPixel = canvasManager.drawPixel;
-        }
+        let w, h, colorData1, colorData2;
 
         reader.offset = startOffset;
 
@@ -863,37 +901,28 @@ class Texture {
                 colorData2 = reader.readUInt8();
                 colorData1 = reader.readUInt8();
 
-                _drawPixel.call(
-                    canvasManager,
-                    left + w,
-                    top + h,
-                    getRGBA15bit(colorData1, colorData2, isUseOpacity)
-                )
+                const [r, g, b, a] = getRGBA15bit(colorData1, colorData2, isUseOpacity);
+                const pixelIndex = ((top + h) * canvasWidth + (left + w)) * 4;
+
+                pixelData[pixelIndex] = r;
+                pixelData[pixelIndex + 1] = g;
+                pixelData[pixelIndex + 2] = b;
+                pixelData[pixelIndex + 3] = a;
             }
         }
     }
 
-    drawBodyHighColor() {
+    drawBodyHighColor(frameIndex, pixelData, canvasWidth, canvasHeight) {
         const reader = this.reader;
-        const canvasManager = this.shape.body.canvas[this.drawFrame];
+        const isUseOpacity = this.getIsUseOpacity();
+        const isUseMargin = this.getIsUseMargin();
 
-        var isUseOpacity = this.getIsUseOpacity();
-        var isUseMargin = this.getIsUseMargin();
-        var isUseBackground = this.getIsUseBackground();
+        const startOffset = this.shape.body.startOffset[frameIndex];
+        const height = this.shape.body.height[frameIndex];
+        const left = isUseMargin ? this.maxSizeInfo.left - this.shape.body.left[frameIndex] : 0;
+        const top = isUseMargin ? this.maxSizeInfo.top - this.shape.body.top[frameIndex] : 0;
 
-        var startOffset = this.shape.body.startOffset[this.drawFrame];
-        var width = this.shape.body.width[this.drawFrame];
-        var height = this.shape.body.height[this.drawFrame];
-        var left = isUseMargin ? this.maxSizeInfo.left - this.shape.body.left[this.drawFrame] : 0;
-        var top = isUseMargin ? this.maxSizeInfo.top - this.shape.body.top[this.drawFrame] : 0;
-
-        var _drawPixel, w, h, unityCount, unityWidth, colorData1, colorData2;
-
-        if (isUseBackground && isUseOpacity) {
-            _drawPixel = canvasManager.drawBlendPixel;
-        } else {
-            _drawPixel = canvasManager.drawPixel;
-        }
+        let w, h, unityCount, unityWidth, colorData1, colorData2;
 
         reader.offset = startOffset + 8; // Skip shape info data
 
@@ -909,45 +938,36 @@ class Texture {
                     colorData2 = reader.readUInt8();
                     colorData1 = reader.readUInt8();
 
-                    _drawPixel.call(
-                        canvasManager,
-                        left + w,
-                        top + h,
-                        getRGBA15bit(colorData1, colorData2, isUseOpacity)
-                    )
+                    const [r, g, b, a] = getRGBA15bit(colorData1, colorData2, isUseOpacity);
+                    const pixelIndex = ((top + h) * canvasWidth + (left + w)) * 4;
+
+                    pixelData[pixelIndex] = r;
+                    pixelData[pixelIndex + 1] = g;
+                    pixelData[pixelIndex + 2] = b;
+                    pixelData[pixelIndex + 3] = a;
                     w++;
                 }
             }
         }
     }
 
-    drawBodyLowColor() {
+    drawBodyLowColor(frameIndex, pixelData, canvasWidth, canvasHeight) {
         const reader = this.reader;
-        const canvasManager = this.shape.body.canvas[this.drawFrame];
+        const isUseOpacity = this.getIsUseOpacity();
+        const isUseMargin = this.getIsUseMargin();
+        const isUsePalette = this.getIsUsePalette();
 
-        var isUseOpacity = this.getIsUseOpacity();
-        var isUseMargin = this.getIsUseMargin();
-        var isUseBackground = this.getIsUseBackground();
-        var isUsePalette = this.getIsUsePalette();
-
-        var startOffset = this.shape.body.startOffset[this.drawFrame];
-        var width = this.shape.body.width[this.drawFrame];
-        var height = this.shape.body.height[this.drawFrame];
-        var left = isUseMargin ? this.maxSizeInfo.left - this.shape.body.left[this.drawFrame] : 0;
-        var top = isUseMargin ? this.maxSizeInfo.top - this.shape.body.top[this.drawFrame] : 0;
+        const startOffset = this.shape.body.startOffset[frameIndex];
+        const height = this.shape.body.height[frameIndex];
+        const left = isUseMargin ? this.maxSizeInfo.left - this.shape.body.left[frameIndex] : 0;
+        const top = isUseMargin ? this.maxSizeInfo.top - this.shape.body.top[frameIndex] : 0;
 
         // var paletteFile = _App.fileManager.paletteFile;
         var paletteFile = null;
         var paletteNumber = this.selectedPaletteNumber;
         var paletteData = (isUsePalette && paletteFile) ? paletteFile.paletteData[paletteNumber] : this.paletteData;
 
-        var _drawPixel, _getRGB, w, h, unityCount, unityWidth, colorReference, colorData1, colorData2;
-
-        if (isUseBackground && isUseOpacity) {
-            _drawPixel = canvasManager.drawBlendPixel;
-        } else {
-            _drawPixel = canvasManager.drawPixel;
-        }
+        var _getRGB, w, h, unityCount, unityWidth, colorReference, colorData1, colorData2;
 
         if (isUsePalette && paletteFile && paletteFile.is16bitColor) {
             _getRGB = getRGBA16bit;
@@ -970,33 +990,31 @@ class Texture {
                     colorData1 = paletteData[colorReference * 2 + 1];
                     colorData2 = paletteData[colorReference * 2];
 
-                    _drawPixel.call(
-                        canvasManager,
-                        left + w,
-                        top + h,
-                        _getRGB.call(this, colorData1, colorData2, isUseOpacity)
-                    )
+                    const [r, g, b, a] = _getRGB.call(this, colorData1, colorData2, isUseOpacity);
+                    const pixelIndex = ((top + h) * canvasWidth + (left + w)) * 4;
+
+                    pixelData[pixelIndex] = r;
+                    pixelData[pixelIndex + 1] = g;
+                    pixelData[pixelIndex + 2] = b;
+                    pixelData[pixelIndex + 3] = a;
                     w++;
                 }
             }
         }
     }
 
-    drawShadow() {
+    drawShadow(frameIndex, pixelData, canvasWidth, canvasHeight) {
         if (!this.isExistShadow) {
             return;
         }
 
         const reader = this.reader;
-        const canvasManager = this.shape.shadow.canvas[this.drawFrame];
+        const startOffset = this.shape.shadow.startOffset[frameIndex];
+        const height = this.shape.shadow.height[frameIndex];
+        const left = 0;
+        const top = 0;
 
-        var startOffset = this.shape.shadow.startOffset[this.drawFrame];
-        var width = this.shape.shadow.width[this.drawFrame];
-        var height = this.shape.shadow.height[this.drawFrame];
-        var left = 0;
-        var top = 0;
-
-        var w, h, unityCount, unityWidth;
+        let w, h, unityCount, unityWidth;
 
         reader.offset = startOffset + 8; // Skip shape info data
 
@@ -1009,18 +1027,20 @@ class Texture {
                 unityWidth = reader.readUInt8();
 
                 while (unityWidth--) {
-                    canvasManager.drawBlendPixel(
-                        left + w,
-                        top + h,
-                        SHADOW_PIXEL_DATA
-                    );
+                    const [r, g, b, a] = SHADOW_PIXEL_DATA;
+                    const pixelIndex = ((top + h) * canvasWidth + (left + w)) * 4;
+
+                    pixelData[pixelIndex] = r;
+                    pixelData[pixelIndex + 1] = g;
+                    pixelData[pixelIndex + 2] = b;
+                    pixelData[pixelIndex + 3] = a;
                     w++;
                 }
             }
         }
     }
 
-    drawOutline() {
+    drawOutline(frameIndex, pixelData, canvasWidth, canvasHeight) {
         if (!this.isExistOutline || !this.getIsShowOutline()) {
             return;
         }
@@ -1030,15 +1050,12 @@ class Texture {
         }
 
         const reader = this.reader;
-        const canvasManager = this.shape.outline.canvas[this.drawFrame];
+        const startOffset = this.shape.outline.startOffset[frameIndex];
+        const height = this.shape.outline.height[frameIndex];
+        const left = this.maxSizeInfo.left - this.shape.outline.left[frameIndex];
+        const top = this.maxSizeInfo.top - this.shape.outline.top[frameIndex];
 
-        var startOffset = this.shape.outline.startOffset[this.drawFrame];
-        var width = this.shape.outline.width[this.drawFrame];
-        var height = this.shape.outline.height[this.drawFrame];
-        var left = this.maxSizeInfo.left - this.shape.outline.left[this.drawFrame];
-        var top = this.maxSizeInfo.top - this.shape.outline.top[this.drawFrame];
-
-        var w, h, unityCount, unityWidth;
+        let w, h, unityCount, unityWidth;
 
         this.stream.seek(startOffset + 8);
         reader.offset = startOffset + 8;  // Skip shape info data
@@ -1052,11 +1069,13 @@ class Texture {
                 unityWidth = reader.readUInt8();
 
                 while (unityWidth--) {
-                    canvasManager.drawBlendPixel(
-                        left + w,
-                        top + h,
-                        OUTLINE_PIXEL_DATA
-                    );
+                    const [r, g, b, a] = OUTLINE_PIXEL_DATA;
+                    const pixelIndex = ((top + h) * canvasWidth + (left + w)) * 4;
+
+                    pixelData[pixelIndex] = r;
+                    pixelData[pixelIndex + 1] = g;
+                    pixelData[pixelIndex + 2] = b;
+                    pixelData[pixelIndex + 3] = a;
                     w++;
                 }
             }
@@ -1096,7 +1115,9 @@ class EffectShape {
         this.height = [];
         this.left = [];
         this.top = [];
-        this.canvas = [];
+        this.pixelData = []; // For storing raw pixel data
+        this.textures = []; // For caching PIXI.Texture
+        this.canvas = []; // For caching HTMLCanvasElement
     }
 }
 

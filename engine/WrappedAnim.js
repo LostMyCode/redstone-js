@@ -2,17 +2,15 @@ import * as PIXI from "pixi.js";
 
 import Texture from "../game/models/Texture";
 import BufferReader from "../utils/BufferReader";
-import CanvasManager from "../utils/CanvasManager";
 import { getRGBA15bit } from "../utils/RedStoneRandom";
 import Anim from "./Anim";
 
-const SHADOW_PIXEL_DATA = [7, 7, 7, 0x80];
-const OUTLINE_PIXEL_DATA = [1, 1, 1, 0xff];
+const SHADOW_PIXEL_DATA = [7, 7, 7, 128];
+const OUTLINE_PIXEL_DATA = [1, 1, 1, 255];
 
 export default class WrappedAnim extends Anim {
     constructor() {
         super();
-        this.canvasManager = new CanvasManager;
         this.frameCache = {
             body: {},
             shadow: {}
@@ -62,25 +60,61 @@ export default class WrappedAnim extends Anim {
         return { width, height, left, top, dataOffset: offset };
     }
 
-    getCanvas(frame, type = "body") {
-        if (this.frameCache[type][frame]?.canvas) return this.frameCache[type][frame].canvas;
-
-        const canvas = this.drawCanvas(frame, type);
-
-        return canvas;
-    }
-
-    drawCanvas(frame, type = "body") {
+    createFramePixelData(frame, type = "body") {
         const { dataOffset, width, height } = this.getFrame(frame, type);
         const reader = this.getSpriteData(type);
-        const _drawPixel = this.canvasManager.drawPixel;
-        const _getRGB = getRGBA15bit;
         const isUseOpacity = false; // tmp;
         let unityCount, unityWidth, w, h, colorReference, colorData1, colorData2;
 
         reader.offset = dataOffset + 8;
 
-        this.canvasManager.resize(width, height);
+        const pixelDataBuffer = new Uint8ClampedArray(width * height * 4);
+
+        const drawPixel = (x, y, rgba) => {
+            if (x < 0 || x >= width || y < 0 || y >= height) return;
+            const idx = (y * width + x) * 4;
+            pixelDataBuffer[idx] = rgba[0];
+            pixelDataBuffer[idx + 1] = rgba[1];
+            pixelDataBuffer[idx + 2] = rgba[2];
+            pixelDataBuffer[idx + 3] = rgba[3];
+        };
+
+        const drawBlendPixel = (x, y, rgba) => {
+            if (x < 0 || x >= width || y < 0 || y >= height) return;
+            const idx = (y * width + x) * 4;
+            const src_r = rgba[0];
+            const src_g = rgba[1];
+            const src_b = rgba[2];
+            const src_a = rgba[3] / 255;
+
+            if (src_a === 1) {
+                drawPixel(x, y, rgba);
+                return;
+            }
+
+            const dst_r = pixelDataBuffer[idx];
+            const dst_g = pixelDataBuffer[idx + 1];
+            const dst_b = pixelDataBuffer[idx + 2];
+            const dst_a = pixelDataBuffer[idx + 3] / 255;
+
+            const out_a = src_a + dst_a * (1 - src_a);
+            if (out_a === 0) {
+                pixelDataBuffer[idx] = 0;
+                pixelDataBuffer[idx + 1] = 0;
+                pixelDataBuffer[idx + 2] = 0;
+                pixelDataBuffer[idx + 3] = 0;
+                return;
+            }
+
+            const out_r = (src_r * src_a + dst_r * dst_a * (1 - src_a)) / out_a;
+            const out_g = (src_g * src_a + dst_g * dst_a * (1 - src_a)) / out_a;
+            const out_b = (src_b * src_a + dst_b * dst_a * (1 - src_a)) / out_a;
+
+            pixelDataBuffer[idx] = out_r;
+            pixelDataBuffer[idx + 1] = out_g;
+            pixelDataBuffer[idx + 2] = out_b;
+            pixelDataBuffer[idx + 3] = out_a * 255;
+        };
 
         if (type === "body") {
             for (h = 0; h < height; h++) {
@@ -96,12 +130,7 @@ export default class WrappedAnim extends Anim {
                         colorData1 = this.sprite.plt[colorReference * 2 + 1];
                         colorData2 = this.sprite.plt[colorReference * 2];
 
-                        _drawPixel.call(
-                            this.canvasManager,
-                            w,
-                            h,
-                            _getRGB.call(this, colorData1, colorData2, isUseOpacity)
-                        )
+                        drawPixel(w, h, getRGBA15bit(colorData1, colorData2, isUseOpacity));
 
                         w++;
                     }
@@ -119,34 +148,21 @@ export default class WrappedAnim extends Anim {
                     unityWidth = reader.readUInt8();
 
                     while (unityWidth--) {
-                        this.canvasManager.drawBlendPixel(w, h, pixelData);
-
+                        drawBlendPixel(w, h, pixelData);
                         w++;
                     }
                 }
             }
         }
 
-        this.canvasManager.update();
-
-        const canvas = this.canvasManager.canvas;
-
-        this.canvasManager.reset();
-
-        if (this.frameCache[type][frame]) {
-            this.frameCache[type][frame].canvas = canvas;
-        } else {
-            this.frameCache[type][frame] = { canvas };
-        }
-
-        return canvas;
+        return { pixelDataBuffer, width, height };
     }
 
     getPixiTexture(frame, type = "body") {
         if (this.frameCache[type][frame]?.texture) return this.frameCache[type][frame].texture;
 
-        const canvas = this.getCanvas(frame, type);
-        const texture = PIXI.Texture.from(canvas);
+        const { pixelDataBuffer, width, height } = this.createFramePixelData(frame, type);
+        const texture = PIXI.Texture.fromBuffer(pixelDataBuffer, width, height);
 
         if (this.frameCache[type][frame]) {
             this.frameCache[type][frame].texture = texture;

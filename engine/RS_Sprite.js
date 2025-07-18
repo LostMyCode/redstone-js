@@ -4,10 +4,10 @@ import BufferReader, { TYPE_DEF } from "../utils/BufferReader";
 import { PUT_NORMAL, SPRITE_BPP16, SPRITE_BPP8 } from "./DrawH";
 import { REGSDHEADER, SDHEADER } from "./ImageH";
 import Rect from "./Rect";
-import CanvasManager from "../utils/CanvasManager";
 import { getRGBA15bit } from "../utils/RedStoneRandom";
 
-const canvasManager = new CanvasManager;
+const SHADOW_PIXEL_DATA = [7, 7, 7, 128]; // Alpha changed to 0-255 scale
+const OUTLINE_PIXEL_DATA = [1, 1, 1, 255];
 
 export default class RS_Sprite {
     constructor() {
@@ -54,16 +54,6 @@ export default class RS_Sprite {
         this.isLoadedPlt = false;
         this.height = 0;
     }
-
-    // getMaxSize() {
-    //     this.maxSpriteWidth = 0;
-    //     this.maxSpriteHeight = 0;
-
-    //     this.maxShadowWidth = 0;
-    //     this.maxShadowHeight = 0;
-
-
-    // }
 
     _load(buffer, loadPalette) {
         const reader = new BufferReader(buffer);
@@ -211,8 +201,7 @@ export default class RS_Sprite {
 
         if (!this._8Sprite && !this._16Sprite) return;
 
-        const canvas = this.getCanvas(index);
-        const texture = PIXI.Texture.from(canvas);
+        const texture = this.getPixiTexture(index);
         const sprite = new PIXI.Sprite(texture);
 
         sprite.position.set(x, y);
@@ -228,8 +217,7 @@ export default class RS_Sprite {
 
         if (!this._8Sprite && !this._16Sprite) return;
 
-        const canvas = this.getCanvas(index);
-        const texture = PIXI.Texture.from(canvas);
+        const texture = this.getPixiTexture(index);
         const sprite = pixiSprite;
 
         sprite.texture = texture;
@@ -357,21 +345,74 @@ export default class RS_Sprite {
         return { width, height, left, top, dataOffset: offset };
     }
 
-    getCanvas(frame, type = "body") {
-        return this.frameCache[type][frame] || this.createFrameCanvas(frame, type);
+    getPixiTexture(frame, type = "body") {
+        return this.frameCache[type][frame] || this.createFrameTexture(frame, type);
     }
 
-    createFrameCanvas(frame, type = "body") {
+    createFrameTexture(frame, type = "body") {
+        const { pixelDataBuffer, width, height } = this.createFramePixelData(frame, type);
+        const texture = PIXI.Texture.fromBuffer(pixelDataBuffer, width, height);
+
+        this.frameCache[type][frame] = texture;
+
+        return texture;
+    }
+
+    createFramePixelData(frame, type = "body") {
         const { dataOffset, width, height } = this.getFrame(frame, type);
         const reader = this.getSpriteData(type);
-        const _drawPixel = canvasManager.drawPixel;
-        const _getRGB = getRGBA15bit;
         const isUseOpacity = false; // tmp;
         let unityCount, unityWidth, w, h, colorReference, colorData1, colorData2;
 
         reader.offset = dataOffset + 8;
 
-        canvasManager.resize(width, height);
+        const pixelDataBuffer = new Uint8ClampedArray(width * height * 4);
+
+        const drawPixel = (x, y, rgba) => {
+            if (x < 0 || x >= width || y < 0 || y >= height) return;
+            const idx = (y * width + x) * 4;
+            pixelDataBuffer[idx] = rgba[0];
+            pixelDataBuffer[idx + 1] = rgba[1];
+            pixelDataBuffer[idx + 2] = rgba[2];
+            pixelDataBuffer[idx + 3] = rgba[3];
+        };
+
+        const drawBlendPixel = (x, y, rgba) => {
+            if (x < 0 || x >= width || y < 0 || y >= height) return;
+            const idx = (y * width + x) * 4;
+            const src_r = rgba[0];
+            const src_g = rgba[1];
+            const src_b = rgba[2];
+            const src_a = rgba[3] / 255;
+
+            if (src_a === 1) {
+                drawPixel(x, y, rgba);
+                return;
+            }
+
+            const dst_r = pixelDataBuffer[idx];
+            const dst_g = pixelDataBuffer[idx + 1];
+            const dst_b = pixelDataBuffer[idx + 2];
+            const dst_a = pixelDataBuffer[idx + 3] / 255;
+
+            const out_a = src_a + dst_a * (1 - src_a);
+            if (out_a === 0) {
+                pixelDataBuffer[idx] = 0;
+                pixelDataBuffer[idx + 1] = 0;
+                pixelDataBuffer[idx + 2] = 0;
+                pixelDataBuffer[idx + 3] = 0;
+                return;
+            }
+
+            const out_r = (src_r * src_a + dst_r * dst_a * (1 - src_a)) / out_a;
+            const out_g = (src_g * src_a + dst_g * dst_a * (1 - src_a)) / out_a;
+            const out_b = (src_b * src_a + dst_b * dst_a * (1 - src_a)) / out_a;
+
+            pixelDataBuffer[idx] = out_r;
+            pixelDataBuffer[idx + 1] = out_g;
+            pixelDataBuffer[idx + 2] = out_b;
+            pixelDataBuffer[idx + 3] = out_a * 255;
+        };
 
         if (type === "body") {
             if (this.bpp === SPRITE_BPP16) {
@@ -387,12 +428,7 @@ export default class RS_Sprite {
                             colorData2 = reader.readUInt8();
                             colorData1 = reader.readUInt8();
 
-                            _drawPixel.call(
-                                canvasManager,
-                                w,
-                                h,
-                                _getRGB.call(this, colorData1, colorData2, isUseOpacity)
-                            )
+                            drawPixel(w, h, getRGBA15bit(colorData1, colorData2, isUseOpacity));
 
                             w++;
                         }
@@ -412,12 +448,7 @@ export default class RS_Sprite {
                             colorData1 = this.plt[colorReference * 2 + 1];
                             colorData2 = this.plt[colorReference * 2];
 
-                            _drawPixel.call(
-                                canvasManager,
-                                w,
-                                h,
-                                _getRGB.call(this, colorData1, colorData2, isUseOpacity)
-                            )
+                            drawPixel(w, h, getRGBA15bit(colorData1, colorData2, isUseOpacity));
 
                             w++;
                         }
@@ -437,22 +468,13 @@ export default class RS_Sprite {
                     unityWidth = reader.readUInt8();
 
                     while (unityWidth--) {
-                        canvasManager.drawBlendPixel(w, h, pixelData);
-
+                        drawBlendPixel(w, h, pixelData);
                         w++;
                     }
                 }
             }
         }
 
-        canvasManager.update();
-
-        const canvas = canvasManager.canvas;
-
-        canvasManager.reset();
-
-        this.frameCache[type][frame] = canvas;
-
-        return canvas;
+        return { pixelDataBuffer, width, height };
     }
 }
