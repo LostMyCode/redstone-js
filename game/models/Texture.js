@@ -795,6 +795,7 @@ class Texture {
 
         renderTexture.destroy();
         sprite.destroy();
+        app.destroy();
 
         shape.canvas[frameIndex] = canvas;
 
