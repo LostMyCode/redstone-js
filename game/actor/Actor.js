@@ -68,6 +68,16 @@ class Actor {
 
         this.abilityUse.reset();
 
+        // destroy cached sprites
+        this.guageSprite?.destroy();
+        this.brightSprite?.destroy();
+        this.headIconSprite?.destroy();
+        this.guildIconSprite?.destroy();
+        this.guageSprite = null;
+        this.brightSprite = null;
+        this.headIconSprite = null;
+        this.guildIconSprite = null;
+
         //
     }
 
@@ -568,18 +578,19 @@ class Actor {
 
 
         const guageTexture = CommonUI.getGuage(this.isHero() ? "myPlayer" : (!this.isMonster() ? "npc" : "enemy"), this.name);
-        const guageSprite = new PIXI.Sprite(guageTexture);
+        const guageSprite = this.guageSprite || new PIXI.Sprite(guageTexture);
 
         guageSprite.position.set(x - guageSprite.width / 2, y - this.getBodyHeight(true) - 20);
 
         CommonUI.guageSprites.push(guageSprite);
         RedStone.gameMap.foremostContainer.addChild(guageSprite);
+        this.guageSprite = guageSprite;
 
         const headIconTexture = CommonUI.getActorHeadIcon(this);
 
         if (headIconTexture) {
-            const brightSprite = new PIXI.Sprite(CommonUI.shopIconBrightTexture);
-            const sprite = new PIXI.Sprite(headIconTexture);
+            const brightSprite = this.brightSprite || new PIXI.Sprite(CommonUI.shopIconBrightTexture);
+            const sprite = this.headIconSprite || new PIXI.Sprite(headIconTexture);
 
             sprite.anchor.set(0.5, 0.5);
             sprite.position.set(x, y - this.getBodyHeight(true) - 60);
@@ -589,14 +600,17 @@ class Actor {
             brightSprite.position.set(x, y - this.getBodyHeight(true) - 60);
 
             RedStone.gameMap.foremostContainer.addChild(brightSprite, sprite);
+            this.brightSprite = brightSprite;
+            this.headIconSprite = sprite;
         }
 
         if (this.isHero()) {
-            const sprite = new PIXI.Sprite(RedStone.player.guildIconTexture);
+            const sprite = this.guildIconSprite || new PIXI.Sprite(RedStone.player.guildIconTexture);
             sprite.width = 32;
             sprite.height = 32;
             sprite.position.set(guageSprite.x - 32, guageSprite.y - (32 - guageSprite.height) / 2);
             RedStone.gameMap.foremostContainer.addChild(sprite);
+            this.guildIconSprite = sprite;
         }
     }
 

@@ -117,7 +117,6 @@ class GameMap {
         this.foremostContainer.removeChildren();
         this.graphics.clear();
 
-        CommonUI.destroyGuageCache();
         RedStone.player.reset();
 
         RedStone.mainCanvas.mainContainer.removeChild(
@@ -129,7 +128,10 @@ class GameMap {
             this.graphics
         );
 
+        RedStone.actors.forEach(a => a.remove());
         RedStone.actors = [];
+
+        CommonUI.destroyGuageCache();
 
         Object.values(this.tileSubContainers).forEach(c => {
             c.cacheAsBitmap = false;
