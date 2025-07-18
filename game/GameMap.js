@@ -162,7 +162,7 @@ class GameMap {
         this.portalTexture = await loadTexture(`${INTERFACE_DIR}/gateAnm.sad`);
     }
 
-    async loadMap(rmdFileName = "[000]T01.rmd") {
+    async loadMap(rmdFileName = "[000]T01.rmd", gate = -1) {
         // async loadMap(rmdFileName = "[373]T02.rmd") {
         // async loadMap(rmdFileName = "[130]G09.rmd") {
         // async loadMap(rmdFileName = "[010]G13.rmd") {
@@ -176,7 +176,7 @@ class GameMap {
         console.log("[Game]", "Map:", this.rsMap.name);
 
         Camera.setMapSize(this.rsMap.pixelWidth, this.rsMap.pixelHeight);
-        this.initPosition();
+        this.initPosition(gate);
 
         const mapsetName = getMapsetName(this.rsMap.tileSet);
         this.tileTexture = await loadTexture(`${MAPSET_DIR}/${mapsetName}/tile.mpr`);
@@ -373,7 +373,7 @@ class GameMap {
             };
             if (getDistance(RedStone.player, portalPoint) < 70) {
                 console.log("portal gate", this.selectedPortal.area.string);
-                this.moveField(this.selectedPortal.area.string);
+                this.moveField(this.selectedPortal.area);
                 this.selectedPortal = null;
                 return;
             }
@@ -430,13 +430,8 @@ class GameMap {
                 bounds = mergedBounds;
             }
 
-            if (!Camera.isRectInView(bounds)) {
-                return;
-            }
-
+            // Update actor sprites regardless of whether it is visible or not
             if (sprite.isActorSprite) {
-                actorSpritesInView.push(sprite, sprite.shadowSprite);
-
                 const actor = sprite.actor;
 
                 actor.getBody().updatePixiSprite(sprite, "body", actor.pos.x, actor.pos.y, actor.anm, actor.direct, actor.frame, actor.horizonScale, actor.verticalScale);
@@ -445,7 +440,14 @@ class GameMap {
                 } else {
                     sprite.shadowSprite = actor.getBody().createPixiSprite("shadow", actor.pos.x, actor.pos.y, actor.anm, actor.direct, actor.frame, actor.horizonScale, actor.verticalScale);
                 }
+            }
 
+            if (!Camera.isRectInView(bounds)) {
+                return;
+            }
+
+            if (sprite.isActorSprite) {
+                actorSpritesInView.push(sprite, sprite.shadowSprite);
                 sprite.actor.put();
             }
 
@@ -744,9 +746,14 @@ class GameMap {
         });
     }
 
-    initPosition() {
+    initPosition(gate) {
         if (this.prevRmdName) {
-            const portalToPrevMap = this.rsMap.area.areas.find(area => area?.string === this.prevRmdName);
+            const portalToPrevMap = this.rsMap.area.areas.find(area => {
+                if (typeof gate === 'number' && gate !== -1) {
+                    return area?.serial === gate;
+                }
+                return area?.string === this.prevRmdName;
+            });
 
             if (portalToPrevMap) {
                 const centerPos = portalToPrevMap.getCenterPos();
@@ -765,6 +772,20 @@ class GameMap {
         }
     }
 
+    movePosition(gate) {
+        const targetPortal = this.rsMap.area.areas.find(area => {
+            if (typeof gate === 'number' && gate !== -1) {
+                return area?.serial === gate;
+            }
+            return area?.string === this.prevRmdName;
+        });
+
+        const centerPos = targetPortal.getCenterPos();
+
+        Camera.setPosition(centerPos.x, centerPos.y);
+        RedStone.player.setPosition(centerPos.x, centerPos.y);
+    }
+
     getRealSize() {
         if (!this.rsMap) return null;
         return {
@@ -773,13 +794,25 @@ class GameMap {
         }
     }
 
-    async moveField(rmdFileName) {
-        if (rmdFileName === this.currentRmdFileName) return;
+    async moveField(destInfo) {
+        if (typeof destInfo === 'string' && rmdFileName === this.currentRmdFileName) return;
+
+        const isInnerPortal = destInfo?.gateShape === GAS_INNER_PORTAL;
+        const gateSerial = destInfo?.moveGate;
+
+        if (isInnerPortal) {
+            this.movePosition(gateSerial);
+            return;
+        }
+
         this.prevRmdName = this.currentRmdFileName;
         LoadingScreen.render();
         RedStone.miniMap.reset();
         this.reset();
-        await this.loadMap(rmdFileName);
+
+        const rmdFileName = typeof destInfo === 'string' ? destInfo : destInfo.string;
+
+        await this.loadMap(rmdFileName, gateSerial);
         await this.init();
         RedStone.mainCanvas.mainContainer.removeChild(RedStone.player.container);
         RedStone.player.reset();
