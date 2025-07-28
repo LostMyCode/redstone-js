@@ -1,6 +1,5 @@
 import * as PIXI from "pixi.js";
 import BufferReader from "../../utils/BufferReader";
-import CanvasManager from "../../utils/CanvasManager";
 import { getRGBA15bit, getRGBA16bit, logger } from "../../utils/RedStoneRandom";
 
 // Special Thanks: 今日のこぅくん
