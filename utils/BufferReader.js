@@ -223,7 +223,4 @@ export const createTypedArray = (type, length) => {
     }
 }
 
-if (module.exports) {
-    module.exports = BufferReader;
-}
 export default BufferReader;
