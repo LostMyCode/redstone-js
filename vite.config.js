@@ -15,5 +15,4 @@ export default defineConfig({
       protocolImports: true,
     }),
   ],
-  publicDir: 'static',
 })
