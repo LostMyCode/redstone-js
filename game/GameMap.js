@@ -795,6 +795,8 @@ class GameMap {
     }
 
     async moveField(destInfo) {
+        const rmdFileName = typeof destInfo === 'string' ? destInfo : destInfo.string;
+
         if (typeof destInfo === 'string' && rmdFileName === this.currentRmdFileName) return;
 
         const isInnerPortal = destInfo?.gateShape === GAS_INNER_PORTAL;
@@ -809,8 +811,6 @@ class GameMap {
         LoadingScreen.render();
         RedStone.miniMap.reset();
         this.reset();
-
-        const rmdFileName = typeof destInfo === 'string' ? destInfo : destInfo.string;
 
         await this.loadMap(rmdFileName, gateSerial);
         await this.init();
