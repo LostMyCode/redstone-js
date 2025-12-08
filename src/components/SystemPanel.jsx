@@ -12,7 +12,7 @@ export default function SystemPanel(props) {
   return (
     <div style={{ margin: "0 10px" }}>
       <h2>Change job</h2>
-      <select defaultValue={RedStone.player.actor.job} onChange={onJobChange}>
+      <select defaultValue={RedStone.hero.job} onChange={onJobChange}>
         <option value={JOB_ROGUE}>Thief ( シーフ )</option>
         <option value={JOB_MAGIC_ARCHER}>Archer ( アーチャー )</option>
         <option value={JOB_WIZARD}>Wizard ( ウィザード )</option>

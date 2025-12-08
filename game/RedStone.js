@@ -2,7 +2,6 @@ import MainCanvas from "./MainCanvas";
 import GameMap from "./GameMap";
 import LoadingScreen from "./interface/LoadingScreen";
 import Listener from "./Listener";
-import Player from "./Player";
 import CommonUI from "./interface/CommonUI";
 import { fetchBinaryFile } from "../utils";
 import { DATA_DIR, SAVE_PLAYER_LOCATION } from "./Config";
@@ -75,7 +74,6 @@ class RedStone {
         RedStone.bgmPlayer = new BgmPlayer();
         RedStone.miniMap = new Minimap();
         RedStone.gameMap = new GameMap();
-        RedStone.player = new Player();
 
         // display loading screen
         await LoadingScreen.init();
@@ -96,6 +94,9 @@ class RedStone {
         // load hero jobs
         await Hero.loadDefaultJob();
         RedStone.hero = new Hero();
+        await RedStone.hero.load();
+        RedStone.hero.reset();
+        RedStone.actors.push(RedStone.hero);
 
         // check save data
 
@@ -116,8 +117,6 @@ class RedStone {
 
         // init minimap
         await RedStone.miniMap.init();
-
-        await RedStone.player.init();
 
         GamePlay.initBottomInterface();
 
@@ -168,7 +167,7 @@ class RedStone {
     static savePlayerLocation() {
         const lastLocation = {
             map: RedStone.gameMap.currentRmdFileName,
-            position: { x: RedStone.player.x, y: RedStone.player.y }
+            position: { x: RedStone.hero.x, y: RedStone.hero.y }
         }
         localStorage.setItem("LastLocation", JSON.stringify(lastLocation));
     }

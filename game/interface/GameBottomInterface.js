@@ -456,7 +456,7 @@ export default class GameBottomInterface {
                 const skill = ability.getSkill();
 
                 if (ability.isCastGroundSkill() || ActorManager.focusActor_tmp) {
-                    RedStone.player.useSkillToTarget(skill, ActorManager.focusActor_tmp)
+                    RedStone.hero.useSkillToTarget(skill, ActorManager.focusActor_tmp)
                 }
             }
 

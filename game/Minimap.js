@@ -99,8 +99,8 @@ export default class Minimap {
 
         this.sprite.position.set()
 
-        const xRatio = RedStone.player.x / (RedStone.gameMap.rsMap.pixelWidth);
-        const yRatio = RedStone.player.y / (RedStone.gameMap.rsMap.pixelHeight);
+        const xRatio = RedStone.hero.x / (RedStone.gameMap.rsMap.pixelWidth);
+        const yRatio = RedStone.hero.y / (RedStone.gameMap.rsMap.pixelHeight);
         const x = this.sprite.width * xRatio
         const y = this.sprite.height * yRatio
         const canvasWidth = this.canvas.width / (window.devicePixelRatio || 1);

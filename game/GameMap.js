@@ -117,7 +117,7 @@ class GameMap {
         this.foremostContainer.removeChildren();
         this.graphics.clear();
 
-        RedStone.player.reset();
+        RedStone.hero.reset();
 
         RedStone.mainCanvas.mainContainer.removeChild(
             this.objectContainer,
@@ -371,7 +371,7 @@ class GameMap {
                 x: portalSprite.x + portalSprite.width / 2,
                 y: portalSprite.y + portalSprite.height / 2
             };
-            if (getDistance(RedStone.player, portalPoint) < 70) {
+            if (getDistance(RedStone.hero, portalPoint) < 70) {
                 console.log("portal gate", this.selectedPortal.area.string);
                 this.moveField(this.selectedPortal.area);
                 this.selectedPortal = null;
@@ -402,7 +402,6 @@ class GameMap {
             this.tileContainer.addChild(tc);
         });
 
-        RedStone.player.render();
         // TODO: fix this bad implementation
         const actorSprites = RedStone.actors.map(actor => {
             const sprite = actor.pixiSprite;
@@ -759,7 +758,8 @@ class GameMap {
                 const centerPos = portalToPrevMap.getCenterPos();
 
                 Camera.setPosition(centerPos.x, centerPos.y);
-                RedStone.player.setPosition(centerPos.x, centerPos.y);
+                RedStone.hero.pos.set(centerPos.x, centerPos.y);
+                console.log('set post to prev portal', centerPos)
             } else {
                 console.log("prev map portal not found :(");
                 const portals = this.rsMap.area.areas.filter(area => [AREA_PORTAL, AREA_START_AREA].includes(area.kind));
@@ -767,7 +767,7 @@ class GameMap {
                 const centerPos = randomPortal.getCenterPos();
 
                 Camera.setPosition(centerPos.x, centerPos.y);
-                RedStone.player.setPosition(centerPos.x, centerPos.y);
+                RedStone.hero.pos.set(centerPos.x, centerPos.y);
             }
         }
     }
@@ -783,7 +783,7 @@ class GameMap {
         const centerPos = targetPortal.getCenterPos();
 
         Camera.setPosition(centerPos.x, centerPos.y);
-        RedStone.player.setPosition(centerPos.x, centerPos.y);
+        RedStone.hero.pos.set(centerPos.x, centerPos.y);
     }
 
     getRealSize() {
@@ -812,11 +812,11 @@ class GameMap {
         RedStone.miniMap.reset();
         this.reset();
 
+        RedStone.hero.reset();
+        RedStone.actors.push(RedStone.hero);
+
         await this.loadMap(rmdFileName, gateSerial);
         await this.init();
-        RedStone.mainCanvas.mainContainer.removeChild(RedStone.player.container);
-        RedStone.player.reset();
-        RedStone.player.render();
         RedStone.miniMap.init();
         LoadingScreen.destroy();
     }

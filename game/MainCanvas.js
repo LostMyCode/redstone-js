@@ -87,12 +87,9 @@ class MainCanvas {
         this.mainContainer.position.set(window.innerWidth / 2 - Camera.x, window.innerHeight / 2 - Camera.y);
         RedStone.gameMap.render();
         RedStone.miniMap.render();
-        RedStone.player.update();
         ActorManager.update(delta);
         SkillManager.update();
         SkillManager.draw();
-        RedStone.player.updateMovement();
-        // RedStone.player.render();
 
         this.interfaceContainer.removeChildren();
         GamePlay.drawBottomInterface();

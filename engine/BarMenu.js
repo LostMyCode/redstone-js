@@ -77,16 +77,16 @@ class Bar {
             .on("mouseleave", () => {
                 this.isFocused = false;
                 this.isClicked = false;
-                RedStone.player.locked = false;
+                RedStone.interactingWithBottomInterface = false;
             })
             .on("mousedown", () => {
                 this.isClicked = true;
-                RedStone.player.locked = true;
+                RedStone.interactingWithBottomInterface = true;
             })
             .on("mouseup", () => {
                 if (this.isClicked) {
                     this.isClicked = false;
-                    RedStone.player.locked = false;
+                    RedStone.interactingWithBottomInterface = false;
                     callback("click", menu);
                 }
             });

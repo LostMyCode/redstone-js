@@ -2,14 +2,16 @@ import * as PIXI from "pixi.js";
 
 import Pos from "../../engine/Pos";
 import { loadTexture } from "../../utils";
-import { getRandomInt } from "../../utils/RedStoneRandom";
-import { ACT_CHANGE1, ACT_DEAD, ACT_READY, ACT_SITDOWN, GetDirect } from "../ActionH";
+import { getRandomInt, getAngle, getDirection, getDirectionString } from "../../utils/RedStoneRandom";
+import { ACT_CHANGE1, ACT_DEAD, ACT_READY, ACT_SITDOWN, ACT_RUN, GetDirect } from "../ActionH";
 import Camera from "../Camera";
 import EffectDataManager from "../EffectDataManager";
+import { TILE_WIDTH, TILE_HEIGHT } from "../Config";
 import HitEffectManager from "../HitEffectManager";
 import { HeroBody, ImageManager } from "../ImageData";
 import RedStone from "../RedStone";
 import SoundManager from "../SoundManager";
+import SettingsManager from "../SettingsManager";
 import CommonUI from "../interface/CommonUI";
 import { ActorImage, CType, MonsterType } from "../models/Actor";
 import MonsterSource from "../models/MonsterSource";
@@ -26,6 +28,8 @@ class Actor {
         this.verticalScale = 100;
         this.abilityUse = new Ability();
         this.pos = new Pos();
+        this.destPos = new Pos();
+        this.isMoving = false;
 
         this.frame = 0;
         this.sumDelta = 0;
@@ -116,6 +120,8 @@ class Actor {
 
         this.updateFrame();
 
+        this.walking(delta);
+
         this.updateEffect();
 
         return true;
@@ -134,7 +140,7 @@ class Actor {
         // }
 
         // temp
-        if (this.job  < 19 && !this._isMonster_tmp) {
+        if (this.job < 19 && !this._isMonster_tmp) {
             const bodyName = HeroBody[this.job * 3];
             body = RedStone.anims[bodyName];
             return body;
@@ -605,7 +611,7 @@ class Actor {
         }
 
         if (this.isHero()) {
-            const sprite = this.guildIconSprite || new PIXI.Sprite(RedStone.player.guildIconTexture);
+            const sprite = this.guildIconSprite || new PIXI.Sprite(RedStone.hero.guildIconTexture);
             sprite.width = 32;
             sprite.height = 32;
             sprite.position.set(guageSprite.x - 32, guageSprite.y - (32 - guageSprite.height) / 2);
@@ -689,6 +695,92 @@ class Actor {
     getFrameCount = anm => this.getBody().getFrameCount(anm);
     getDirectCount = anm => this.getBody().getDirectCount(anm);
     getFPS = anm => this.getBody().getFPS(anm);
+
+    moveTo(x, y) {
+        this.destPos.x = x;
+        this.destPos.y = y;
+        this.isMoving = true;
+    }
+
+    walking(delta) {
+        if (!this.isMoving) return;
+
+        const dist = Math.hypot(this.destPos.x - this.pos.x, this.destPos.y - this.pos.y);
+
+        if (dist < 5) {
+            this.isMoving = false;
+            this.pos.x = this.destPos.x;
+            this.pos.y = this.destPos.y;
+
+            // If we stopped, maybe set animation to Ready if it was Run?
+            // But usually the controller handles setting animation.
+            // C++ CActor::walking handles animation changes?
+
+            if (this.anm === ACT_RUN) {
+                this.setAnm(ACT_READY);
+            }
+            return;
+        }
+
+        const angle = Math.atan2(this.destPos.y - this.pos.y, this.destPos.x - this.pos.x);
+        // Speed calculation: moveSpeed is typically 100 base. 
+        // Player.js moved 'delta' pixels? No, 'delta' is ms.
+        // Player.js: moveX = Math.min(delta, delta * Math.cos(angle));
+        // This implies speed is 1 pixel per ms? That's very fast? (1000px/s).
+        // Let's use similar logic for now. 0.3 * delta?
+        const speed = 0.3 * delta * (this.moveSpeed / 100);
+
+        // Actually Player.js logic was: moveX = Math.min(delta, delta * Math.cos(angle));
+        // If angle is 0 (cos=1), moveX = delta.
+        // Wait, Player.js `updateMovement` has `delta = now - this.lastUpdate`.
+        // If delta is 16ms, move is 16px. That is 1000px/s.
+        // Let's stick with that for parity.
+
+        let moveDist = Math.min(dist, delta * (this.moveSpeed / 100));
+
+        let moveX = moveDist * Math.cos(angle);
+        let moveY = moveDist * Math.sin(angle);
+
+        // Check collision
+        if (RedStone.gameMap.initialized && SettingsManager?.get("collisionDetection")) {
+            const nextX = this.pos.x + moveX;
+            const nextY = this.pos.y + moveY;
+            const block1 = RedStone.gameMap.getBlock(Math.floor(Math.round(nextX) / TILE_WIDTH), Math.floor(Math.round(this.pos.y) / TILE_HEIGHT));
+            const block2 = RedStone.gameMap.getBlock(Math.floor(Math.round(this.pos.x) / TILE_WIDTH), Math.floor(Math.round(nextY) / TILE_HEIGHT));
+
+            if (block1 !== 0 || block2 !== 0) {
+                this.isMoving = false;
+                this.setAnm(ACT_READY);
+                return;
+            }
+        }
+
+        // Check collision
+        // This logic mimics Player.js but in Actor context
+        // We probably need SettingsManager or assume collision is on. (Actor doesn't import SettingsManager yet, I'll skip or basic check)
+
+        // Basic map boundary check or collision check could go here.
+        // For C++ parity, we should check `isBlockedPath`.
+
+        this.pos.x += moveX;
+        this.pos.y += moveY;
+
+        // Update direction
+        let deg = angle * (180 / Math.PI);
+        if (deg < 0) deg += 360;
+
+        const dir = getDirection(deg);
+        const dirStr = getDirectionString(dir);
+        const directionFrameOrder = ["up", "up-right", "right", "down-right", "down", "down-left", "left", "up-left"];
+        const newDirect = directionFrameOrder.indexOf(dirStr);
+        if (newDirect !== -1) {
+            this.direct = newDirect;
+        }
+
+        if (this.anm !== ACT_RUN && this.anm !== ACT_CHANGE1) { // Ensure running anim
+            this.setAnm(ACT_RUN);
+        }
+    }
 }
 
 export default Actor;
